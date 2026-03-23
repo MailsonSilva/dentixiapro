@@ -5,11 +5,11 @@
   --foreground: #1e293b;
   
   /* Pro Max Brand Colors */
-  --primary: #020617; /* Deep Navy Obsidian */
-  --primary-glow: #3b82f6;
-  --primary-light: #60a5fa;
-  --primary-cyan: #22d3ee;
-  --accent: #f97316;
+  --primary: #0F50A6; /* Original Brand Blue */
+  --primary-glow: #11A0D9; /* Lighter Blue Glow */
+  --primary-light: #11A0D9;
+  --primary-cyan: #11B4D9;
+  --accent: #F19642;
   
   /* UI Surface Colors */
   --secondary-bg: #f1f5f9;
@@ -53,7 +53,7 @@ body {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #020617 0%, #3b82f6 50%, #22d3ee 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, var(--primary-cyan) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-size: 200% auto;
