@@ -1,0 +1,35 @@
+# .antigravityignore
+
+# 📦 Dependências e Builds (A IA não deve ler código de terceiros)
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+
+# 🗄️ Arquivos de Log e Bancos de Dados
+*.log
+*.sqlite
+*.db
+*.sqlitedb
+
+# 🎨 Mídia e Assets (Evita desperdício de tokens tentando ler código binário/vetorial)
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.mp4
+
+# ⚙️ Lockfiles (A IA não precisa ler as versões exatas travadas, apenas o package.json)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 🔒 Variáveis de ambiente
+.env
+.env.local
+.env.development
+.env.production
