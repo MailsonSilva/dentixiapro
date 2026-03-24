@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Menu,
   ChevronLeft,
-  Gift
+  Gift,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +47,7 @@ export function Sidebar({ type }: SidebarProps) {
     { name: 'Página Inicial', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
     { name: 'CRM', href: 'https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0', icon: MessageSquare, external: true },
+    { name: 'Ver Tutoriais', href: '/aulas', icon: BookOpen },
     { name: 'Indique e Ganhe', href: '/indique-e-ganhe', icon: Gift },
     { name: 'Perfil', href: '/perfil', icon: User },
   ];

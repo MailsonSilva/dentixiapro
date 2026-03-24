@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Camera, 
-  Calendar, 
   User, 
   Trash2, 
   Search, 
@@ -101,14 +100,6 @@ export default function ResultadosPage() {
                 />
              </div>
              
-             <button 
-               onClick={fetchSimulacoes}
-               className="p-3 bg-white text-primary rounded-2xl border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors"
-               title="Atualizar lista"
-             >
-               <RefreshCcw size={20} />
-             </button>
-
              <Link href="/simulacoes">
                <Button size="sm" className="h-12 px-6 rounded-2xl" leftIcon={<Camera size={18} />}>
                  Nova
