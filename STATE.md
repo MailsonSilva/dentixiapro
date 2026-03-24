@@ -1,47 +1,45 @@
 # Mission Control - DentixIA Pro
 
 ## 🎯 Objetivo Atual
-Escalonamento de Layout para Notebooks e Refinamento de Responsividade (Comando `/orchestrate`).
-O layout atual apresenta problemas de proporção em telas médias (13" a 15"), onde os componentes estão muito espaçosos (barras laterais muito parrudas, margens superiores exageradas, preenchimento interno dos itens cortando espaço) causando "quebra de tela" e overflow vertical prematuro. A meta é redistribuir e otimizar os espaços.
+Sprint de 10 melhorias de UI/UX executadas por Loki Mode em 2026-03-24.
+Todas as mudanças são frontend-only, sem alterações de backend ou banco de dados.
 
 ---
 
 ## 🗺️ Roadmap e Alocação (Fases de Desenvolvimento)
 
-### Fase 1: Análise UX/UI e Mapeamento de Vilezas (Proporção)
-- **Agente Responsável**: `@ux-designer`
-- **Tarefas**:
-  - Identificar os componentes críticos (ex: `Sidebar.tsx`, `perfil/page.tsx`) com paddings e larguras inflacionadas.
-  - Definir a nova régua de tamanhos: redução de paddings (ex: `py-4` para `py-3`), redimensionamento de botões laterais e ajustes na altura dos containers `min-h`.
-- **Status**: ✅ Concluído
+### Fase 1–6: Histórico Anterior (Concluídas)
+Escalonamento de Layout, Refinamento de Responsividade, Parceiros, Auth e QA.  
+**Status**: ✅ Todas concluídas.
 
-### Fase 2: Refatoração Estrutural (Sidebar e Layout Padrão)
-- **Agente Responsável**: `@frontend-dev`
-- **Tarefas**:
-  - `Sidebar.tsx`: Enxugar largura total (ex: `w-72` para `w-64` em telas notebook/lg), padding do Header, espaçamento dos *nav items* e suavizar o peso da logo.
-  
-  - `ClientLayout.tsx` / Páginas Base: Ajustar a margem superior (ex: `md:pt-20` para `md:pt-8`) de contêineres e margens globais de respiro.
-- **Status**: ✅ Concluído
+---
 
-### Fase 3: Ajustes e Encaixes de Componente da View (Perfil)
-- **Agente Responsável**: `@frontend-dev`
-- **Tarefas**:
-  - `perfil/page.tsx`: Diminuir a espessura das "Configurações" (`px-5 py-4` -> `px-4 py-3.5`).
-  - Reduzir raio de borda (`rounded-3xl` para `rounded-2xl`) onde houver compressão visual e readaptar tamanho dos ícones.
-- **Status**: ✅ Concluído
+## 🆕 Sprint 2026-03-24 — 10 Melhorias de UI/UX
 
-### Fase 5: Automação e Refinamento de Parceiros
-- **Agente Responsável**: `@loki` (Mission Control)
-- **Tarefas**:
-  - `handle_new_user`: Correção do erro 500 no signup (mismatch enum SQL). ✅
-  - `register/parceiros/page.tsx`: Ajuste do payload para garantir `tipo: "parceiro"` e limpeza de redundâncias. ✅
-  - `perfil/page.tsx`: Restrição de visibilidade de itens (Assinatura/Indicação) para tipo parceiro. ✅
-  - `indique-e-ganhe/page.tsx`: Sincronização com views SQL e refinamento visual da comissão. ✅
-- **Status**: ✅ Concluído
+### Arquivos Modificados
+| Arquivo | Tarefas |
+|---------|---------|
+| `src/app/page.tsx` | 1, 2, 3, 4, 5 |
+| `src/components/Navbar.tsx` | 6, 7 |
+| `src/components/Sidebar.tsx` | 4 |
+| `src/components/ClientLayout.tsx` | 7 |
+| `src/lib/DrawerContext.tsx` | 7 (novo arquivo) |
+| `src/app/simulacoes/page.tsx` | 8, 9 |
+| `src/app/simulacoes/resultados/page.tsx` | 10 |
 
-### Fase 6: Validação Final e Git Push
-- **Agente Responsável**: `@qa-engineer` / `@loki`
-- **Tarefas**:
-  - Execução de testes automatizados via TestSprite: Realizado. (Falhas esperadas em telas logadas por falta de conta de teste válida, mas validações de formulários passaram). ✅
-  - Subida das alterações para o repositório Git: Repositório inicializado e primeiro commit realizado. ✅
-- **Status**: ✅ Concluído
+### Tarefas
+1. ✅ Removido badge "TECNOLOGIA IA DE PRÓXIMA GERAÇÃO" da home
+2. ✅ Removido "Nível Pro Max" do h1 da home
+3. ✅ Texto substituído por "Pronto para transformar sorrisos?"
+4. ✅ Botão "Ver Tutoriais" removido da home; adicionado ao Sidebar com ícone `BookOpen`
+5. ✅ Botão "Iniciar Simulação" ajustado: `h-14 text-lg` (era `h-20 text-xl`)
+6. ✅ Navbar mobile: nomes sempre visíveis (não mais opacity-0 no idle)
+7. ✅ Drawer lateral mobile (esquerda→dereita) implementado via `DrawerContext`; botão Menu hamburguer na Navbar (última posição)
+8. ✅ Perfil removido da Navbar (redundante com Drawer/Sidebar)
+9. ✅ Rodapé do Drawer: logos removidas; botão de Logout (Sair da Conta) movido para o rodapé fixo.
+10. ✅ Ícones da tela de simulação em azul (`text-blue-500`, `bg-blue-50`)
+
+### Estado Atual
+- **Sem regressões conhecidas**: mudanças restritas a UI, sem alteração de lógica ou banco
+- **DrawerContext**: novo contexto em `/lib/DrawerContext.tsx` gerencia abertura/fechamento do drawer mobile
+- **Compilação**: app rodando em dev mode na porta 3000

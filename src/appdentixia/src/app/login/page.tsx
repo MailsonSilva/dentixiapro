@@ -44,61 +44,71 @@ export default function LoginPage() {
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-accent/10 rounded-full blur-3xl -mr-20 -mb-20"></div>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-[340px] relative z-10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md relative z-10"
       >
-        <Card className="p-6 border-white/40 shadow-2xl rounded-3xl">
-          <CardHeader className="flex flex-col items-center mb-6">
-            <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-4" priority />
-            <h1 className="text-xl md:text-2xl font-black font-poppins text-gray-800 tracking-tight text-center">Bem-vindo de volta!</h1>
-            <p className="text-gray-400 text-sm mt-1 text-center">Acesse sua plataforma inteligente</p>
+        <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
+          <CardHeader className="flex flex-col items-center mb-6 space-y-2">
+            <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-2" priority />
+            <h1 className="text-2xl font-black font-poppins text-gray-800 tracking-tight text-center">Bem-vindo de volta!</h1>
+            <p className="text-gray-500 text-sm text-center">Acesse sua plataforma inteligente</p>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <Input
-                label="E-mail"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemplo@email.com"
-                icon={<Mail size={20} />}
-              />
+            <form onSubmit={handleLogin} className="space-y-5">
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                <Input
+                  label="E-mail"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="exemplo@email.com"
+                  icon={<Mail size={20} />}
+                />
+              </motion.div>
 
-              <Input
-                label="Senha"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                icon={<Lock size={20} />}
-              />
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <Input
+                  label="Senha"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  icon={<Lock size={20} />}
+                />
+              </motion.div>
 
-              <div className="flex justify-end mt-[-8px] mb-4">
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                className="flex justify-end mt-1 mb-6"
+              >
                 <Link 
                   href="/forgot" 
-                  className="text-xs font-bold text-gray-400 hover:text-primary transition-colors cursor-pointer p-1"
+                  className="text-xs font-bold text-gray-500 hover:text-primary transition-colors cursor-pointer p-1"
                 >
                   Esqueceu sua senha?
                 </Link>
-              </div>
+              </motion.div>
 
-              <Button
-                type="submit"
-                loading={loading}
-                className="w-full mt-2"
-                rightIcon={<ArrowRight size={18} />}
-              >
-                Acessar Plataforma
-              </Button>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <Button
+                  type="submit"
+                  loading={loading}
+                  className="w-full h-12 text-base"
+                  rightIcon={<ArrowRight size={18} />}
+                >
+                  Acessar Plataforma
+                </Button>
+              </motion.div>
             </form>
           </CardContent>
 
-          <CardFooter>
-            <p className="text-center text-sm text-gray-500">
+          <CardFooter className="mt-4">
+            <p className="text-center text-sm text-gray-500 w-full">
               Ainda não tem uma conta?{" "}
               <Link href="/register" className="text-primary font-bold hover:underline">
                 Criar agora

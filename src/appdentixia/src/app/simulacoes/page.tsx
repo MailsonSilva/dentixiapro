@@ -88,11 +88,9 @@ function BeforeAfterSlider({ before, after }: { before: string; after: string })
         className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_12px_rgba(0,0,0,0.6)]"
         style={{ left: `${sliderPos}%` }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-xl flex items-center justify-center border-2 border-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E4FC8" strokeWidth="2.5">
-            <polyline points="15 18 9 12 15 6" />
-            <polyline points="9 18 3 12 9 6" transform="translate(12 0)" />
-          </svg>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center border-2 border-primary overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-icon.png" alt="DentixIA" className="w-full h-full object-contain p-1" />
         </div>
       </div>
 
@@ -373,8 +371,8 @@ export default function SimulationPage() {
                     <AnimatePresence mode="wait">
                       {!imageBase64Full ? (
                         <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-6 text-center">
-                          <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Upload className="text-primary" size={32} />
+                          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Upload className="text-blue-500" size={32} />
                           </div>
                           <div>
                             <p className="text-gray-600 font-medium">Arraste ou escolha uma foto</p>
@@ -384,10 +382,10 @@ export default function SimulationPage() {
                           <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                           <input ref={cameraInputRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                           <div className="flex gap-3">
-                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20">
                               <ImageIcon size={18} /> Galeria
                             </button>
-                            <button onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-2 px-5 py-3 bg-white border border-primary/20 text-primary rounded-2xl font-bold text-sm hover:bg-primary/5 transition-all">
+                            <button onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-2 px-5 py-3 bg-white border border-blue-200 text-blue-600 rounded-2xl font-bold text-sm hover:bg-blue-50 transition-all">
                               <Camera size={18} /> Câmera
                             </button>
                           </div>
@@ -461,9 +459,9 @@ export default function SimulationPage() {
                     )}
                   >
                     {isProcessing ? (
-                      <><Loader2 className="animate-spin" size={24} /> Processando Sorriso...</>
+                      <><Loader2 className="animate-spin text-white" size={24} /> Processando Sorriso...</>
                     ) : (
-                      <><Sparkles size={24} /> Gerar Simulação IA</>
+                      <><Sparkles size={24} className="text-white" /> Gerar Simulação IA</>
                     )}
                   </button>
                 </section>
