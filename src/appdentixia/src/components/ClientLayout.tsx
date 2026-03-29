@@ -14,8 +14,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-// ── Mobile Drawer (tarefa 7) ────────────────────────────────────────────────
-function MobileDrawer({ userType }: { userType: 'comum' | 'parceiro' }) {
+type UserRole = 'admin' | 'manager' | 'user' | 'super_admin' | null;
+
+// ── Mobile Drawer ────────────────────────────────────────────────────────────
+function MobileDrawer({
+  userType,
+  userRole,
+}: {
+  userType: 'comum' | 'parceiro';
+  userRole: UserRole;
+}) {
   const pathname = usePathname();
   const { drawerOpen, closeDrawer } = useDrawer();
 
@@ -27,10 +35,19 @@ function MobileDrawer({ userType }: { userType: 'comum' | 'parceiro' }) {
     { name: 'Página Inicial', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
     { name: 'Ver Tutoriais', href: '/aulas', icon: BookOpen },
-    { name: 'CRM', href: 'https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0', icon: MessageSquare },
+    { name: 'CRM', href: '/crm', icon: MessageSquare },
     { name: 'Indique e Ganhe', href: '/indique-e-ganhe', icon: Gift },
     { name: 'Perfil', href: '/perfil', icon: User },
   ];
+
+  // Badge descritivo do role
+  const roleBadge: Record<NonNullable<UserRole>, { label: string; color: string }> = {
+    admin:       { label: 'Administrador', color: 'bg-primary/10 text-primary' },
+    manager:     { label: 'Gerente',       color: 'bg-violet-100 text-violet-600' },
+    user:        { label: 'Usuário',       color: 'bg-gray-100 text-gray-500' },
+    super_admin: { label: 'Super Admin',   color: 'bg-amber-100 text-amber-600' },
+  };
+  const badge = userRole ? roleBadge[userRole] : null;
 
   return (
     <AnimatePresence>
@@ -54,11 +71,18 @@ function MobileDrawer({ userType }: { userType: 'comum' | 'parceiro' }) {
           className="fixed top-0 left-0 bottom-0 z-[80] w-72 bg-white shadow-2xl flex flex-col md:hidden"
         >
           {/* Logo header */}
-          <div className="p-6 pt-12 border-b border-gray-100 flex items-center justify-between">
-            <Image src="/logo.png" alt="DentixIA" width={130} height={32} className="h-8 w-auto object-contain" priority />
-            <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
-              <X size={22} />
-            </button>
+          <div className="p-6 pt-12 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <Image src="/logo.png" alt="DentixIA" width={130} height={32} className="h-8 w-auto object-contain" priority />
+              <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
+                <X size={22} />
+              </button>
+            </div>
+            {badge && userType === 'comum' && (
+              <span className={`inline-flex text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${badge.color}`}>
+                {badge.label}
+              </span>
+            )}
           </div>
 
           {/* Nav items */}
@@ -111,8 +135,9 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [trialExpired, setTrialExpired] = useState(false);
   const [userType, setUserType] = useState<'comum' | 'parceiro'>('comum');
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'user' | 'super_admin' | null>(null);
   const { closeDrawer } = useDrawer();
-  
+
   const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot");
   const isFullscreenPage = pathname === "/planos";
   const isPublicPage = pathname === "/" || isFullscreenPage;
@@ -127,62 +152,82 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          if (!isAuthPage && !isPublicPage) {
-            router.replace('/login');
-          }
+          if (!isAuthPage && !isPublicPage) router.replace('/login');
           setLoading(false);
           return;
         }
 
-        const { data: usuarioData } = await supabase.from('usuarios').select('tipo').eq('id', user.id).single();
-        const metaType = user.user_metadata?.tipo;
-        let finalTipoUsuario = usuarioData?.tipo || 'comum';
-
-        if (metaType === 'parceiro' && finalTipoUsuario !== 'parceiro') {
-           await supabase.from('usuarios').update({ tipo: 'parceiro' }).eq('id', user.id);
-           finalTipoUsuario = 'parceiro';
-        }
-
-        setUserType(finalTipoUsuario === 'parceiro' ? 'parceiro' : 'comum');
-
-        if (finalTipoUsuario === 'admin') {
-          setTrialExpired(false);
-          setLoading(false);
-          return;
-        }
-
-        if (finalTipoUsuario === 'parceiro') {
-          setTrialExpired(false);
-          if (!pathname.startsWith('/parceiros') && !pathname.startsWith('/perfil') && !pathname.startsWith('/redefinir-senha')) {
-            router.push('/parceiros');
-          }
-          setLoading(false);
-          return;
-        }
-
-        const { data: statusData, error } = await supabase
-          .from("verificar_status_usuario")
-          .select("status_code, descricao, dias_restantes")
+        // ── Passo 1: Verificar tipo global do usuário (parceiro vs comum) ──
+        const { data: usuarioData } = await supabase
+          .from('usuarios')
+          .select('tipo')
+          .eq('id', user.id)
           .single();
 
-        if (error) {
-          console.error("Erro ao verificar status:", error.message);
+        const metaType = user.user_metadata?.tipo;
+        let finalTipo = usuarioData?.tipo || 'comum';
+
+        // Sincronizar tipo com metadata do auth se necessário
+        if (metaType === 'parceiro' && finalTipo !== 'parceiro') {
+          await supabase.from('usuarios').update({ tipo: 'parceiro' }).eq('id', user.id);
+          finalTipo = 'parceiro';
+        }
+
+        // ── Passo 2: Parceiro → área restrita de parceiro ─────────────────
+        if (finalTipo === 'parceiro') {
+          setUserType('parceiro');
+          setUserRole(null);
+          setTrialExpired(false);
+          const parceiroRoutes = ['/parceiros', '/perfil', '/redefinir-senha', '/indique-e-ganhe'];
+          const isParceiroRoute = parceiroRoutes.some(r => pathname.startsWith(r));
+          if (!isParceiroRoute) router.push('/parceiros');
           setLoading(false);
           return;
         }
 
-        if (statusData && statusData.status_code !== 3) {
-          setTrialExpired(true);
-        } else {
+        // ── Passo 3: Comum → verificar role na empresa ────────────────────
+        setUserType('comum');
+
+        // Buscar role do usuário na empresa ativa
+        const { data: ucData } = await supabase
+          .from('user_company')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const role = ucData?.role as 'admin' | 'manager' | 'user' | null;
+        setUserRole(role);
+
+        // Admin tem acesso total — sem verificação de trial
+        if (role === 'admin') {
           setTrialExpired(false);
+          setLoading(false);
+          return;
         }
+
+        // User e Manager: verificar status do trial/assinatura
+        const { data: statusData, error: statusErr } = await supabase
+          .from('verificar_status_usuario')
+          .select('status_code, descricao, dias_restantes')
+          .single();
+
+        if (statusErr) {
+          console.error('Erro ao verificar status:', statusErr.message);
+          setLoading(false);
+          return;
+        }
+
+        setTrialExpired(statusData ? statusData.status_code !== 3 : false);
       } catch (err) {
-        console.error("Erro ao validar acesso:", err);
+        console.error('Erro ao validar acesso:', err);
       } finally {
         setLoading(false);
       }
     }
-    
+
     checkAccess();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, isAuthPage, isFullscreenPage, isPublicPage]);
@@ -211,11 +256,14 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       <Sidebar type={userType} />
 
       {/* Mobile Drawer (tarefa 7) */}
-      <MobileDrawer userType={userType} />
+      <MobileDrawer userType={userType} userRole={userRole} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {userType !== 'parceiro' && <Navbar type={userType} />}
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-8 pt-4">
+        <main className={cn(
+          "flex-1 overflow-y-auto",
+          pathname === "/mensagens" ? "h-full" : "pb-24 md:pb-8 pt-4"
+        )}>
           {children}
         </main>
       </div>

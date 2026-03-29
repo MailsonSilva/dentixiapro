@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Navbar } from "@/components/Navbar";
+
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Camera, 
-  User, 
+  User,
   Trash2, 
   Search, 
   X,
-  RefreshCcw,
   Sparkles,
   Info
 } from "lucide-react";
@@ -27,7 +26,9 @@ interface Simulacao {
   img_original_url: string;
   img_simulada_url: string;
   procedimento: string;
-  nome_paciente: string;
+  company_id?: string;
+  contact_id?: string | null;
+  created_by?: string;
 }
 
 export default function ResultadosPage() {
@@ -37,22 +38,19 @@ export default function ResultadosPage() {
   const [selectedSim, setSelectedSim] = useState<Simulacao | null>(null);
   const { notify } = useNotification();
 
-  const fetchSimulacoes = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { data, error } = await supabase
+  useEffect(() => {
+    let cancelled = false;
+    supabase
       .from('simulacoes')
       .select('*')
-      .eq('usuario_id', user?.id)
-      .order('created_at', { ascending: false });
-
-    if (data) setSimulacoes(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchSimulacoes();
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error('Erro ao buscar simulações:', error.message);
+        if (data) setSimulacoes(data);
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
@@ -73,12 +71,11 @@ export default function ResultadosPage() {
   };
 
   const filteredSimulacoes = simulacoes.filter(s => 
-    s.nome_paciente.toLowerCase().includes(search.toLowerCase())
+    (s.procedimento ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="flex flex-col min-h-screen pb-24 md:pb-0 md:pt-20 bg-secondary-bg">
-      <Navbar />
 
       <main className="max-w-7xl mx-auto w-full px-6 py-8">
         {/* Header e Busca */}
@@ -93,8 +90,8 @@ export default function ResultadosPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   type="text" 
-                  placeholder="Pesquisar por paciente..."
-                  value={search}
+                   placeholder="Pesquisar por procedimento..."
+                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="bg-white border border-gray-100 rounded-2xl pl-12 pr-6 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none w-full md:w-64 transition-all shadow-sm"
                 />
@@ -147,10 +144,10 @@ export default function ResultadosPage() {
                       <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
                         <User size={20} />
                       </div>
-                      <div>
-                        <h3 className="font-extrabold text-gray-800 leading-tight">{item.nome_paciente}</h3>
-                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Criado em: {new Date(item.created_at).toLocaleDateString('pt-BR')} às {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
+                       <div>
+                         <h3 className="font-extrabold text-gray-800 leading-tight capitalize">{item.procedimento || 'Simulação'}</h3>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Criado em: {new Date(item.created_at).toLocaleDateString('pt-BR')} às {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                       </div>
                    </div>
                    <button 
                      onClick={(e) => handleDelete(e, item.id)}
@@ -184,7 +181,7 @@ export default function ResultadosPage() {
                          <Image src={item.img_simulada_url} alt="Depois" width={400} height={300} className="w-full h-full object-cover" />
                        ) : (
                          <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
-                            <RefreshCcw className="animate-spin text-gray-200" size={24} />
+                            <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin"></div>
                          </div>
                        )}
                     </div>
@@ -221,9 +218,9 @@ export default function ResultadosPage() {
               {/* Top Bar Modal */}
               <div className="p-6 md:px-10 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 tracking-tight">{selectedSim.nome_paciente}</h2>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Simulação Finalizada</p>
-                </div>
+                   <h2 className="text-2xl font-black text-gray-800 tracking-tight capitalize">{selectedSim.procedimento || 'Simulação'}</h2>
+                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Simulação Finalizada</p>
+                 </div>
                 <button 
                   onClick={() => setSelectedSim(null)}
                   className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all"
