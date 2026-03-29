@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  
+  /* Pro Max Brand Colors */
+  --primary: #0F50A6; /* Original Brand Blue */
+  --primary-glow: #11A0D9; /* Lighter Blue Glow */
+  --primary-light: #11A0D9;
+  --primary-cyan: #11B4D9;
+  --accent: #F19642;
+  
+  /* UI Surface Colors */
+  --secondary-bg: #f1f5f9;
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: rgba(0, 0, 0, 0.05);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-glow: var(--primary-glow);
+  --color-primary-light: var(--primary-light);
+  --color-primary-cyan: var(--primary-cyan);
+  --color-accent: var(--accent);
+  --color-secondary-bg: var(--secondary-bg);
+}
+
+body {
+  background-color: var(--secondary-bg);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(34, 211, 238, 0.05) 0px, transparent 50%);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Pro Max Premium Utilities */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    0 4px 6px -1px var(--glass-shadow),
+    0 2px 4px -2px var(--glass-shadow),
+    inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
+  @apply rounded-3xl;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, var(--primary-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: gradient-flow 8s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-primary {
+  @apply relative overflow-hidden bg-primary text-white font-bold py-4 px-8 rounded-2xl transition-all duration-500 shadow-xl shadow-blue-900/10 active:scale-95 hover:shadow-2xl hover:shadow-blue-600/20 hover:-translate-y-0.5;
+}
+
+.btn-primary::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full skew-x-12 transition-transform duration-1000;
+}
+
+.btn-primary:hover::after {
+  @apply translate-x-full;
+}
+
+/* Floating Animation */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Global Input Refinement */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  @apply border-2 border-slate-200 bg-white/50 backdrop-blur-sm rounded-2xl transition-all duration-300 outline-none px-4 py-3;
+}
+
+input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  @apply border-primary-glow/50 ring-4 ring-primary-glow/5 shadow-inner;
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
