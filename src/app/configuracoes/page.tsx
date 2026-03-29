@@ -27,7 +27,7 @@ import {
   ArrowRight,
   Receipt,
   Gift,
-  Link2
+  Plug
 } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
@@ -42,8 +42,6 @@ const SUPPORT_URL =
   "https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0";
 const PROSPECTA_URL =
   "https://api.whatsapp.com/send/?phone=554391596932&text=Ol%C3%A1%2C+vim+pela+DentixIA.+Como+funciona+o+trabalho+da+Prospecta+Odonto%3F&type=phone_number&app_absent=0";
-
-
 
 // ── Trial Banner ──────────────────────────────────────────────────────────────
 // statusCode: 3 = acesso liberado (trial ou assinatura ativa) | 2 = trial expirado
@@ -202,7 +200,7 @@ function Modal({
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function PerfilPage() {
+export default function ConfiguracoesPage() {
   const router = useRouter();
   const { notify } = useNotification();
 
@@ -436,7 +434,7 @@ export default function PerfilPage() {
         {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
         {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} />}
 
-        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">
           Abaixo estão suas configurações
         </p>
 
@@ -478,12 +476,12 @@ export default function PerfilPage() {
 
         {/* Geral */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Integrações & Geral</p>
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Geral</p>
           <div className="divide-y divide-gray-50">
             {isComum && (
               <SettingsRow
-                icon={Link2}
-                label="WhatsApp & Integrações"
+                icon={Plug}
+                label="Integrações (API)"
                 onClick={() => router.push("/configuracoes/integracoes")}
               />
             )}

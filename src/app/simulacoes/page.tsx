@@ -8,7 +8,6 @@ import {
   Check,
   Sparkles,
   Loader2,
-  User,
   X,
   Camera,
   ImageIcon,
@@ -16,7 +15,7 @@ import {
   Plus,
   Save,
 } from "lucide-react";
-import { Input } from "@/components/ui/Input";
+
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -109,7 +108,7 @@ export default function SimulationPage() {
   const [step, setStep] = useState<Step>("tips");
   const [procedure, setProcedure] = useState<string>("Facetas");
   const [selectedColor, setSelectedColor] = useState<string>("BL1");
-  const [nomePaciente, setNomePaciente] = useState("");
+
   const [imageBase64Full, setImageBase64Full] = useState<string | null>(null); // data:image/...;base64,XXX
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultBase64, setResultBase64] = useState<string | null>(null);
@@ -167,7 +166,7 @@ export default function SimulationPage() {
     }
   };
 
-  // ── save to Supabase ───────────────────────────────────────────────────────
+  // ── save to Supabase (multi-tenant) ───────────────────────────────────────
   const handleSave = async () => {
     if (!imageBase64Full || !resultBase64) return;
     setIsSaving(true);
@@ -175,6 +174,17 @@ export default function SimulationPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
+
+      // Buscar company_id do tenant do usuário
+      const { data: ucData, error: ucError } = await supabase
+        .from("user_company")
+        .select("company_id")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .single();
+
+      if (ucError || !ucData) throw new Error("Empresa não encontrada para este usuário");
+      const companyId = ucData.company_id;
 
       // Helper: base64 data URL → Blob
       const b64ToBlob = (b64: string, type = "image/jpeg") => {
@@ -185,25 +195,25 @@ export default function SimulationPage() {
 
       const ts = Date.now();
 
-      // Upload imagem original  →  simulacoes/{userId}/original/{ts}.jpg
+      // Upload imagem original → simulacoes/{companyId}/original/{ts}.jpg
       const origBlob = b64ToBlob(imageBase64Full);
-      const origPath = `${user.id}/original/${ts}.jpg`;
+      const origPath = `${companyId}/original/${ts}.jpg`;
       await supabase.storage.from("simulacoes").upload(origPath, origBlob, { contentType: "image/jpeg" });
       const { data: { publicUrl: origUrl } } = supabase.storage.from("simulacoes").getPublicUrl(origPath);
 
-      // Upload imagem simulada  →  simulacoes/{userId}/simulada/{ts}.jpg
+      // Upload imagem simulada → simulacoes/{companyId}/simulada/{ts}.jpg
       const simBlob = b64ToBlob(resultBase64);
-      const simPath = `${user.id}/simulada/${ts}.jpg`;
+      const simPath = `${companyId}/simulada/${ts}.jpg`;
       await supabase.storage.from("simulacoes").upload(simPath, simBlob, { contentType: "image/jpeg" });
       const { data: { publicUrl: simUrl } } = supabase.storage.from("simulacoes").getPublicUrl(simPath);
 
-      // Inserir na tabela 'simulacoes' (schema exato)
+      // Inserir no novo schema multi-tenant
       const { error: dbError } = await supabase.from("simulacoes").insert({
-        usuario_id: user.id,
+        company_id: companyId,
+        created_by: user.id,
         procedimento: procedure,
         img_original_url: origUrl,
         img_simulada_url: simUrl,
-        nome_paciente: nomePaciente || "Paciente",
       });
 
       if (dbError) throw dbError;
@@ -405,16 +415,10 @@ export default function SimulationPage() {
 
                 {/* Right: controls */}
                 <section className="space-y-6 flex flex-col justify-center">
-                  {/* Patient name */}
-                  <div className="space-y-2">
-                    <h2 className="text-lg font-bold font-poppins text-gray-700">Dados do Paciente</h2>
-                    <Input
-                      label="Nome do Paciente"
-                      placeholder="Nome Completo do Paciente"
-                      value={nomePaciente}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNomePaciente(e.target.value)}
-                      icon={<User size={20} />}
-                    />
+                  {/* Info procedimento */}
+                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                    <h2 className="text-sm font-bold text-primary mb-1">Procedimento selecionado</h2>
+                    <p className="text-gray-700 font-semibold capitalize">{procedure}</p>
                   </div>
 
                   {/* Color picker */}

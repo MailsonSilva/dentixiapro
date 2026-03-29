@@ -5,20 +5,27 @@ import { usePathname } from "next/navigation";
 import { 
   LogOut, 
   LayoutDashboard,
-  MessageSquare,
   Sparkles,
   User,
   Home,
   ChevronRight,
   Menu,
   ChevronLeft,
-  Gift,
-  BookOpen
+  BookOpen,
+  Users,
+  Settings,
+  ChevronDown,
+  Calendar,
+  MessageSquare,
+  Contact,
+  LucideIcon
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import Image from "next/image";
 import { useSidebar } from "@/lib/SidebarContext";
 import { useNotification } from "@/lib/NotificationContext";
@@ -28,11 +35,36 @@ interface SidebarProps {
   type: 'comum' | 'parceiro';
 }
 
+type SubMenuItem = {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+type MenuItemShape = {
+  name: string;
+  href?: string;
+  icon: LucideIcon;
+  subItems?: SubMenuItem[];
+};
+
 export function Sidebar({ type }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, toggle } = useSidebar();
   const { notify } = useNotification();
+  
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
+    // Default open if pathname matches
+    const isGestaoActive = pathname?.includes('/crm') || pathname?.includes('/mensagens') || pathname?.includes('/clientes') || pathname?.includes('/agenda');
+    return {
+      'Gestão de Clientes': isGestaoActive || true // We can keep it always initially true as well
+    };
+  });
+
+  const toggleMenu = (name: string) => {
+    setOpenMenus(prev => ({ ...prev, [name]: !prev[name] }));
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -40,16 +72,24 @@ export function Sidebar({ type }: SidebarProps) {
     router.push("/login");
   };
 
-  const menuItems = type === 'parceiro' ? [
+  const menuItems: MenuItemShape[] = type === 'parceiro' ? [
     { name: 'Dashboard', href: '/parceiros', icon: LayoutDashboard },
     { name: 'Perfil', href: '/perfil', icon: User },
   ] : [
     { name: 'Página Inicial', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
-    { name: 'CRM', href: 'https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0', icon: MessageSquare, external: true },
-    { name: 'Ver Tutoriais', href: '/aulas', icon: BookOpen },
-    { name: 'Indique e Ganhe', href: '/indique-e-ganhe', icon: Gift },
-    { name: 'Perfil', href: '/perfil', icon: User },
+    { 
+      name: 'Gestão de Clientes', 
+      icon: Users,
+      subItems: [
+        { name: 'Leads (CRM)', href: '/crm', icon: Contact },
+        { name: 'Clientes', href: '/clientes', icon: Users },
+        { name: 'Chat', href: '/mensagens', icon: MessageSquare },
+        { name: 'Agenda', href: '/agenda', icon: Calendar },
+      ],
+    },
+    { name: 'Tutoriais', href: '/aulas', icon: BookOpen },
+    { name: 'Configurações', href: '/configuracoes', icon: Settings },
   ];
 
   return (
@@ -99,15 +139,114 @@ export function Sidebar({ type }: SidebarProps) {
       </div>
 
       {/* Navegação */}
-      <nav className="flex-1 px-4 space-y-2 mt-6 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 px-4 space-y-2 mt-6 overflow-y-auto scrollbar-hide pb-20">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          
+          if (item.subItems) {
+            const hasActiveSubItem = item.subItems.some((sub: SubMenuItem) => pathname === sub.href || pathname.startsWith(`${sub.href}/`));
+            const isOpen = openMenus[item.name] || false;
+            
+            return (
+              <div key={item.name} className="space-y-1">
+                <button
+                  onClick={() => {
+                    if (isCollapsed) {
+                      toggle();
+                      setOpenMenus(prev => ({ ...prev, [item.name]: true }));
+                    } else {
+                      toggleMenu(item.name);
+                    }
+                  }}
+                  className={cn(
+                    "w-full group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300",
+                    hasActiveSubItem && !isOpen
+                      ? "bg-primary/5 text-primary" 
+                      : "text-gray-400 hover:bg-primary/5 hover:text-primary",
+                    isCollapsed ? "justify-center" : "justify-between"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon size={20} strokeWidth={hasActiveSubItem ? 2.5 : 2} />
+                    {!isCollapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      >
+                        {item.name}
+                      </motion.span>
+                    )}
+                  </div>
+                  
+                  {!isCollapsed && (
+                    <ChevronDown 
+                      size={16} 
+                      className={cn(
+                        "transition-transform duration-300",
+                        isOpen ? "rotate-180" : ""
+                      )} 
+                    />
+                  )}
+
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
+                      {item.name}
+                      <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Sub-items */}
+                <AnimatePresence>
+                  {isOpen && !isCollapsed && (
+                    <motion.div 
+                      key={`submenu-${item.name}`}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="pl-4 space-y-1 overflow-hidden"
+                    >
+                      {item.subItems.map((subItem: SubMenuItem) => {
+                        const SubIcon = subItem.icon;
+                        const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
+                        return (
+                          <Link
+                            key={subItem.href}
+                            href={subItem.href}
+                            className={cn(
+                              "group relative flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300",
+                              isSubActive 
+                                ? "bg-primary text-white shadow-md shadow-primary/20" 
+                                : "text-gray-400 hover:bg-primary/5 hover:text-primary"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <SubIcon size={18} strokeWidth={isSubActive ? 2.5 : 2} />
+                              <span>{subItem.name}</span>
+                            </div>
+                            
+                            {isSubActive && (
+                              <motion.div 
+                                layoutId={`active-nav-indicator-${item.name}`}
+                                className="absolute left-0 w-1.5 h-6 bg-accent rounded-full"
+                              />
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          }
+
+          const isActive = pathname === item.href || (item.href !== '/' && !!item.href && pathname.startsWith(`${item.href}/`));
           
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={item.href ?? item.name}
+              href={item.href ?? '#'}
               className={cn(
                 "group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300",
                 isActive 

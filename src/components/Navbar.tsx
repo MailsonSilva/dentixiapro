@@ -23,7 +23,7 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
   ] : [
     { name: 'Início', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
-    { name: 'CRM', href: '/chat', icon: MessageSquare },
+    { name: 'CRM', href: '/crm', icon: MessageSquare },
   ];
 
   return (

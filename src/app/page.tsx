@@ -21,7 +21,7 @@ export default function Home() {
         .select('nome_completo')
         .eq('id', user.id)
         .single();
-      
+
       if (userData?.nome_completo) {
         setUserName(userData.nome_completo.split(' ')[0]);
       } else if (user.user_metadata?.nome_completo) {
@@ -46,12 +46,12 @@ export default function Home() {
           className="mb-10 w-full flex justify-center md:hidden"
         >
           <div className="p-4 glass-card shadow-2xl">
-            <Image 
-              src="/logo.png" 
-              alt="DentixIA" 
-              width={160} 
-              height={40} 
-              className="h-8 w-auto object-contain" 
+            <Image
+              src="/logo.png"
+              alt="DentixIA"
+              width={160}
+              height={40}
+              className="h-8 w-auto object-contain"
               priority
             />
           </div>
@@ -64,10 +64,10 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-7xl font-black text-slate-900 tracking-tight leading-[1.1]">
-              Olá, <span className="text-gradient">{userName}</span>.
+            <h1 className="text-4xl md:text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">
+              Olá Dr(a). <span className="text-gradient">{userName}</span>.
             </h1>
-            
+
             <p className="text-slate-500 text-lg md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
               Pronto para transformar sorrisos?
             </p>
