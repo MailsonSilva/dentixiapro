@@ -14,6 +14,8 @@ export async function POST(req: Request) {
     
     if (!body) return NextResponse.json({ success: true });
 
+    let shouldForwardToN8n = true;
+
     // 1. Verificamos se o evento é MESSAGES_UPSERT
     const event = body.event || body.type || body.body?.event;
     const instanceName = body.instance || body.body?.instance;
@@ -92,7 +94,7 @@ export async function POST(req: Request) {
                        let conversationId = null;
                        const { data: convExist } = await supabase
                            .from("conversations")
-                           .select("id")
+                           .select("id, bot_enabled")
                            .eq("company_id", channelData.company_id)
                            .eq("contact_id", contactId)
                            .eq("channel_id", channelData.id)
@@ -100,6 +102,7 @@ export async function POST(req: Request) {
                        
                        if (convExist) {
                            conversationId = convExist.id;
+                           if (convExist.bot_enabled === false) shouldForwardToN8n = false;
                            await supabase.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
                        } else {
                            const { data: newConv, error: newConvErr } = await supabase.from("conversations").insert({
@@ -135,9 +138,9 @@ export async function POST(req: Request) {
        }
     }
 
-    // 6. FORWARD PARA O SEU SERVIDOR N8N (Relay)
-    // Opcional: Se existir N8N_WEBHOOK_URL, a gente repassa tudo cru, intacto, para Maria Processar!
-    if (process.env.N8N_WEBHOOK_URL) {
+    // 6. FORWARD PARA O SEU SERVIDOR N8N (Relay Condicional)
+    // Repassa para a Maria Processar SOMENTE se human_handoff não acionou a pausa
+    if (process.env.N8N_WEBHOOK_URL && shouldForwardToN8n) {
       try {
         await fetch(process.env.N8N_WEBHOOK_URL, {
           method: "POST",
