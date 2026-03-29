@@ -122,7 +122,7 @@ export async function POST(req: Request) {
                                conversation_id: conversationId,
                                contact_id: contactId,
                                direction: fromMe ? "outbound" : "inbound",
-                               message: { text: textContent, type: msgType === "audioMessage" ? "audio" : "text" }
+                               message: { text: textContent, type: msgType === "audioMessage" ? "audio" : "text", source: "human" }
                            });
                            if (msgErr) {
                                console.error(`[❌ Falha RLS Insert Message] A mensagem não salvou na UI:`, msgErr);
