@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Send, MessageSquare, Phone, MoreVertical,
-  Paperclip, ChevronLeft, Smile, Clock, CheckCheck,
-  Inbox,
+  Search, Send, MessageSquare, MoreVertical,
+  ChevronLeft, Smile, Clock, CheckCheck,
+  Inbox, Bot,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
@@ -31,6 +31,7 @@ interface Conversation {
   channel_id: string;
   last_message_at: string;
   status: string;
+  bot_enabled?: boolean;
   contacts: Contact;
   communication_channels: Channel;
 }
@@ -39,7 +40,7 @@ interface Message {
   id: string;
   conversation_id: string;
   direction: "inbound" | "outbound";
-  message: { text?: string; type?: string };
+  message: { text?: string; type?: string; source?: string };
   created_at: string;
 }
 
@@ -190,6 +191,22 @@ export default function MensagensPage() {
             }
           });
         })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" },
+        (payload) => {
+          // Reflete remotamente bot_enabled e last_message_at alterados pelo webhook ou outro cliente
+          const updated = payload.new as Partial<Conversation> & { id: string };
+          setConversations(prev =>
+            prev.map(c =>
+              c.id === updated.id
+                ? { ...c, ...updated }
+                : c
+            ).sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
+          );
+          // Se a conversa atualizada estiver ativa, sincroniza bot_enabled no header do chat
+          setActiveConv(prev =>
+            prev && prev.id === updated.id ? { ...prev, ...updated } : prev
+          );
+        })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -210,6 +227,30 @@ export default function MensagensPage() {
     setMessages(prev => [...prev, tempMsg]);
 
     try {
+      // 1. Enviar para WhatsApp/Evolution primeiro
+      if (!activeConv.communication_channels?.identifier) {
+        throw new Error("Canal não encontrado. Verifique a instância nas configurações.");
+      }
+      if (!activeConv.contacts?.phone) {
+        throw new Error("O Contato não possui um número de telefone salvo.");
+      }
+
+      const res = await fetch("/api/evolution/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: msgText,
+          phone: activeConv.contacts.phone,
+          instance: activeConv.communication_channels.identifier,
+        }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData?.error || "Falha do Evolution API");
+      }
+
+      // 2. Tendo sucesso, persiste no banco de dados CRM Dentixia
       const { error } = await supabase.from("messages").insert({
         conversation_id: activeConv.id,
         company_id: companyId,
@@ -219,9 +260,19 @@ export default function MensagensPage() {
       });
       if (error) throw error;
 
-      await supabase.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", activeConv.id);
-    } catch {
-      notify("Erro", "Mensagem não enviada.", "error");
+      await supabase.from("conversations").update({ 
+          last_message_at: new Date().toISOString(),
+          bot_enabled: false 
+      }).eq("id", activeConv.id);
+
+      if (activeConv.bot_enabled !== false) {
+        setActiveConv(prev => prev ? { ...prev, bot_enabled: false } : prev);
+        setConversations(prev => prev.map(c => c.id === activeConv.id ? { ...c, bot_enabled: false } : c));
+      }
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Mensagem não enviada.";
+      notify("Erro", msg, "error");
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setText(msgText);
     } finally {
@@ -345,16 +396,29 @@ export default function MensagensPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                {activeConv.contacts?.phone && (
-                  <a
-                    href={`tel:${activeConv.contacts.phone}`}
-                    className="p-2.5 text-gray-400 hover:bg-primary/5 hover:text-primary rounded-xl transition-all"
-                    title="Ligar"
-                  >
-                    <Phone size={18} />
-                  </a>
-                )}
+              <div className="flex items-center gap-2">
+                {/* Bot Toggle */}
+                <button 
+                  onClick={async () => {
+                    const nextState = !activeConv.bot_enabled;
+                    setActiveConv({ ...activeConv, bot_enabled: nextState });
+                    setConversations(conversations.map(c => c.id === activeConv.id ? { ...c, bot_enabled: nextState } : c));
+                    await supabase.from("conversations").update({ bot_enabled: nextState }).eq("id", activeConv.id);
+                    notify(nextState ? "Robô Ativo" : "Pausado", nextState ? "A IA Maria voltará a responder." : "Você assumiu o atendimento.", nextState ? "success" : "warning");
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all",
+                    activeConv.bot_enabled !== false 
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
+                      : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                  )}
+                  title={activeConv.bot_enabled !== false ? "Maria Responde" : "Você está no controle"}
+                >
+                  <Bot size={14} />
+                  <span className="hidden sm:inline">{activeConv.bot_enabled !== false ? "Robô ON" : "Robô OFF"}</span>
+                </button>
+
+
                 <button className="p-2.5 text-gray-400 hover:bg-primary/5 hover:text-primary rounded-xl transition-all" title="Mais opções">
                   <MoreVertical size={18} />
                 </button>
@@ -410,7 +474,14 @@ export default function MensagensPage() {
                               ? "bg-primary text-white rounded-br-sm"
                               : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
                           )}>
-                            <p className="text-sm leading-relaxed">{msg.message?.text || JSON.stringify(msg.message)}</p>
+                            {/* Badge de origem da mensagem (IA vs manual) */}
+                            {isOut && msg.message?.source === "ai" && (
+                              <div className="flex items-center gap-1 mb-1.5">
+                                <Bot size={10} className="text-white/70" />
+                                <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">Maria IA</span>
+                              </div>
+                            )}
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message?.text || JSON.stringify(msg.message)}</p>
                             <div className={cn("flex items-center gap-1 mt-1 justify-end", isOut ? "text-white/60" : "text-gray-400")}>
                               <span className="text-[10px]">{new Date(msg.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                               {isOut && <CheckCheck size={12} className="text-white/60" />}
@@ -428,9 +499,7 @@ export default function MensagensPage() {
             {/* Input Area */}
             <div className="px-4 py-4 bg-white border-t border-gray-100 flex-shrink-0">
               <div className="flex items-end gap-3 bg-gray-50 rounded-2xl px-4 py-3 border-2 border-gray-100 focus-within:border-primary/30 transition-all">
-                <button className="p-1.5 text-gray-400 hover:text-primary transition-colors flex-shrink-0">
-                  <Paperclip size={18} />
-                </button>
+
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
