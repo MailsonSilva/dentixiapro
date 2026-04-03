@@ -60,7 +60,7 @@ export default function RedefinirSenhaPage() {
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="text-emerald-500" size={36} />
             </div>
-            <h2 className="text-xl font-black text-gray-800 mb-2">Sua senha foi redefinida!</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Sua senha foi redefinida!</h2>
             <p className="text-sm text-gray-500">Redirecionando para o perfil...</p>
           </div>
         ) : (
@@ -70,7 +70,7 @@ export default function RedefinirSenhaPage() {
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
                 <KeyRound size={32} className="text-primary" />
               </div>
-              <h1 className="text-2xl font-black text-gray-800">Redefinir Senha</h1>
+              <h1 className="text-2xl font-semibold text-gray-800">Redefinir Senha</h1>
               <p className="text-sm text-gray-400 mt-1 text-center">
                 Crie uma nova senha para a sua conta
               </p>
@@ -79,7 +79,7 @@ export default function RedefinirSenhaPage() {
             {/* New password */}
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                <label className="text-xs font-bold text-gray-500 capitalize tracking-wide block mb-1.5">
                   Nova Senha
                 </label>
                 <div className="relative">
@@ -113,7 +113,7 @@ export default function RedefinirSenhaPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5">
+                <label className="text-xs font-bold text-gray-500 capitalize tracking-wide block mb-1.5">
                   Confirmar Senha
                 </label>
                 <div className="relative">

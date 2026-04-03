@@ -79,7 +79,7 @@ function MobileDrawer({
               </button>
             </div>
             {badge && userType === 'comum' && (
-              <span className={`inline-flex text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${badge.color}`}>
+              <span className={`inline-flex text-[10px] font-semibold capitalize tracking-widest px-2.5 py-1 rounded-full ${badge.color}`}>
                 {badge.label}
               </span>
             )}
@@ -284,7 +284,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle size={40} className="text-red-600" />
               </div>
-              <h2 className="text-2xl font-black text-gray-800 mb-3">Acesso Expirado</h2>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-3">Acesso Expirado</h2>
               <p className="text-gray-500 mb-8 leading-relaxed">
                 Seu período de teste de 7 dias chegou ao fim. Assine um plano agora para continuar usando todas as ferramentas do DentixIA Pro.
               </p>

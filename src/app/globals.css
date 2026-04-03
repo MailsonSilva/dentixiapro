@@ -100,3 +100,7 @@ input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+button {
+  @apply cursor-pointer;
+}

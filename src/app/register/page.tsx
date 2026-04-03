@@ -123,7 +123,7 @@ function RegisterContent() {
         <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
           <CardHeader className="flex flex-col items-center mb-6 space-y-2">
             <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-2" priority />
-            <h1 className="text-2xl font-black font-poppins text-gray-800 tracking-tight text-center">Crie sua Conta</h1>
+            <h1 className="text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Crie sua Conta</h1>
             <p className="text-gray-500 text-sm text-center">Sua jornada digital começa aqui</p>
           </CardHeader>
 
@@ -232,11 +232,11 @@ function RegisterContent() {
             </p>
             <div className="relative w-full">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-              <div className="relative flex justify-center text-xs uppercase font-black tracking-widest"><span className="bg-white/90 px-4 text-gray-400">OU</span></div>
+              <div className="relative flex justify-center text-xs capitalize font-semibold tracking-widest"><span className="bg-white/90 px-4 text-gray-400">OU</span></div>
             </div>
             <p className="text-center w-full">
               <Link href="/register/parceiros" className="text-gray-500 hover:text-primary transition-all text-sm font-medium">
-                Seja um <span className="font-black text-gray-700">Parceiro DentixIA</span>
+                Seja um <span className="font-semibold text-gray-700">Parceiro DentixIA</span>
               </Link>
             </p>
           </CardFooter>
@@ -251,7 +251,7 @@ function RegisterContent() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPrivacy(false)} className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-black text-gray-800">Política de Privacidade</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Política de Privacidade</h2>
                 <button onClick={() => setShowPrivacy(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><X size={24} className="text-gray-400" /></button>
               </div>
               <div className="p-8 overflow-y-auto scrollbar-hide text-gray-600 space-y-4 text-sm leading-relaxed">
@@ -265,12 +265,12 @@ function RegisterContent() {
                   </div>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">1. INTRODUÇÃO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">1. INTRODUÇÃO</h3>
                     <p>Esta Política de Privacidade descreve as práticas de tratamento de dados pessoais da Dentix.IA, conforme a LGPD (Lei nº 13.709/2018). Aplica-se a todos os usuários da plataforma SaaS.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">2. DEFINIÇÕES</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">2. DEFINIÇÕES</h3>
                     <ul className="list-disc pl-5 space-y-1">
                       <li><strong>Dado Pessoal:</strong> Informação que identifica uma pessoa</li>
                       <li><strong>Dado Sensível:</strong> Dados sobre saúde, biometria, etc.</li>
@@ -282,14 +282,14 @@ function RegisterContent() {
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">3. AGENTES DE TRATAMENTO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">3. AGENTES DE TRATAMENTO</h3>
                     <p><strong>Controlador:</strong> Dentix.IA LTDA</p>
                     <p><strong>DPO:</strong> Miguel Eulalio do Nascimento Cantanhede</p>
                     <p><strong>Operadores:</strong> Supabase, Hostinger, Stripe, Google, Meta, Hotjar.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">4. DADOS COLETADOS</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">4. DADOS COLETADOS</h3>
                     <p className="font-bold mb-1">Obrigatórios:</p>
                     <p>Nome completo, E-mail, Telefone, Senha (criptografada).</p>
                     <p className="font-bold mb-1 mt-2">Opcionais:</p>
@@ -301,7 +301,7 @@ function RegisterContent() {
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">5. FINALIDADES E BASE LEGAL</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">5. FINALIDADES E BASE LEGAL</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs border-collapse">
                         <thead>
@@ -323,12 +323,12 @@ function RegisterContent() {
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">6. COMPARTILHAMENTO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">6. COMPARTILHAMENTO</h3>
                     <p>Apenas com operadores essenciais. Transferências internacionais (EUA/Malta). Autoridades apenas mediante ordem legal.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">7. SEGURANÇA</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">7. SEGURANÇA</h3>
                     <ul className="list-disc pl-5 space-y-1">
                       <li>Criptografia AES-256 e TLS 1.3</li>
                       <li>2FA obrigatório</li>
@@ -337,27 +337,27 @@ function RegisterContent() {
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">8. RETENÇÃO E EXCLUSÃO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">8. RETENÇÃO E EXCLUSÃO</h3>
                     <p>Exclusão mediante solicitação. Análise em 48h e execução em até 30 dias.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">9. DIREITOS DO TITULAR</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">9. DIREITOS DO TITULAR</h3>
                     <p>Acesso, Correção, Exclusão, Portabilidade e Revogação de consentimento. Solicitação: <strong>miguel_tobi@hotmail.com</strong></p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">10. INCIDENTES</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">10. INCIDENTES</h3>
                     <p>Notificação à ANPD em até 72h. Comunicação ao usuário em até 5 dias úteis.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">11. ODONTOLOGIA</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">11. ODONTOLOGIA</h3>
                     <p>Usuário é responsável por: Consentimento do paciente e Anonimização de imagens.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">12. DISPOSIÇÕES FINAIS</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">12. DISPOSIÇÕES FINAIS</h3>
                     <p>Atualizações com aviso prévio. Foro: São Luís/MA.</p>
                     <p className="text-xs text-gray-400 mt-4 italic">Última atualização: 19/12/2025.</p>
                   </section>
@@ -375,7 +375,7 @@ function RegisterContent() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowTerms(false)} className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-black text-gray-800">Termos de Uso</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Termos de Uso</h2>
                 <button onClick={() => setShowTerms(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><X size={24} className="text-gray-400" /></button>
               </div>
               <div className="p-8 overflow-y-auto scrollbar-hide text-gray-600 space-y-4 text-sm leading-relaxed">
@@ -388,12 +388,12 @@ function RegisterContent() {
                   </div>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">1. ACEITAÇÃO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">1. ACEITAÇÃO</h3>
                     <p>O uso da plataforma implica aceitação integral dos Termos.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">2. OBJETO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">2. OBJETO</h3>
                     <p>Plataforma SaaS para simulações odontológicas com IA.</p>
                     <p className="font-bold mt-2">Inclui:</p>
                     <p>Cadastro, Upload de imagens, Processamento com IA, Dashboard e Suporte.</p>
@@ -402,50 +402,50 @@ function RegisterContent() {
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">3. USUÁRIO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">3. USUÁRIO</h3>
                     <p><strong>Requisitos:</strong> Maior de 18 anos e Registro no CRO.</p>
                     <p><strong>Obrigações:</strong> Manter dados atualizados, proteger acesso e obter consentimento de pacientes.</p>
                     <p><strong>Proibições:</strong> Engenharia reversa, conteúdo ilegal e uso indevido.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">4. LICENÇA</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">4. LICENÇA</h3>
                     <p>Uso limitado, não exclusivo e revogável.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">5. PAGAMENTOS</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">5. PAGAMENTOS</h3>
                     <p><strong>Plano:</strong> R$ 197/mês ou R$ 1.970/ano.</p>
                     <p><strong>Regras:</strong> Sem reembolso, cancelamento livre e suspensão por inadimplência.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">6. CONTEÚDO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">6. CONTEÚDO</h3>
                     <p>Usuário é responsável por: Consentimento do paciente e Legalidade das imagens.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">7. PROPRIEDADE INTELECTUAL</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">7. PROPRIEDADE INTELECTUAL</h3>
                     <p>Todo o sistema pertence à Dentix.IA. Usuário concede licença para Processamento, Armazenamento e Exibição.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">8. TERCEIROS</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">8. TERCEIROS</h3>
                     <p>Integrações: Supabase, Hostinger, Stripe, Google, Meta, Hotjar.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">9. RESPONSABILIDADE</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">9. RESPONSABILIDADE</h3>
                     <p>A plataforma não garante resultados clínicos. Limite de indenização: 10x mensalidade.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">10. SUSPENSÃO</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">10. SUSPENSÃO</h3>
                     <p>Pode ocorrer por: Inadimplência, Violação e Uso indevido.</p>
                   </section>
 
                   <section>
-                    <h3 className="font-black text-gray-800 mb-2 uppercase text-xs tracking-widest">11. DISPOSIÇÕES FINAIS</h3>
+                    <h3 className="font-semibold text-gray-800 mb-2 capitalize text-xs tracking-widest">11. DISPOSIÇÕES FINAIS</h3>
                     <p>Alterações com aviso prévio. Foro: São Luís/MA.</p>
                   </section>
                 </div>

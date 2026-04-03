@@ -97,7 +97,7 @@ export default function PrivacidadePage() {
          </button>
          <div className="flex-1 flex justify-center items-center gap-2 -ml-10">
            <ShieldCheck size={22} className="text-primary" />
-           <h1 className="text-lg font-black text-gray-800 uppercase tracking-wide">Privacidade</h1>
+           <h1 className="text-lg font-semibold text-gray-800 capitalize tracking-wide">Privacidade</h1>
          </div>
       </header>
 

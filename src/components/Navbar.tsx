@@ -50,7 +50,7 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               <span className={cn(
-                "text-[10px] uppercase tracking-wide font-bold transition-all",
+                "text-[10px] capitalize tracking-wide font-bold transition-all",
                 isActive ? "text-primary" : "text-gray-400"
               )}>
                 {item.name}
@@ -74,7 +74,7 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
           <div className="p-2 rounded-xl hover:bg-primary/5 transition-all">
             <Menu size={22} strokeWidth={2} />
           </div>
-          <span className="text-[10px] uppercase tracking-wide font-bold text-gray-400">Menu</span>
+          <span className="text-[10px] capitalize tracking-wide font-bold text-gray-400">Menu</span>
         </button>
       </div>
     </nav>

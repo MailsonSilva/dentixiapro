@@ -70,7 +70,7 @@ export default function AulasPage() {
                       <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2">
                         {lesson.title}
                       </h3>
-                      <p className="text-sm text-gray-400 uppercase font-black">
+                      <p className="text-sm text-gray-400 capitalize font-semibold">
                         {lesson.type}
                       </p>
                     </div>

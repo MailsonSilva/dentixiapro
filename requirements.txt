@@ -1,3 +1,19 @@
-beautifulsoup4==4.12.3
-pytest==8.0.0
-# Adicione outras bibliotecas aqui conforme o projeto crescer
+---
+# Requisitos de Sistema e Integrações (DentixiaPro)
+# Gerenciado via npm e Supabase CLI
+
+# 🛠️ Ambiente de Desenvolvimento
+node>=20.0.0
+npm>=10.0.0
+typescript>=5.0.0
+
+# 🔗 Integrações Base
+supabase-cli>=1.150.0 # Recomentado para Migrations Locais
+stripe-cli>=1.19.0    # Recomendado para Webhook listen
+
+# 📦 Bibliotecas Core (JS/TS)
+@supabase/ssr>=0.9.0
+next>=16.0.0
+stripe>=20.0.0
+framer-motion>=12.0.0
+tailwind-merge>=3.0.0

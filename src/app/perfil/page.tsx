@@ -185,7 +185,7 @@ function Modal({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <h2 className="text-lg font-black text-gray-800 tracking-wide uppercase">{title}</h2>
+              <h2 className="text-lg font-semibold text-gray-800 tracking-wide capitalize">{title}</h2>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -424,25 +424,25 @@ export default function PerfilPage() {
                 className="w-20 h-20 rounded-full object-cover shadow-xl"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-black text-white shadow-xl">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-xl">
                 {userData?.nome_completo?.charAt(0)?.toUpperCase() || "D"}
               </div>
             )}
           </div>
-          <h1 className="text-xl font-black text-gray-800">{userData?.nome_completo || "Usuário"}</h1>
+          <h1 className="text-xl font-semibold text-gray-800">{userData?.nome_completo || "Usuário"}</h1>
           <p className="text-sm text-gray-400">{userData?.email}</p>
         </motion.div>
 
         {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
         {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} />}
 
-        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">
+        <p className="text-sm font-bold text-gray-400 capitalize tracking-widest mb-3 px-1">
           Abaixo estão suas configurações
         </p>
 
         {/* Conta */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Conta</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Conta</p>
           <div className="divide-y divide-gray-50">
             <SettingsRow
               icon={User}
@@ -478,7 +478,7 @@ export default function PerfilPage() {
 
         {/* Geral */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Integrações & Geral</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Integrações & Geral</p>
           <div className="divide-y divide-gray-50">
             {isComum && (
               <SettingsRow
@@ -543,7 +543,7 @@ export default function PerfilPage() {
                   className="w-20 h-20 rounded-full object-cover shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-black text-white shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-lg">
                   {editNome?.charAt(0)?.toUpperCase() || "D"}
                 </div>
               )}
@@ -675,7 +675,7 @@ export default function PerfilPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-black text-gray-800 text-sm">PROSPECTA ODONTO</h4>
+                  <h4 className="font-semibold text-gray-800 text-sm">PROSPECTA ODONTO</h4>
                   {/* Stars */}
                   <div className="flex gap-0.5 flex-shrink-0">
                     {[...Array(5)].map((_, i) => (

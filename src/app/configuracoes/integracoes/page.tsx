@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Plus, RefreshCw, Check, AlertTriangle, MessageSquare, X, Smartphone, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,10 @@ export default function IntegracoesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // 2-cliques para desvincular (sem window.confirm)
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // States: Modal de QRCode
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
@@ -102,30 +106,32 @@ export default function IntegracoesPage() {
      }
   };
 
-  // ----- EXCLUIR INSTANCIA -----
+  // ----- EXCLUIR INSTANCIA (sem popup) -----
+  const handleRemoveClick = (channelId: string, instanceName: string) => {
+    if (removeConfirmId === channelId) {
+      // segundo clique — confirmar
+      clearTimeout(removeTimerRef.current!);
+      setRemoveConfirmId(null);
+      removeInstance(channelId, instanceName);
+      return;
+    }
+    // primeiro clique — armar confirmação por 4s
+    clearTimeout(removeTimerRef.current!);
+    setRemoveConfirmId(channelId);
+    removeTimerRef.current = setTimeout(() => setRemoveConfirmId(null), 4000);
+  };
+
   const removeInstance = async (channelId: string, instanceName: string) => {
-     if(window.confirm(`Deseja realmente desvincular e expulsar o bot do WhatsApp (${instanceName})? Esta ação é irreversível.`)) {
-        
-        // Optimistic Remove na UI
-        const oldState = [...instances];
-        setInstances(instances.filter(i => i.id !== channelId));
-        
-        try {
-           const res = await fetch(`/api/evolution/delete-instance?instanceName=${instanceName}&channelId=${channelId}`, {
-              method: 'DELETE'
-           });
-           
-           if(!res.ok) {
-              const e = await res.json();
-              throw new Error(e.error);
-           }
-           notify("Desconectado", "Sessão finalizada com sucesso.", "success");
-        } catch(err: any) {
-           // Rollback
-           setInstances(oldState);
-           notify("Erro", err.message || "Tivemos um problema ao desvincular.", "error");
-        }
-     }
+    const oldState = [...instances];
+    setInstances(instances.filter(i => i.id !== channelId));
+    try {
+      const res = await fetch(`/api/evolution/delete-instance?instanceName=${instanceName}&channelId=${channelId}`, { method: 'DELETE' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
+      notify("Desconectado", "Sessão finalizada com sucesso.", "success");
+    } catch (err: unknown) {
+      setInstances(oldState);
+      notify("Erro", (err as Error).message || "Problema ao desvincular.", "error");
+    }
   };
 
   // ----- ATIVAR/DESATIVAR INSTÂNCIA -----
@@ -234,11 +240,17 @@ export default function IntegracoesPage() {
 
                     <div className="flex items-center justify-between relative z-10 mt-auto pt-4 border-t border-slate-50 border-dashed">
                        <button 
-                         onClick={() => removeInstance(item.id, item.instanceName)}
-                         className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
-                         title="Excluir Instância"
+                         onClick={() => handleRemoveClick(item.id, item.instanceName)}
+                         className={cn(
+                           "p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold",
+                           removeConfirmId === item.id
+                             ? "bg-red-500 text-white"
+                             : "text-slate-300 hover:text-red-500 hover:bg-red-50"
+                         )}
+                         title={removeConfirmId === item.id ? "Confirmar exclusão" : "Excluir Instância"}
                        >
                          <Trash2 size={16} />
+                         {removeConfirmId === item.id && <span>Confirmar?</span>}
                        </button>
 
                        <button 
@@ -293,7 +305,7 @@ export default function IntegracoesPage() {
                    Dê um nome para identificar este número (ex: <strong>Atendimento Suporte</strong>). O servidor irá gerar a sessão via Evolution API em seguida.
                  </p>
                  <div className="mb-6">
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Nome da Instância</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 capitalize tracking-wide">Nome da Instância</label>
                     <input 
                       type="text" 
                       value={newInstanceName}

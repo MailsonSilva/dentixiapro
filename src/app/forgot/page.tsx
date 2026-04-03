@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
         <Card className="p-6 border-white/40 shadow-2xl rounded-3xl">
           <CardHeader className="flex flex-col items-center mb-6">
             <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-4" priority />
-            <h1 className="text-xl md:text-2xl font-black font-poppins text-gray-800 tracking-tight text-center">Recuperar Senha</h1>
+            <h1 className="text-xl md:text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Recuperar Senha</h1>
             <p className="text-gray-400 text-sm mt-1 text-center font-medium">
               {sent 
                 ? "Enviamos as instruções para o seu e-mail" 

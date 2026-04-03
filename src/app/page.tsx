@@ -64,7 +64,7 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="space-y-4"
           >
-            <h1 className="text-4xl md:text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">
+            <h1 className="text-4xl md:text-4xl font-semibold text-slate-900 tracking-tight leading-[1.1]">
               Olá Dr(a). <span className="text-gradient">{userName}</span>.
             </h1>
 
@@ -80,7 +80,7 @@ export default function Home() {
             className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-6"
           >
             <Link href="/simulacoes">
-              <Button size="lg" className="px-10 h-14 text-lg font-black bg-primary hover:bg-primary-glow group relative overflow-hidden ring-4 ring-primary-glow/10" leftIcon={<Camera className="transition-transform group-hover:rotate-12" size={22} />}>
+              <Button size="lg" className="px-10 h-14 text-lg font-semibold bg-primary hover:bg-primary-glow group relative overflow-hidden ring-4 ring-primary-glow/10" leftIcon={<Camera className="transition-transform group-hover:rotate-12" size={22} />}>
                 Iniciar Simulação
               </Button>
             </Link>

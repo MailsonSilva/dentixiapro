@@ -22,7 +22,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -52,7 +52,7 @@ export default function LoginPage() {
         <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
           <CardHeader className="flex flex-col items-center mb-6 space-y-2">
             <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-2" priority />
-            <h1 className="text-2xl font-black font-poppins text-gray-800 tracking-tight text-center">Bem-vindo de volta!</h1>
+            <h1 className="text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Bem-vindo!</h1>
             <p className="text-gray-500 text-sm text-center">Acesse sua plataforma inteligente</p>
           </CardHeader>
 
@@ -82,12 +82,12 @@ export default function LoginPage() {
                 />
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="flex justify-end mt-1 mb-6"
               >
-                <Link 
-                  href="/forgot" 
+                <Link
+                  href="/forgot"
                   className="text-xs font-bold text-gray-500 hover:text-primary transition-colors cursor-pointer p-1"
                 >
                   Esqueceu sua senha?

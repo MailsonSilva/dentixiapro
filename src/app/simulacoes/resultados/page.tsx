@@ -81,7 +81,7 @@ export default function ResultadosPage() {
         {/* Header e Busca */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
-            <h1 className="text-3xl font-black font-poppins text-gray-800 tracking-tight">Minhas Simulações</h1>
+            <h1 className="text-3xl font-semibold font-poppins text-gray-800 tracking-tight">Minhas Simulações</h1>
             <p className="text-gray-400 font-medium">Histórico de transformações realizadas</p>
           </div>
 
@@ -145,8 +145,8 @@ export default function ResultadosPage() {
                         <User size={20} />
                       </div>
                        <div>
-                         <h3 className="font-extrabold text-gray-800 leading-tight capitalize">{item.procedimento || 'Simulação'}</h3>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Criado em: {new Date(item.created_at).toLocaleDateString('pt-BR')} às {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                         <h3 className="font-medium text-gray-800 leading-tight capitalize">{item.procedimento || 'Simulação'}</h3>
+                          <p className="text-[10px] text-gray-400 font-bold capitalize tracking-wider">Criado em: {new Date(item.created_at).toLocaleDateString('pt-BR')} às {new Date(item.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                        </div>
                    </div>
                    <button 
@@ -162,20 +162,20 @@ export default function ResultadosPage() {
                   {!item.img_simulada_url && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center">
                        <Sparkles className="text-primary animate-bounce mb-3" size={32} />
-                       <p className="text-gray-800 font-black text-sm">IA Processando...</p>
+                       <p className="text-gray-800 font-semibold text-sm">IA Processando...</p>
                        <p className="text-gray-500 text-[10px] max-w-[150px] mt-1 font-medium">Isso pode levar até 2 minutos. Atualize em instantes.</p>
                     </div>
                   )}
 
                   <div className="space-y-2 text-center">
-                    <span className="text-[11px] font-black uppercase tracking-tighter text-gray-400">Antes</span>
+                    <span className="text-[11px] font-semibold capitalize tracking-tighter text-gray-400">Antes</span>
                     <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
                        <Image src={item.img_original_url} alt="Antes" width={400} height={300} className="w-full h-full object-cover" />
                     </div>
                   </div>
 
                   <div className="space-y-2 text-center">
-                    <span className="text-[11px] font-black uppercase tracking-tighter text-primary">Depois</span>
+                    <span className="text-[11px] font-semibold capitalize tracking-tighter text-primary">Depois</span>
                     <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
                        {item.img_simulada_url ? (
                          <Image src={item.img_simulada_url} alt="Depois" width={400} height={300} className="w-full h-full object-cover" />
@@ -189,7 +189,7 @@ export default function ResultadosPage() {
                 </div>
 
                 <div className="px-6 py-4 bg-gray-50/30 flex items-center justify-center group-hover:bg-primary transition-colors mt-auto">
-                   <p className="text-[11px] font-black uppercase text-gray-400 group-hover:text-white transition-colors">Clique para ver comparação detalhada</p>
+                   <p className="text-[11px] font-semibold capitalize text-gray-400 group-hover:text-white transition-colors">Clique para ver comparação detalhada</p>
                 </div>
               </motion.div>
             ))}
@@ -218,8 +218,8 @@ export default function ResultadosPage() {
               {/* Top Bar Modal */}
               <div className="p-6 md:px-10 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                   <h2 className="text-2xl font-black text-gray-800 tracking-tight capitalize">{selectedSim.procedimento || 'Simulação'}</h2>
-                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Simulação Finalizada</p>
+                   <h2 className="text-2xl font-semibold text-gray-800 tracking-tight capitalize">{selectedSim.procedimento || 'Simulação'}</h2>
+                   <p className="text-xs text-gray-400 font-bold capitalize tracking-wider">Simulação Finalizada</p>
                  </div>
                 <button 
                   onClick={() => setSelectedSim(null)}
@@ -247,11 +247,11 @@ export default function ResultadosPage() {
                  </div>
 
                  <div className="mt-8 flex items-center gap-6 w-full max-w-2xl">
-                    <div className="flex-1 h-12 md:h-14 bg-gray-800 rounded-2xl flex items-center justify-center text-white font-black uppercase text-sm shadow-xl">
+                    <div className="flex-1 h-12 md:h-14 bg-gray-800 rounded-2xl flex items-center justify-center text-white font-semibold capitalize text-sm shadow-xl">
                       Antes
                     </div>
                     <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
-                    <div className="flex-1 h-12 md:h-14 bg-primary rounded-2xl flex items-center justify-center text-white font-black uppercase text-sm shadow-xl shadow-primary/20">
+                    <div className="flex-1 h-12 md:h-14 bg-primary rounded-2xl flex items-center justify-center text-white font-semibold capitalize text-sm shadow-xl shadow-primary/20">
                       Depois
                     </div>
                  </div>

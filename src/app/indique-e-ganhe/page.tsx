@@ -264,7 +264,7 @@ export default function IndiqueEGanhePage() {
             </select>
           </div>
 
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-2">Visão do Período ({filteredIndicados.length} indicações)</p>
+          <p className="text-xs font-semibold text-gray-400 capitalize tracking-widest mt-2">Visão do Período ({filteredIndicados.length} indicações)</p>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {/* Status Cards Dinâmicos */}
@@ -274,8 +274,8 @@ export default function IndiqueEGanhePage() {
                     <Clock size={16} className="text-orange-500" />
                  </div>
               </div>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase leading-tight block">Em teste</span>
-              <p className="text-2xl sm:text-3xl font-black text-[#F19642]">{resumoComputed.total_em_teste}</p>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Em teste</span>
+              <p className="text-2xl sm:text-3xl font-semibold text-[#F19642]">{resumoComputed.total_em_teste}</p>
             </div>
             
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
@@ -284,8 +284,8 @@ export default function IndiqueEGanhePage() {
                     <Users size={16} className="text-blue-500" />
                  </div>
               </div>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase leading-tight block">Ativos</span>
-              <p className="text-2xl sm:text-3xl font-black text-[#11A0D9]">{resumoComputed.total_ativos}</p>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Ativos</span>
+              <p className="text-2xl sm:text-3xl font-semibold text-[#11A0D9]">{resumoComputed.total_ativos}</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
@@ -294,8 +294,8 @@ export default function IndiqueEGanhePage() {
                     <Users size={16} className="text-red-500" />
                  </div>
               </div>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase leading-tight block">Inativos</span>
-              <p className="text-2xl sm:text-3xl font-black text-[#EB5757]">{resumoComputed.total_cancelados}</p>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Inativos</span>
+              <p className="text-2xl sm:text-3xl font-semibold text-[#EB5757]">{resumoComputed.total_cancelados}</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
@@ -304,8 +304,8 @@ export default function IndiqueEGanhePage() {
                     <User size={16} />
                  </div>
                </div>
-               <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase leading-tight block">Total (Mês)</span>
-               <p className="text-2xl sm:text-3xl font-black text-gray-800">{filteredIndicados.length}</p>
+               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Total (Mês)</span>
+               <p className="text-2xl sm:text-3xl font-semibold text-gray-800">{filteredIndicados.length}</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-2 md:col-span-1 border border-gray-50 relative overflow-hidden group">
@@ -317,8 +317,8 @@ export default function IndiqueEGanhePage() {
                     $
                  </div>
                </div>
-               <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase leading-tight block z-10 relative">Comissão (Global)</span>
-               <p className="text-2xl sm:text-3xl font-black text-green-500">{(resumoComputed.comissao_total).toFixed(0)}</p>
+               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block z-10 relative">Comissão (Global)</span>
+               <p className="text-2xl sm:text-3xl font-semibold text-green-500">{(resumoComputed.comissao_total).toFixed(0)}</p>
             </div>
           </div>
 
@@ -329,11 +329,11 @@ export default function IndiqueEGanhePage() {
                 <table className="w-full text-left">
                   <thead className="bg-[#F9FBFC]">
                     <tr>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase">Cliente</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase text-center">Status</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase text-center">Plano</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase text-center">Inscrição</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 uppercase text-center">Ações</th>
+                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize">Cliente</th>
+                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Status</th>
+                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Plano</th>
+                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Inscrição</th>
+                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">

@@ -160,11 +160,11 @@ export default function PlanosPage() {
           <div className="bg-[#1a5fb4] p-1.5 rounded-xl shadow-lg">
             <Image src="/logo.svg" alt="DentixIA" width={32} height={32} />
           </div>
-          <span className="text-[28px] font-black text-[#1a2a4a] tracking-tight">
+          <span className="text-[28px] font-semibold text-[#1a2a4a] tracking-tight">
             Dentix<span className="text-[#1a5fb4]">IA</span>
           </span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-[#1a2a4a] text-center mb-2">
+        <h1 className="text-2xl md:text-3xl font-semibold text-[#1a2a4a] text-center mb-2">
           Escolha o plano ideal
         </h1>
         <p className="text-gray-500 text-center text-sm max-w-xs">
@@ -192,7 +192,7 @@ export default function PlanosPage() {
             >
               {/* Badge 2 meses gratis - SOMENTE plano anual */}
               {annual && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[#1a2a4a] text-white text-[10px] sm:text-[11px] font-black px-4 py-1.5 rounded-full shadow-xl whitespace-nowrap tracking-widest ring-4 ring-[#dce8f8]">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[#1a2a4a] text-white text-[10px] sm:text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-xl whitespace-nowrap tracking-widest ring-4 ring-[#dce8f8]">
                   <Sparkles size={12} className="text-yellow-400" />
                   2 MESES GRATIS
                 </div>
@@ -210,11 +210,11 @@ export default function PlanosPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex-1">
-                      <p className={`font-black text-xl mb-1 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
+                      <p className={`font-semibold text-xl mb-1 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
                         {plan.product_name}
                       </p>
                       {annual && (
-                        <div className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full uppercase">
+                        <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full capitalize">
                           POPULAR
                         </div>
                       )}
@@ -231,7 +231,7 @@ export default function PlanosPage() {
                   {/* Preco */}
                   <div className="mb-6 flex flex-col justify-center min-h-[80px]">
                     <div className="flex items-baseline gap-1">
-                      <span className={`text-4xl sm:text-5xl font-black tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
+                      <span className={`text-4xl sm:text-5xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
                         {formatCurrency(monthlyEq)}
                       </span>
                       <span className="text-gray-400 text-sm font-bold">/mes</span>
@@ -286,7 +286,7 @@ export default function PlanosPage() {
       {/* Footer */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.5 } }}
         className="mt-12 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 text-gray-400 font-bold text-xs sm:text-sm uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-gray-400 font-bold text-xs sm:text-sm capitalize tracking-widest">
           <ShieldCheck size={18} className="text-emerald-500" />
           <span>Checkout Protegido por Stripe</span>
         </div>

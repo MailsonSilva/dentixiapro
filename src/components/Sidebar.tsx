@@ -189,7 +189,7 @@ export function Sidebar({ type }: SidebarProps) {
                   )}
 
                   {isCollapsed && (
-                    <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
+                    <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-semibold capitalize tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
                       {item.name}
                       <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
                     </div>
@@ -288,7 +288,7 @@ export function Sidebar({ type }: SidebarProps) {
               )}
               
               {isCollapsed && (
-                <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-black uppercase tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
+                <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-semibold capitalize tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
                   {item.name}
                   <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
                 </div>

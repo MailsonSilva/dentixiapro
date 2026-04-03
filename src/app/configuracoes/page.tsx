@@ -27,7 +27,11 @@ import {
   ArrowRight,
   Receipt,
   Gift,
-  Plug
+  Plug,
+  Stethoscope,
+  Trash2,
+  Plus,
+  CalendarDays,
 } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
@@ -35,6 +39,8 @@ import { useRouter } from "next/navigation";
 import { useNotification } from "@/lib/NotificationContext";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import { getProcedureCatalog, ProcedureCatalogItem } from "@/lib/agenda/queries";
+import { addProcedureToCatalog, deleteProcedureFromCatalog } from "@/lib/clientes/actions";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const APP_VERSION = "4.0.0";
@@ -183,7 +189,7 @@ function Modal({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <h2 className="text-lg font-black text-gray-800 tracking-wide uppercase">{title}</h2>
+              <h2 className="text-lg font-semibold text-gray-800 tracking-wide capitalize">{title}</h2>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -213,6 +219,14 @@ export default function ConfiguracoesPage() {
   // modal states
   const [showEdit, setShowEdit] = useState(false);
   const [showPartners, setShowPartners] = useState(false);
+  const [showProcedures, setShowProcedures] = useState(false);
+  const [showBusinessHours, setShowBusinessHours] = useState(false);
+
+  // Procedures management
+  const [procedures, setProcedures] = useState<ProcedureCatalogItem[]>([]);
+  const [newProcName, setNewProcName] = useState("");
+  const [newProcDuration, setNewProcDuration] = useState(60);
+  const [isSavingProc, setIsSavingProc] = useState(false);
 
   // edit form
   const [editNome, setEditNome] = useState("");
@@ -422,25 +436,25 @@ export default function ConfiguracoesPage() {
                 className="w-20 h-20 rounded-full object-cover shadow-xl"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-black text-white shadow-xl">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-xl">
                 {userData?.nome_completo?.charAt(0)?.toUpperCase() || "D"}
               </div>
             )}
           </div>
-          <h1 className="text-xl font-black text-gray-800">{userData?.nome_completo || "Usuário"}</h1>
+          <h1 className="text-xl font-semibold text-gray-800">{userData?.nome_completo || "Usuário"}</h1>
           <p className="text-sm text-gray-400">{userData?.email}</p>
         </motion.div>
 
         {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
         {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} />}
 
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">
+        <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest mb-3 px-1">
           Abaixo estão suas configurações
         </p>
 
         {/* Conta */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Conta</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Conta</p>
           <div className="divide-y divide-gray-50">
             <SettingsRow
               icon={User}
@@ -476,7 +490,7 @@ export default function ConfiguracoesPage() {
 
         {/* Geral */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-1">Geral</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Geral</p>
           <div className="divide-y divide-gray-50">
             {isComum && (
               <SettingsRow
@@ -515,7 +529,37 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
 
-        {/* Sair */}
+        {/* Clínica — Procedimentos */}
+        {isComum && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+            <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Clínica</p>
+            <div className="divide-y divide-gray-50">
+              <SettingsRow
+                icon={Stethoscope}
+                label="Procedimentos"
+                onClick={() => {
+                  setShowProcedures(true);
+                  getProcedureCatalog().then(setProcedures).catch(console.error);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Agenda — Horários de Funcionamento */}
+        {isComum && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+            <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Agenda</p>
+            <div className="divide-y divide-gray-50">
+              <SettingsRow
+                icon={CalendarDays}
+                label="Horários de Funcionamento"
+                onClick={() => setShowBusinessHours(true)}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
           <div className="divide-y divide-gray-50">
             <SettingsRow icon={LogOut} label="Sair" onClick={handleLogout} danger />
@@ -541,7 +585,7 @@ export default function ConfiguracoesPage() {
                   className="w-20 h-20 rounded-full object-cover shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-black text-white shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-lg">
                   {editNome?.charAt(0)?.toUpperCase() || "D"}
                 </div>
               )}
@@ -651,6 +695,94 @@ export default function ConfiguracoesPage() {
         </div>
       </Modal>
 
+      {/* Modal: Procedimentos da Clínica */}
+      <Modal open={showProcedures} onClose={() => setShowProcedures(false)} title="Procedimentos da Clínica">
+        <div className="p-6 space-y-4">
+          {/* Adicionar novo */}
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3">
+            <p className="text-xs font-bold text-primary">Adicionar Procedimento Personalizado</p>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Nome do procedimento"
+                value={newProcName}
+                onChange={(e) => setNewProcName(e.target.value)}
+                className="col-span-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Duração (min)</label>
+                <input
+                  type="number"
+                  min={15}
+                  step={15}
+                  value={newProcDuration}
+                  onChange={(e) => setNewProcDuration(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
+                />
+              </div>
+              <button
+                disabled={!newProcName.trim() || isSavingProc || !companyId}
+                onClick={async () => {
+                  if (!newProcName.trim() || !companyId) return;
+                  setIsSavingProc(true);
+                  try {
+                    await addProcedureToCatalog({ companyId, name: newProcName.trim(), durationMin: newProcDuration });
+                    const updated = await getProcedureCatalog();
+                    setProcedures(updated);
+                    setNewProcName("");
+                    setNewProcDuration(60);
+                    notify("Adicionado!", "Procedimento criado com sucesso.", "success");
+                  } catch {
+                    notify("Erro", "Não foi possível adicionar.", "error");
+                  } finally {
+                    setIsSavingProc(false);
+                  }
+                }}
+                className="flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingProc ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                Adicionar
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de procedimentos */}
+          <div className="space-y-2">
+            {procedures.map((proc) => (
+              <div
+                key={proc.id}
+                className="flex items-center justify-between px-4 py-3 bg-white border border-gray-100 rounded-xl"
+              >
+                <div>
+                  <p className="font-semibold text-sm text-gray-800">{proc.name}</p>
+                  <p className="text-xs text-gray-400">{proc.duration_min} min</p>
+                </div>
+                {proc.is_system ? (
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
+                    Sistema
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteProcedureFromCatalog(proc.id);
+                        setProcedures((p) => p.filter((x) => x.id !== proc.id));
+                        notify("Removido", "Procedimento excluído.", "success");
+                      } catch {
+                        notify("Erro", "Não foi possível remover.", "error");
+                      }
+                    }}
+                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal: Nossos Parceiros (mantido caso necessário) */}
       <Modal open={showPartners} onClose={() => setShowPartners(false)} title="Nossos Parceiros">
         <div className="p-6">
@@ -673,7 +805,7 @@ export default function ConfiguracoesPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-black text-gray-800 text-sm">PROSPECTA ODONTO</h4>
+                  <h4 className="font-semibold text-gray-800 text-sm">PROSPECTA ODONTO</h4>
                   {/* Stars */}
                   <div className="flex gap-0.5 flex-shrink-0">
                     {[...Array(5)].map((_, i) => (
@@ -699,6 +831,163 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── MODAL: Horários de Funcionamento ──────────────────────────────── */}
+      <BusinessHoursModal
+        open={showBusinessHours}
+        onClose={() => setShowBusinessHours(false)}
+        companyId={companyId}
+        notify={notify}
+      />
     </div>
+  );
+}
+
+// ── BusinessHoursModal ────────────────────────────────────────────────────────
+const DAY_LABELS = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+
+type DayConfig = {
+  day_of_week: number;
+  is_open: boolean;
+  open_time: string;
+  close_time: string;
+  slot_duration_minutes: number;
+};
+
+function BusinessHoursModal({
+  open, onClose, companyId, notify
+}: {
+  open: boolean;
+  onClose: () => void;
+  companyId: string | null;
+  notify: (title: string, msg: string, type: "success"|"error"|"info"|"warning") => void;
+}) {
+  const [days, setDays] = useState<DayConfig[]>(() =>
+    Array.from({ length: 7 }, (_, i) => ({
+      day_of_week: i,
+      is_open: i >= 1 && i <= 5,
+      open_time: "08:00",
+      close_time: "18:00",
+      slot_duration_minutes: 60,
+    }))
+  );
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !companyId) return;
+    setLoading(true);
+    supabase
+      .from("company_business_hours")
+      .select("*")
+      .eq("company_id", companyId)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setDays(prev => prev.map(d => {
+            const saved = data.find((r: DayConfig) => r.day_of_week === d.day_of_week);
+            return saved ? { ...d, ...saved } : d;
+          }));
+        }
+        setLoading(false);
+      });
+  }, [open, companyId]);
+
+  const update = (idx: number, patch: Partial<DayConfig>) =>
+    setDays(prev => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
+
+  const handleSave = async () => {
+    if (!companyId) return;
+    setSaving(true);
+    try {
+      const rows = days.map(d => ({ ...d, company_id: companyId }));
+      const { error } = await supabase
+        .from("company_business_hours")
+        .upsert(rows, { onConflict: "company_id,day_of_week" });
+      if (error) throw error;
+      notify("Horários salvos!", "Configuração atualizada com sucesso.", "success");
+      onClose();
+    } catch (err: unknown) {
+      notify("Erro", (err as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Horários de Funcionamento">
+      <div className="p-6 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="animate-spin text-primary" size={28} />
+          </div>
+        ) : days.map((day, i) => (
+          <div
+            key={day.day_of_week}
+            className={cn(
+              "flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border transition-colors",
+              day.is_open ? "border-primary/20 bg-primary/[0.02]" : "border-gray-100 bg-gray-50"
+            )}
+          >
+            {/* Toggle + Label */}
+            <div className="flex items-center gap-3 min-w-[120px]">
+              <button
+                onClick={() => update(i, { is_open: !day.is_open })}
+                className={cn(
+                  "w-10 h-5 rounded-full transition-colors relative flex-shrink-0",
+                  day.is_open ? "bg-primary" : "bg-gray-300"
+                )}
+              >
+                <span className={cn(
+                  "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform",
+                  day.is_open ? "translate-x-5" : "translate-x-0.5"
+                )} />
+              </button>
+              <span className={cn("font-semibold text-sm", day.is_open ? "text-gray-800" : "text-gray-400")}>
+                {DAY_LABELS[day.day_of_week]}
+              </span>
+            </div>
+
+            {/* Horários */}
+            {day.is_open ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="time"
+                  value={day.open_time}
+                  onChange={e => update(i, { open_time: e.target.value })}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <span className="text-gray-400 text-sm">até</span>
+                <input
+                  type="time"
+                  value={day.close_time}
+                  onChange={e => update(i, { close_time: e.target.value })}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <select
+                  value={day.slot_duration_minutes}
+                  onChange={e => update(i, { slot_duration_minutes: Number(e.target.value) })}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-500 focus:outline-none ml-auto"
+                  title="Duração do slot"
+                >
+                  {[30,45,60,90,120].map(m => (
+                    <option key={m} value={m}>{m}min</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400 font-medium ml-2">Fechado</span>
+            )}
+          </div>
+        ))}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full mt-2 bg-primary text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-70"
+        >
+          {saving ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar Horários</>}
+        </button>
+      </div>
+    </Modal>
   );
 }
