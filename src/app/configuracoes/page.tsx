@@ -164,11 +164,13 @@ function Modal({
   onClose,
   title,
   children,
+  maxWidthClass = "sm:max-w-lg",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidthClass?: string;
 }) {
   return (
     <AnimatePresence>
@@ -185,7 +187,10 @@ function Modal({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="relative w-full sm:max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className={cn(
+              "relative w-full bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col",
+              maxWidthClass
+            )}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
@@ -813,26 +818,17 @@ export default function ConfiguracoesPage() {
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 leading-relaxed mt-1">
-                  Somos a 1ª agência de marketing odontológico especializada em captação de pacientes
-                  e já atendemos mais de 7.000 clínicas em todo o Brasil.
-                </p>
-                <a
-                  href={PROSPECTA_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 mt-3 text-primary text-xs font-bold hover:underline"
-                >
-                  <ExternalLink size={13} />
-                  Saiba Mais
-                </a>
+                <p className="text-gray-500 text-xs mt-1">Marketing odontológico focado em resultados rápidos.</p>
+                <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                  <span className="flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> Especialistas</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </Modal>
 
-      {/* ── MODAL: Horários de Funcionamento ──────────────────────────────── */}
+      {/* Modal: Horários de Funcionamento */}
       <BusinessHoursModal
         open={showBusinessHours}
         onClose={() => setShowBusinessHours(false)}
@@ -914,79 +910,117 @@ function BusinessHoursModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Horários de Funcionamento">
-      <div className="p-6 space-y-3">
+    <Modal open={open} onClose={onClose} title="Horários de Funcionamento" maxWidthClass="sm:max-w-2xl">
+      <div className="p-6 space-y-4">
+        
+        <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex gap-3 text-blue-800">
+          <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm leading-relaxed">
+            Configure abaixo a agenda da clínica. <strong className="font-semibold">Nossa IA de agendamento automático</strong> irá sugerir horários para os pacientes apenas nas janelas ativas selecionadas aqui.
+          </p>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="animate-spin text-primary" size={28} />
           </div>
-        ) : days.map((day, i) => (
-          <div
-            key={day.day_of_week}
-            className={cn(
-              "flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border transition-colors",
-              day.is_open ? "border-primary/20 bg-primary/[0.02]" : "border-gray-100 bg-gray-50"
-            )}
-          >
-            {/* Toggle + Label */}
-            <div className="flex items-center gap-3 min-w-[120px]">
-              <button
-                onClick={() => update(i, { is_open: !day.is_open })}
+        ) : (
+          <div className="space-y-3">
+            {days.map((day, i) => (
+              <div
+                key={day.day_of_week}
                 className={cn(
-                  "w-10 h-5 rounded-full transition-colors relative flex-shrink-0",
-                  day.is_open ? "bg-primary" : "bg-gray-300"
+                  "group flex flex-col md:flex-row md:items-center gap-3 md:gap-4 p-4 rounded-2xl border transition-all duration-300",
+                  day.is_open 
+                    ? "border-primary/10 bg-white shadow-sm hover:border-primary/30 hover:shadow-md" 
+                    : "border-transparent bg-gray-50/50 opacity-80 hover:opacity-100"
                 )}
               >
-                <span className={cn(
-                  "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform",
-                  day.is_open ? "translate-x-5" : "translate-x-0.5"
-                )} />
-              </button>
-              <span className={cn("font-semibold text-sm", day.is_open ? "text-gray-800" : "text-gray-400")}>
-                {DAY_LABELS[day.day_of_week]}
-              </span>
-            </div>
+                <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-[130px] flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => update(i, { is_open: !day.is_open })}
+                      className={cn(
+                        "w-11 h-6 rounded-full transition-all duration-300 relative flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary/30",
+                        day.is_open ? "bg-primary" : "bg-gray-300"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-300",
+                        day.is_open ? "translate-x-5" : "translate-x-0"
+                      )} />
+                    </button>
+                    <span className={cn("font-semibold text-xs", day.is_open ? "text-gray-800" : "text-gray-500")}>
+                      {DAY_LABELS[day.day_of_week]}
+                    </span>
+                  </div>
+                  {!day.is_open && (
+                    <span className="md:hidden text-[9px] tracking-wider uppercase font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
+                      Fechado
+                    </span>
+                  )}
+                </div>
 
-            {/* Horários */}
-            {day.is_open ? (
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  type="time"
-                  value={day.open_time}
-                  onChange={e => update(i, { open_time: e.target.value })}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <span className="text-gray-400 text-sm">até</span>
-                <input
-                  type="time"
-                  value={day.close_time}
-                  onChange={e => update(i, { close_time: e.target.value })}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <select
-                  value={day.slot_duration_minutes}
-                  onChange={e => update(i, { slot_duration_minutes: Number(e.target.value) })}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-500 focus:outline-none ml-auto"
-                  title="Duração do slot"
-                >
-                  {[30,45,60,90,120].map(m => (
-                    <option key={m} value={m}>{m}min</option>
-                  ))}
-                </select>
+                {day.is_open ? (
+                  <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1 w-full text-gray-700">
+                    <div className="flex items-center justify-between gap-1 sm:gap-2 w-full md:w-auto flex-1">
+                      <div className="flex items-center justify-center flex-1 bg-gray-50/50 hover:bg-gray-50 rounded-xl px-2 py-2 transition-colors border border-transparent focus-within:border-primary/40 focus-within:bg-white overflow-hidden">
+                        <Clock size={14} className="text-gray-400 mr-1.5 hidden sm:block flex-shrink-0" />
+                        <input
+                          type="time"
+                          value={day.open_time}
+                          onChange={e => update(i, { open_time: e.target.value })}
+                          className="bg-transparent text-xs focus:outline-none font-semibold text-center w-full"
+                        />
+                      </div>
+                      <span className="text-gray-300 text-[10px] font-semibold uppercase tracking-wider flex-shrink-0">Até</span>
+                      <div className="flex items-center justify-center flex-1 bg-gray-50/50 hover:bg-gray-50 rounded-xl px-2 py-2 transition-colors border border-transparent focus-within:border-primary/40 focus-within:bg-white overflow-hidden">
+                        <Clock size={14} className="text-gray-400 mr-1.5 hidden sm:block flex-shrink-0" />
+                        <input
+                          type="time"
+                          value={day.close_time}
+                          onChange={e => update(i, { close_time: e.target.value })}
+                          className="bg-transparent text-xs focus:outline-none font-semibold text-center w-full"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="w-full md:w-auto ml-0 md:ml-auto">
+                      <div className="flex items-center justify-center px-2 py-2 bg-violet-50/50 text-violet-700 rounded-xl border border-transparent hover:border-violet-100 transition-colors hover:bg-violet-50 w-full md:w-[130px]">
+                        <select
+                          value={day.slot_duration_minutes}
+                          onChange={e => update(i, { slot_duration_minutes: Number(e.target.value) })}
+                          className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer w-full text-center appearance-none"
+                          title="Duração do agendamento (Slot)"
+                        >
+                          {[15,30,45,60,90,120].map(m => (
+                            <option key={m} value={m}>{m} min / slot</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 hidden md:flex items-center justify-end">
+                    <span className="text-[9px] tracking-wider uppercase font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
+                      Fechado
+                    </span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <span className="text-xs text-gray-400 font-medium ml-2">Fechado</span>
-            )}
+            ))}
           </div>
-        ))}
+        )}
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full mt-2 bg-primary text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-70"
-        >
-          {saving ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Save size={16} /> Salvar Horários</>}
-        </button>
+        <div className="pt-4 mt-2 border-t border-gray-100">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-primary text-white py-3.5 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-primary/95 transition-all shadow-lg shadow-primary/20 disabled:opacity-70 disabled:shadow-none"
+          >
+            {saving ? <><Loader2 size={18} className="animate-spin" /> Salvando...</> : <><Save size={18} /> Salvar Horários</>}
+          </button>
+        </div>
       </div>
     </Modal>
   );

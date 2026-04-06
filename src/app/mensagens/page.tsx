@@ -79,10 +79,26 @@ export default function MensagensPage() {
 
     const channel = supabase
       .channel(`team_chat_${companyId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-        const newMsg = payload.new as Message;
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "n8n_chat_histories" }, (payload) => {
+        const row = payload.new;
         const currentActive = activeConvRef.current;
         
+        // n8n salva como JSON no formato {"type": "human"|"ai", "data": {"content": "..."}}
+        const type = row.message?.type || "human";
+        const content = row.message?.data?.content || row.message?.content || "";
+        
+        const newMsg: Message = {
+          id: String(row.id),
+          conversation_id: row.conversation_id || row.session_id,
+          direction: type === "human" ? "inbound" : "outbound",
+          message: {
+            text: content,
+            type: "text",
+            source: type === "ai" ? "ai" : undefined
+          },
+          created_at: row.hora_data_mensagem || new Date().toISOString()
+        };
+
         if (currentActive && newMsg.conversation_id === currentActive.id) {
           setMessages(prev => {
             const exists = prev.find(m => m.id === newMsg.id);
@@ -100,6 +116,18 @@ export default function MensagensPage() {
           }
           return prev;
         });
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations" }, async () => {
+        // Nova conversa foi gerada no backend automaticamente (ex: pelo trigger do N8N)
+        
+        // As vezes payload vem quebrado sem os relacionamentos cruzados, 
+        // ideal fazer um refetch ou simular:
+        try {
+            const fresh = await getConversations(companyId);
+            setConversations(fresh);
+        } catch {
+            // Ignorar erro do refetch silenciosamente
+        }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" }, (payload) => {
         const updated = payload.new as Conversation;

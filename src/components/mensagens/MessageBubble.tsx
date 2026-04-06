@@ -80,7 +80,14 @@ export function MessageBubble({ msg }: { msg: Message }) {
           </div>
         )}
 
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message?.text || "Mensagem sem conteúdo"}</p>
+        <div className="text-sm leading-relaxed whitespace-pre-wrap">
+          {(msg.message?.text || "Mensagem sem conteúdo").split(/\\n|\n/).map((line, idx, arr) => (
+            <span key={idx}>
+              {line}
+              {idx < arr.length - 1 && <br />}
+            </span>
+          ))}
+        </div>
 
         <div className={cn("flex items-center gap-1 mt-1 justify-end", timeClass)}>
           <span className="text-[10px]">
