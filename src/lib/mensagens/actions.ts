@@ -32,13 +32,20 @@ export async function sendMessageAction({
   const resData = await res.json();
   if (!res.ok) throw new Error(resData?.error || "Falha do Evolution API");
 
-  // 2. Persistência no DB
-  const { error: msgError } = await supabase.from("messages").insert({
+  // 2. Persistência no DB nativo do N8N
+  const { error: msgError } = await supabase.from("n8n_chat_histories").insert({
+    session_id: contactId, // Mantendo compatibilidade com N8N que usa o contactId como session
     conversation_id: conversationId,
     company_id: companyId,
     contact_id: contactId,
-    direction: "outbound",
-    message: { text, type: "text" },
+    message: { 
+      type: "ai", 
+      data: { content: text },
+      additional_kwargs: { created_at: new Date().toISOString() }
+    },
+    // hora_data_mensagem pode ser populado via trigger ou defaultValue, 
+    // mas enviamos também por garantia:
+    hora_data_mensagem: new Date().toISOString()
   });
 
   if (msgError) throw msgError;

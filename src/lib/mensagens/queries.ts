@@ -48,14 +48,34 @@ export async function getConversations(companyId: string): Promise<Conversation[
 
 /**
  * Busca histórico de mensagens de uma conversa.
+ * Lê diretamente da tabela nativa do N8N Memory e mapeia para a interface UI.
  */
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const { data, error } = await supabase
-    .from("messages")
+    .from("n8n_chat_histories")
     .select("*")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true });
+    .order("hora_data_mensagem", { ascending: true }); // campo q existia
 
   if (error) throw error;
-  return (data || []) as Message[];
+  
+  return (data || []).map((row: any) => {
+    // n8n salva como JSON no formato {"type": "human"|"ai", "data": {"content": "..."}}
+    const type = row.message?.type || "human";
+    const content = row.message?.data?.content || row.message?.content || "";
+    
+    return {
+      id: String(row.id),
+      conversation_id: row.conversation_id || row.session_id,
+      // Se type for human, é inbound. Senão (ai) é outbound
+      direction: type === "human" ? "inbound" : "outbound",
+      message: {
+        text: content,
+        type: "text",
+        source: type === "ai" ? "ai" : undefined
+      },
+      // Usamos hora_data_mensagem ou um fallback local
+      created_at: row.hora_data_mensagem || new Date().toISOString()
+    } as Message;
+  });
 }
