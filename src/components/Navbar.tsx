@@ -27,7 +27,7 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-blue-50 px-2 pb-safe-area-inset-bottom md:hidden h-16">
+    <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-blue-50 px-2 pb-[env(safe-area-inset-bottom)] md:hidden h-16">
       <div className="max-w-screen-xl mx-auto flex justify-around items-center h-full">
         {/* Navigation Items (Início, Simulações, CRM) */}
         {navItems.map((item) => {
