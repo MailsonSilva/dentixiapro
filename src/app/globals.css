@@ -49,7 +49,7 @@ body {
     0 4px 6px -1px var(--glass-shadow),
     0 2px 4px -2px var(--glass-shadow),
     inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
-  @apply rounded-3xl;
+  @apply rounded-xl;
 }
 
 .text-gradient {
@@ -67,7 +67,7 @@ body {
 }
 
 .btn-primary {
-  @apply relative overflow-hidden bg-primary text-white font-bold py-4 px-8 rounded-2xl transition-all duration-500 shadow-xl shadow-blue-900/10 active:scale-95 hover:shadow-2xl hover:shadow-blue-600/20 hover:-translate-y-0.5;
+  @apply relative overflow-hidden bg-primary text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-md shadow-blue-900/10 active:scale-95 hover:shadow-lg hover:shadow-blue-600/15 hover:-translate-y-0.5;
 }
 
 .btn-primary::after {
@@ -89,13 +89,13 @@ body {
   50% { transform: translateY(-10px); }
 }
 
-/* Global Input Refinement */
-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
-  @apply border border-slate-200 bg-white/50 backdrop-blur-sm rounded-xl transition-all duration-300 outline-none px-4 py-3;
+/* Global Input — subtle refinement, overridable per-component */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  @apply border border-slate-200 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-200 outline-none;
 }
 
-input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
-  @apply border-primary-glow/50 ring-4 ring-primary-glow/10 shadow-inner;
+input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
+  @apply border-primary/40 ring-2 ring-primary/10;
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }

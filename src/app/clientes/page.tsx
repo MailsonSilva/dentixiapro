@@ -15,15 +15,32 @@ import { ProcedureHistory } from "@/components/clientes/ProcedureHistory";
 const CONFIRM_TIMEOUT = 4000;
 
 
+export type ContactItem = {
+  id: string;
+  created_at: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  birth_date?: string | null;
+  metadata?: { cpf?: string | null, observacao?: string | null } | null;
+  stage_id?: string | null;
+  crm_stages?: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
+};
+
 export default function ClientesPage() {
-  const [contacts, setContacts] = useState<Record<string, unknown>[]>([]);
+  const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [companyId, setCompanyId] = useState("");
   const { notify } = useNotification();
   const router = useRouter();
 
-  const [selectedContact, setSelectedContact] = useState<Record<string, unknown> | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactItem | null>(null);
 
   // CRUD
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,7 +70,7 @@ export default function ClientesPage() {
       if (error) throw error;
       notify("Excluído", "Paciente removido com sucesso.", "success");
       setContacts((prev) => prev.filter((c) => c.id !== contactId));
-      if ((selectedContact as Record<string,unknown>)?.id === contactId) setSelectedContact(null);
+      if (selectedContact?.id === contactId) setSelectedContact(null);
     } catch {
       notify("Erro", "Não foi possível excluir o paciente.", "error");
     } finally {
@@ -124,13 +141,13 @@ export default function ClientesPage() {
     if (!search.trim()) return contacts;
     const q = search.toLowerCase().trim();
     return contacts.filter(
-      (c) => (c.name as string)?.toLowerCase().includes(q)
-        || (c.phone as string)?.includes(q)
-        || (c.email as string)?.toLowerCase().includes(q)
+      (c) => c.name?.toLowerCase().includes(q)
+        || c.phone?.includes(q)
+        || c.email?.toLowerCase().includes(q)
     );
   }, [contacts, search]);
 
-  const getStageColor = (color: string | null) => color ?? "#94a3b8";
+  const getStageColor = (color: string | null | undefined) => color ?? "#94a3b8";
 
   const openAddModal = () => {
     setFormData({ id: "", name: "", phone: "", email: "", cpf: "", address: "", birth_date: "" });
@@ -138,16 +155,16 @@ export default function ClientesPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (contact: Record<string, unknown>) => {
-    const meta = (contact.metadata as Record<string,unknown>) ?? {};
+  const openEditModal = (contact: ContactItem) => {
+    const meta = contact.metadata ?? {};
     setFormData({
-      id: (contact.id as string) || "",
-      name: (contact.name as string) || "",
-      phone: (contact.phone as string) || "",
-      email: (contact.email as string) || "",
-      cpf: (meta.cpf as string) || "",
-      address: (contact.address as string) || "",
-      birth_date: (contact.birth_date as string) || "",
+      id: contact.id || "",
+      name: contact.name || "",
+      phone: contact.phone || "",
+      email: contact.email || "",
+      cpf: meta.cpf || "",
+      address: contact.address || "",
+      birth_date: contact.birth_date || "",
     });
     setIsEditing(true);
     setIsModalOpen(true);

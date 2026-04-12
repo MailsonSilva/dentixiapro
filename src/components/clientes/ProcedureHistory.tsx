@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { getProcedureRecords, ProcedureRecord } from "@/lib/clientes/queries";
 import { addProcedureRecord, deleteProcedureRecord } from "@/lib/clientes/actions";
 import { getProcedureCatalog, ProcedureCatalogItem } from "@/lib/agenda/queries";
+import { ProcedureGrid } from "@/components/procedimentos/ProcedureGrid";
 import { useNotification } from "@/lib/NotificationContext";
 
 const STATUS_CONFIG = {
@@ -69,7 +70,7 @@ export function ProcedureHistory({ contactId, companyId }: Props) {
       setIsLoading(true);
       const [recs, cat] = await Promise.all([
         getProcedureRecords(contactId),
-        getProcedureCatalog(),
+        getProcedureCatalog(companyId),
       ]);
       setRecords(recs);
       setCatalog(cat);
@@ -185,22 +186,24 @@ export function ProcedureHistory({ contactId, companyId }: Props) {
                 >
                   <p className="text-xs font-bold text-primary">Novo Registro</p>
 
-                  <select
-                    value={form.catalogId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, catalogId: e.target.value, customName: "" }))
-                    }
-                    className="w-full px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-medium text-slate-700"
-                  >
-                    <option value="">Selecione um procedimento...</option>
-                    {catalog.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                        {c.is_system ? "" : " ✦"}
-                      </option>
-                    ))}
-                    <option value="__custom__">Outro (digitar abaixo)</option>
-                  </select>
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                    <ProcedureGrid
+                      procedures={catalog}
+                      onSelect={(proc) => setForm((f) => ({ ...f, catalogId: proc.id, customName: "" }))}
+                      selectedId={form.catalogId !== "__custom__" ? form.catalogId : undefined}
+                      readonly={true}
+                    />
+                  </div>
+                  
+                  <div className="mt-2 text-right">
+                    <button 
+                       type="button" 
+                       onClick={() => setForm((f) => ({ ...f, catalogId: "__custom__", customName: "" }))}
+                       className="text-[10px] font-bold text-primary hover:underline"
+                    >
+                      + Digitar outro procedimento manual
+                    </button>
+                  </div>
 
                   {form.catalogId === "__custom__" && (
                     <input

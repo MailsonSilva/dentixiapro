@@ -2,8 +2,41 @@ import { supabase } from "../supabase";
 import { addMinutes, parseISO, format } from "date-fns";
 
 // ────────────────────────────────────────────────────────────
-// Verificação de conflito de horário
+// Verificação de conflito de horário e horário comercial
 // ────────────────────────────────────────────────────────────
+export async function checkBusinessHours(
+  companyId: string,
+  startTime: Date,
+  endTime: Date
+): Promise<void> {
+  const dayOfWeek = startTime.getDay(); // 0 = Domingo
+  
+  const { data: bHours } = await supabase
+    .from("company_business_hours")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("day_of_week", dayOfWeek)
+    .maybeSingle();
+
+  if (!bHours) {
+    // Se a empresa ainda não configurou, deixamos passar ou podemos bloquear.
+    // O padrão é permitir para manter retrocompatibilidade até o preenchimento inicial.
+    return;
+  }
+
+  if (!bHours.is_open) {
+    throw new Error("A clínica encontra-se fechada neste dia da semana.");
+  }
+
+  const openTime = bHours.open_time.substring(0, 5);
+  const closeTime = bHours.close_time.substring(0, 5);
+  const startLocalTime = format(startTime, "HH:mm");
+  const endLocalTime = format(endTime, "HH:mm");
+
+  if (startLocalTime < openTime || endLocalTime > closeTime) {
+    throw new Error(`O horário escolhido (${startLocalTime} - ${endLocalTime}) está fora do expediente (${openTime} - ${closeTime}).`);
+  }
+}
 async function checkConflict(
   companyId: string,
   startTime: Date,
@@ -46,6 +79,9 @@ export async function createAppointmentAction({
 }) {
   const startTime = parseISO(`${date}T${time}:00`);
   const endTime = addMinutes(startTime, durationMin ?? 60);
+
+  // Validação de Expediente (Business Hours)
+  await checkBusinessHours(companyId, startTime, endTime);
 
   // Anti-duplicação — camada de aplicação
   const hasConflict = await checkConflict(companyId, startTime);
@@ -99,6 +135,9 @@ export async function updateAppointmentAction(
   const startTime = parseISO(`${date}T${time}:00`);
   const endTime = addMinutes(startTime, durationMin ?? 60);
 
+  // Validação de Expediente (Business Hours)
+  await checkBusinessHours(companyId, startTime, endTime);
+
   // Anti-duplicação excluindo o próprio agendamento
   const hasConflict = await checkConflict(companyId, startTime, id);
   if (hasConflict) {
@@ -150,6 +189,15 @@ export async function updateAppointmentDateAction(
   const localTime = format(oldStart, "HH:mm");
   const newStart = parseISO(`${newDate}T${localTime}:00`);
   const newEnd = new Date(newStart.getTime() + duration);
+
+  // Validação de Expediente para mover
+  try {
+    await checkBusinessHours(companyId, newStart, newEnd);
+  } catch(err: any) {
+    // Como é drag and drop, vamos voltar um conflito genérico ou estender DropResult.
+    // Por simplicidade, passamos o erro adiante se o dev quiser catch ou block silence.
+    throw err;
+  }
 
   // Verificar conflito no novo horário — retorna {status: conflict} ao invés de lançar
   const hasConflict = await checkConflict(companyId, newStart, id);

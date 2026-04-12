@@ -44,3 +44,9 @@ The system uses a robust **RBAC (Role-Based Access Control) Multi-Tenant Archite
 
 ## Clean Up Notes
 Unnecessary debug scripts (`check_supabase*.mjs`, `query.mjs`, `query.ts`, `eslint_report.json`) have been removed from the root to maintain a clean workspace. Database migrations have been properly organized into `supabase/migrations/`.
+
+## Spec-Driven Decisions (April 2026)
+
+*   **Procedure Unification:** All logic for listing, checking, and validating procedures across components (Calendar, Scheduling, History) MUST use a global single source of truth for the CRUD of Procedures (e.g., `ProcedureGrid` / `useProcedures` hook).
+*   **Business Hours Constraints:** Calendar processing must strictly respect 'Horário de Funcionamento' settings on both frontend (UI disablement like cross-hatching) and backend API validation. No appointments should be allowed outside the designated business hours.
+*   **UI Structure:** Multi-item configurations (like adding procedures) must utilize full-width responsive grids instead of fixed mobile-like widths to leverage desktop space efficiently.
