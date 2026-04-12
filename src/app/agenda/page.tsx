@@ -20,7 +20,10 @@ import { supabase } from "@/lib/supabase";
 import {
   getAppointments,
   getCalendarContacts,
+  getCompanyBusinessHours,
+  getProcedureCatalog,
   Appointment,
+  ProcedureCatalogItem,
 } from "@/lib/agenda/queries";
 import { Contact } from "@/lib/crm/queries";
 import {
@@ -33,7 +36,7 @@ import {
 } from "@/lib/agenda/actions";
 
 // UI Components
-import { AgendaSidebar, PROCEDURE_FILTERS } from "@/components/agenda/AgendaSidebar";
+import { AgendaSidebar } from "@/components/agenda/AgendaSidebar";
 import { CalendarGrid } from "@/components/agenda/CalendarGrid";
 import { AppointmentModal } from "@/components/agenda/AppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
@@ -42,49 +45,67 @@ export default function AgendaPage() {
   const { notify } = useNotification();
   const searchParams = useSearchParams();
 
-  // State
+  // Core State
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companyId, setCompanyId] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<string[]>(
-    PROCEDURE_FILTERS.map((f) => f.name)
-  );
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [businessHours, setBusinessHours] = useState<any[]>([]);
+  const [procedures, setProcedures] = useState<ProcedureCatalogItem[]>([]);
 
-  // Modal State — Criação/Edição
+  // Modal: Create / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSavingApp, setIsSavingApp] = useState(false);
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [defaultDate, setDefaultDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
-  // Modal State — Detalhes
+  // Modal: Details
   const [detailApp, setDetailApp] = useState<Appointment | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   /**
-   * Fetch Data
+   * Fetch all required data for the current month view.
+   * NOTE: companyId is included in deps to ensure data refetches after auth init.
    */
   const fetchData = useCallback(async () => {
+    if (!companyId) return;
     try {
       const mStart = startOfMonth(currentDate);
       const mEnd = endOfMonth(mStart);
       const start = startOfWeek(mStart, { weekStartsOn: 1 });
       const end = endOfWeek(mEnd, { weekStartsOn: 1 });
 
-      const [apptData, contactData] = await Promise.all([
+      const [apptData, contactData, currBusinessHours, procData] = await Promise.all([
         getAppointments(start.toISOString(), end.toISOString()),
         getCalendarContacts(),
+        getCompanyBusinessHours(companyId),
+        getProcedureCatalog(companyId),
       ]);
 
       setAppointments(apptData);
       setContacts(contactData);
+      if (currBusinessHours && currBusinessHours.length > 0) {
+        setBusinessHours(currBusinessHours);
+      }
+
+      setProcedures(procData);
+
+      // Auto-select all procedures on first load
+      setSelectedFilters((prev) => {
+        if (prev.length === 0 && procData.length > 0) {
+          return procData.map((p) => p.name);
+        }
+        return prev;
+      });
     } catch (err: unknown) {
       const error = err as Error;
-      notify("Erro", error.message, "error");
+      notify("Erro ao carregar agenda", error.message, "error");
     }
-  }, [currentDate, notify]);
+  }, [currentDate, companyId, notify]);
 
+  // Init: identify current company
   useEffect(() => {
     const init = async () => {
       const {
@@ -101,11 +122,12 @@ export default function AgendaPage() {
     init();
   }, []);
 
+  // Fetch data whenever company or month changes
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Handle URL params (vindo de /clientes)
+  // Handle URL params (coming from /clientes)
   useEffect(() => {
     const contactId = searchParams.get("contact_id");
     if (contactId && contacts.length > 0) {
@@ -118,9 +140,7 @@ export default function AgendaPage() {
     }
   }, [searchParams, contacts]);
 
-  /**
-   * Salvar agendamento (criar ou editar)
-   */
+  /** Save appointment (create or update) */
   const handleSave = async (payload: {
     date: string;
     time: string;
@@ -134,10 +154,7 @@ export default function AgendaPage() {
     setConflictError(null);
     try {
       if (editingAppointment) {
-        await updateAppointmentAction(editingAppointment.id, {
-          ...payload,
-          companyId,
-        });
+        await updateAppointmentAction(editingAppointment.id, { ...payload, companyId });
         notify("Sucesso", "Agendamento atualizado!", "success");
       } else {
         await createAppointmentAction({ ...payload, companyId });
@@ -159,18 +176,15 @@ export default function AgendaPage() {
   };
 
   /**
-   * Drag-and-Drop: soltar card em novo dia
-   * - SEM conflito: move o card e confirma
-   * - COM conflito: abre modal de edição pré-preenchido para o usuário ajustar
+   * Drag-and-Drop: drop card on a new day.
+   * On conflict: opens edit modal with new date pre-filled.
    */
   const handleDropOnDay = async (appointmentId: string, newDate: string) => {
     if (!companyId) return;
-
     try {
       const result: DropResult = await updateAppointmentDateAction(appointmentId, newDate, companyId);
 
       if (result.status === "success") {
-        // Optimistic update só após confirmar sem conflito
         setAppointments((prev) =>
           prev.map((app) => {
             if (app.id !== appointmentId) return app;
@@ -186,7 +200,6 @@ export default function AgendaPage() {
         notify("Agendamento movido", `Para ${newDate}`, "success");
         fetchData();
       } else {
-        // Conflito: abre modal de edição com nova data pré-preenchida
         const app = appointments.find((a) => a.id === appointmentId) ?? null;
         setEditingAppointment(app);
         setDefaultDate(newDate);
@@ -199,35 +212,23 @@ export default function AgendaPage() {
     }
   };
 
-  /**
-   * Abrir modal de detalhes ao clicar no card
-   */
   const handleAppointmentOpen = (app: Appointment) => {
     setDetailApp(app);
     setIsDetailOpen(true);
   };
 
-  /**
-   * Editar a partir do modal de detalhes
-   */
   const handleEditFromDetail = (app: Appointment) => {
     setEditingAppointment(app);
     setConflictError(null);
     setIsModalOpen(true);
   };
 
-  /**
-   * Excluir agendamento (soft-cancel)
-   */
   const handleDeleteAppointment = async (id: string) => {
     await deleteAppointmentAction(id);
     notify("Excluído", "Agendamento cancelado.", "success");
     fetchData();
   };
 
-  /**
-   * Marcar como concluído
-   */
   const handleCompleteAppointment = async (id: string) => {
     await updateAppointmentStatusAction(id, "completed");
     notify("Concluído", "Agendamento marcado como concluído.", "success");
@@ -241,16 +242,17 @@ export default function AgendaPage() {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/50">
-      <div className="p-6 md:p-8 flex-1 flex flex-col max-w-7xl mx-auto w-full gap-6">
+      <div className="p-5 md:p-7 flex-1 flex flex-col max-w-7xl mx-auto w-full gap-5">
 
+        {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-              <CalendarIcon size={20} />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+              <CalendarIcon size={18} />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-slate-800">Agenda Mensal</h1>
-              <p className="text-sm font-medium text-slate-500">Gerencie atendimentos e retornos.</p>
+              <h1 className="text-xl font-bold text-slate-800">Agenda</h1>
+              <p className="text-xs font-medium text-slate-500">Gerencie atendimentos e retornos.</p>
             </div>
           </div>
 
@@ -261,13 +263,14 @@ export default function AgendaPage() {
               setConflictError(null);
               setIsModalOpen(true);
             }}
-            className="bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 active:scale-95 text-white font-bold py-2.5 px-5 rounded-lg shadow-sm text-sm flex items-center gap-2 transition-all duration-150"
           >
             <Plus size={16} /> Novo Agendamento
           </button>
         </div>
 
-        <div className="flex-1 flex overflow-hidden bg-white border border-slate-200 rounded-3xl shadow-sm">
+        {/* Main Calendar Area */}
+        <div className="flex-1 flex overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm">
           <AgendaSidebar
             currentDate={currentDate}
             setCurrentDate={setCurrentDate}
@@ -283,6 +286,8 @@ export default function AgendaPage() {
               setConflictError(null);
               setIsModalOpen(true);
             }}
+            businessHours={businessHours}
+            procedures={procedures}
           />
 
           <CalendarGrid
@@ -301,11 +306,12 @@ export default function AgendaPage() {
             }}
             onAppointmentOpen={handleAppointmentOpen}
             onDropOnDay={handleDropOnDay}
+            businessHours={businessHours}
           />
         </div>
       </div>
 
-      {/* Modal de Criação/Edição */}
+      {/* Create / Edit Modal */}
       <AppointmentModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -319,9 +325,10 @@ export default function AgendaPage() {
         onSave={handleSave}
         isSaving={isSavingApp}
         conflictError={conflictError}
+        companyId={companyId}
       />
 
-      {/* Modal de Detalhes */}
+      {/* Detail Modal */}
       <AppointmentDetailModal
         appointment={detailApp}
         isOpen={isDetailOpen}

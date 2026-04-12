@@ -92,13 +92,33 @@ export async function getCalendarContacts(): Promise<Contact[]> {
 /**
  * Busca o catálogo de procedimentos: globais (is_system=true) + personalizados da empresa.
  */
-export async function getProcedureCatalog(): Promise<ProcedureCatalogItem[]> {
-  const { data, error } = await supabase
+export async function getProcedureCatalog(companyId?: string): Promise<ProcedureCatalogItem[]> {
+  let query = supabase
     .from("procedure_catalog")
     .select("*")
     .order("is_system", { ascending: false })
     .order("name");
 
+  if (companyId) {
+    query = query.or(`company_id.eq.${companyId},is_system.eq.true`);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []) as ProcedureCatalogItem[];
 }
+
+/**
+ * Busca horários de funcionamento da empresa.
+ */
+export async function getCompanyBusinessHours(companyId: string) {
+  const { data, error } = await supabase
+    .from("company_business_hours")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("day_of_week");
+
+  if (error) throw error;
+  return data;
+}
+

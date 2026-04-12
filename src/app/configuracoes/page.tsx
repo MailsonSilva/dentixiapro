@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { getProcedureCatalog, ProcedureCatalogItem } from "@/lib/agenda/queries";
 import { addProcedureToCatalog, deleteProcedureFromCatalog } from "@/lib/clientes/actions";
+import { ProcedureGrid } from "@/components/procedimentos/ProcedureGrid";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const APP_VERSION = "4.0.0";
@@ -544,7 +545,9 @@ export default function ConfiguracoesPage() {
                 label="Procedimentos"
                 onClick={() => {
                   setShowProcedures(true);
-                  getProcedureCatalog().then(setProcedures).catch(console.error);
+                  if (companyId) {
+                    getProcedureCatalog(companyId).then(setProcedures).catch(console.error);
+                  }
                 }}
               />
             </div>
@@ -701,27 +704,27 @@ export default function ConfiguracoesPage() {
       </Modal>
 
       {/* Modal: Procedimentos da Clínica */}
-      <Modal open={showProcedures} onClose={() => setShowProcedures(false)} title="Procedimentos da Clínica">
+      <Modal open={showProcedures} onClose={() => setShowProcedures(false)} title="Procedimentos" maxWidthClass="sm:max-w-4xl">
         <div className="p-6 space-y-4">
           {/* Adicionar novo */}
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3">
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 space-y-3 w-full">
             <p className="text-xs font-bold text-primary">Adicionar Procedimento Personalizado</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
               <input
                 type="text"
                 placeholder="Nome do procedimento"
                 value={newProcName}
                 onChange={(e) => setNewProcName(e.target.value)}
-                className="col-span-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="flex-[2] px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">Duração (min)</label>
+              <div className="flex-1">
                 <input
                   type="number"
                   min={15}
                   step={15}
                   value={newProcDuration}
                   onChange={(e) => setNewProcDuration(Number(e.target.value))}
+                  placeholder="Duração (min)"
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
                 />
               </div>
@@ -732,7 +735,7 @@ export default function ConfiguracoesPage() {
                   setIsSavingProc(true);
                   try {
                     await addProcedureToCatalog({ companyId, name: newProcName.trim(), durationMin: newProcDuration });
-                    const updated = await getProcedureCatalog();
+                    const updated = await getProcedureCatalog(companyId);
                     setProcedures(updated);
                     setNewProcName("");
                     setNewProcDuration(60);
@@ -743,7 +746,7 @@ export default function ConfiguracoesPage() {
                     setIsSavingProc(false);
                   }
                 }}
-                className="flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 {isSavingProc ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                 Adicionar
@@ -751,39 +754,21 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          {/* Lista de procedimentos */}
-          <div className="space-y-2">
-            {procedures.map((proc) => (
-              <div
-                key={proc.id}
-                className="flex items-center justify-between px-4 py-3 bg-white border border-gray-100 rounded-xl"
-              >
-                <div>
-                  <p className="font-semibold text-sm text-gray-800">{proc.name}</p>
-                  <p className="text-xs text-gray-400">{proc.duration_min} min</p>
-                </div>
-                {proc.is_system ? (
-                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">
-                    Sistema
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await deleteProcedureFromCatalog(proc.id);
-                        setProcedures((p) => p.filter((x) => x.id !== proc.id));
-                        notify("Removido", "Procedimento excluído.", "success");
-                      } catch {
-                        notify("Erro", "Não foi possível remover.", "error");
-                      }
-                    }}
-                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </div>
-            ))}
+          <div className="mt-6">
+             <h3 className="text-sm font-bold text-gray-700 mb-3">Catálogo de Procedimentos</h3>
+             <ProcedureGrid 
+                layout="grid"
+                procedures={procedures}
+                onDelete={async (id) => {
+                  try {
+                    await deleteProcedureFromCatalog(id);
+                    setProcedures((p) => p.filter((x) => x.id !== id));
+                    notify("Removido", "Procedimento excluído.", "success");
+                  } catch {
+                    notify("Erro", "Não foi possível remover.", "error");
+                  }
+                }}
+             />
           </div>
         </div>
       </Modal>

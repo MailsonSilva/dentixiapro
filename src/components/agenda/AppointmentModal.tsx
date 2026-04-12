@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { Contact } from "@/lib/crm/queries";
 import { getProcedureCatalog, ProcedureCatalogItem, Appointment } from "@/lib/agenda/queries";
+import { ProcedureGrid } from "@/components/procedimentos/ProcedureGrid";
 
 interface Props {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface Props {
   }) => Promise<void>;
   isSaving: boolean;
   conflictError?: string | null;
+  companyId?: string;
 }
 
 export function AppointmentModal({
@@ -35,6 +37,7 @@ export function AppointmentModal({
   onSave,
   isSaving,
   conflictError,
+  companyId,
 }: Props) {
   const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [searchContact, setSearchContact] = useState("");
@@ -50,10 +53,10 @@ export function AppointmentModal({
 
   // Carregar catálogo de procedimentos
   useEffect(() => {
-    getProcedureCatalog()
+    getProcedureCatalog(companyId)
       .then(setCatalog)
       .catch(console.error);
-  }, []);
+  }, [companyId]);
 
   // Pré-preencher ao editar/abrir — calculado no render, sem setState em efeito encadeado
   useEffect(() => {
@@ -95,12 +98,10 @@ export function AppointmentModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingAppointment?.id, isOpen]);
 
-  // Sincroniza duração quando muda o procedimento no catálogo
-  const handleCatalogChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setSelectedCatalogId(id);
-    const item = catalog.find((c) => c.id === id);
-    if (item) setDurationMin(item.duration_min);
+  // Mudança do Procedimento pela Grid
+  const handleSelectProcedure = (proc: ProcedureCatalogItem) => {
+    setSelectedCatalogId(proc.id);
+    setDurationMin(proc.duration_min);
   };
 
   const filteredContacts = contacts.filter((c) =>
@@ -112,6 +113,15 @@ export function AppointmentModal({
 
   const handleSubmit = async () => {
     if (!selectedContact || !procedureName) return;
+
+    // Guard: prevent past dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date + "T00:00:00");
+    if (selectedDate < today) {
+      return; // input[min] already prevents this, guard as safety net
+    }
+
     await onSave({
       date,
       time,
@@ -130,7 +140,7 @@ export function AppointmentModal({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+            className="bg-white rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
           >
             {/* Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
@@ -138,7 +148,7 @@ export function AppointmentModal({
                 <CalendarDays size={18} className="text-primary" />
                 {isEditing ? "Editar Agendamento" : "Novo Agendamento"}
               </h2>
-              <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+              <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -154,8 +164,9 @@ export function AppointmentModal({
                     required
                     type="date"
                     value={date}
+                    min={format(new Date(), "yyyy-MM-dd")}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
                 <div>
@@ -166,7 +177,7 @@ export function AppointmentModal({
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
               </div>
@@ -178,7 +189,7 @@ export function AppointmentModal({
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium"
+                    className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium"
                   >
                     <AlertTriangle size={16} className="shrink-0" />
                     {conflictError}
@@ -200,10 +211,10 @@ export function AppointmentModal({
                       value={searchContact}
                       onChange={(e) => { setSearchContact(e.target.value); setIsDropdownOpen(true); }}
                       onFocus={() => setIsDropdownOpen(true)}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     {isDropdownOpen && searchContact && (
-                      <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 shadow-xl rounded-xl max-h-40 overflow-y-auto">
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg max-h-40 overflow-y-auto">
                         {filteredContacts.length === 0 ? (
                           <div className="p-3 text-sm text-slate-400 text-center">Nenhum paciente encontrado</div>
                         ) : (
@@ -222,9 +233,9 @@ export function AppointmentModal({
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-3 border border-primary/50 bg-primary/5 rounded-xl">
+                  <div className="flex items-center justify-between p-3 border border-primary/50 bg-primary/5 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                      <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">
                         {selectedContact.name.charAt(0)}
                       </div>
                       <div>
@@ -236,7 +247,7 @@ export function AppointmentModal({
                     </div>
                     <button
                       onClick={() => { setSelectedContact(null); setSearchContact(""); }}
-                      className="p-2 bg-white rounded-lg text-red-500 font-bold text-xs shadow-sm hover:bg-red-50"
+                      className="p-1.5 bg-white rounded-md text-red-500 font-bold text-xs hover:bg-red-50 border border-red-100 transition-colors"
                     >
                       Trocar
                     </button>
@@ -244,40 +255,31 @@ export function AppointmentModal({
                 )}
               </div>
 
-              {/* Procedimento (dinâmico do catálogo) */}
+              {/* Procedimento (dinâmico do catálogo) via Grid */}
               <div>
                 <label className="text-xs font-bold text-slate-500 capitalize mb-2 block">
                   Procedimento *
                 </label>
-                <select
-                  value={selectedCatalogId}
-                  onChange={handleCatalogChange}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium"
-                >
-                  <option value="">Selecione um procedimento...</option>
-                  {catalog.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.duration_min} min){c.is_system ? "" : " ✦"}
-                    </option>
-                  ))}
-                </select>
-                {selectedCatalogItem && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    Duração padrão: {selectedCatalogItem.duration_min} min
-                  </p>
-                )}
+                <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                  <ProcedureGrid
+                    procedures={catalog}
+                    onSelect={handleSelectProcedure}
+                    selectedId={selectedCatalogId}
+                    readonly={true}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Footer */}
             <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
-              <button onClick={onClose} className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+              <button onClick={onClose} className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                 Cancelar
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSaving || !selectedContact || !selectedCatalogId}
-                className="px-6 py-2.5 rounded-xl font-bold bg-primary text-white flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="px-6 py-2.5 rounded-lg font-bold bg-primary text-white flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSaving ? <Loader2 size={18} className="animate-spin" /> : null}
                 {isSaving ? "Salvando..." : isEditing ? "Salvar Alterações" : "Confirmar Agendamento"}

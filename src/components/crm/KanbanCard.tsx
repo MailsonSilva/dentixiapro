@@ -66,7 +66,7 @@ export function KanbanCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
       draggable
-      onDragStart={(e) => onDragStart(e, contact)}
+      onDragStart={(e: any) => onDragStart(e, contact)}
       onClick={onClick}
       onMouseLeave={() => isConfirming && cancelConfirm()}
       className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md p-3 cursor-pointer group transition-all hover:-translate-y-0.5 active:scale-[0.98] relative overflow-hidden"

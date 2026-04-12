@@ -1,105 +1,91 @@
-<<<<<<< HEAD
 # 🗺️ Mission Control: Estado do Projeto (Project State)
 
-**Última atualização**: 2026-03-29 — Sprint 3: Ajustes Finais Chat IA Híbrido
+**Última atualização**: 2026-04-11 — Sprint: Documentação Full-Stack & Reverse Engineering
 
 ---
 
 ## 1. O Que Mudou (What Changed)
 
-### Sprint Atual (2026-03-29 — Tarde/Sprint 3)
-#### Backend — Migration + Trigger + Webhook
-- ✅ **Trigger `trg_mirror_ai_to_messages` reforçado**:
-  - Agora espelha **TANTAS as mensagens `ai` quanto as `human`** vindas do n8n para a tela do usuário.
-  - Implementada lógica de **Deduplicação (Dedup)** de 3 minutos para evitar que o webhook do Next e o n8n_chat_histories insiram em duplicidade a mesma fala do cliente na UI.
-- ✅ **Webhook do Next.js (`/api/evolution/webhook/route.ts`)**:
-  - Toda captura de mensagem agora embute `source: "human"` no JSON original da mensagem.
-  - Se o dono da clínica responder pelo celular/WhatsApp nativo (`fromMe: true`), a mensagem vai pro banco como `outbound` com `source: "human"` e entra direto na UI via Realtime.
+### Sprint Atual (2026-04-11 — Documentação Exaustiva)
 
-#### Frontend — `src/app/mensagens/page.tsx`
-- ✅ **Ícones UI removidos a pedido**: 
-  - Ícone de anexo (Paperclip) fora do chat input.
-  - Ícone do telefone (Ligar) fora do chat header superior.
-- ✅ **Exibição Híbrida Inteligente**: 
-  - O distintivo "Maria IA" *somente* renderiza quando a mensagem é `outbound` E tem `source === "ai"`. Se o humano atendente envia, a mensagem aparece limpa e natural.
+- ✅ **Engenharia Reversa Concluída**: Analisado todo o código-fonte (App Router, Supabase, Migrations, Actions, Hooks, Components).
+- ✅ **Criação da pasta `/docs`**: Gerada toda a documentação técnica consolidando informações vitais em um só lugar.
+- ✅ **`ARCHITECTURE.md`**: Visão Macro, ecossistema, stack, modelo multi-tenant, segurança RLS e variáveis de ambiente.
+- ✅ **`FRONTEND.md`**: Mapeamento completo do Design System "Pro Max", contextos globais, responsividade, componentes-chave e rotas.
+- ✅ **`BACKEND_API.md`**: Schema exaustivo do banco de dados completo (tabelas, triggers, RLS), Edge Functions, e Next.js API Routes.
+- ✅ **`WORKFLOWS_N8N.md`**: Documentação detalhada dos fluxos de AI chatbot, triggers do CRM e sincronização bidirecional.
+- ✅ **`BUSINESS_RULES.md`**: Consolidado o "Cérebro" do sistema contendo 13 regras de ouro inquebráveis (Multi-tenancy, Trial/Paywall, Agenda DB, Procedimentos).
+
+### Sprint Atual (2026-04-11 — Orquestração UI/UX Pro Max)
+
+#### Bug Fix Crítico
+- ✅ **`agenda/page.tsx`**: Corrigido bug onde `companyId` não estava nas dependências do `useCallback` do `fetchData`. Isso causava que `businessHours` e `procedures` **não carregavam** na primeira renderização após login. Agora o `fetchData` guarda corretamente a dependência e a chamada às APIs só ocorre quando `companyId` está disponível (guard interno `if (!companyId) return`).
+
+#### Design System — Sem Bordas Excessivamente Arredondadas
+- ✅ **`globals.css`**: Reduzido raio de bordas globais:
+  - `glass-card`: `rounded-3xl` → `rounded-xl`
+  - `.btn-primary`: `rounded-2xl` → `rounded-lg`
+  - Input global: `rounded-xl` → `rounded-lg`
+- ✅ **`AppointmentModal.tsx`**: Container `rounded-3xl` → `rounded-xl`, todos os botões e inputs `rounded-lg/md`
+- ✅ **`AppointmentDetailModal.tsx`**: `rounded-3xl` → `rounded-xl`, elementos internos `rounded-lg`
+
+#### AgendaSidebar — Melhorias UX Pro Max
+- ✅ **Lista de Procedimentos Restaurada e Melhorada**:
+  - Cabeçalho da seção com ícone `SlidersHorizontal` e label "Filtros"
+  - Botão "Todos / Limpar" para seleção rápida em massa
+  - Exibe duração de cada procedimento (`90m`) à direita do nome
+  - Bordas `rounded-md` consistentes com novo sistema
+- ✅ **Mini-Calendário Melhorado**:
+  - Células usam `button` (semântico, acessível) ao invés de `div`
+  - Dias fechados: `cursor-not-allowed` + padrão diagonal via inline style
+  - `disabled` nativo para dias fora do expediente e fora do mês
+  - Legenda visual de "Dia fechado" quando `businessHours` disponível
+  - Navegação com ícone hover destacado
+
+#### CalendarGrid — Melhorias Visuais
+- ✅ **Paleta de Procedimentos Determinística**: Hash da string do nome mapeia para cor fixada
+  — elimina o problema de cores mudando entre re-renders
+- ✅ **Header mais compacto** e profissional com `rounded-md` nos botões de navegação
+- ✅ **Dias Fechados**: exibe ícone `BanIcon` no canto superior direito + padrão diagonal mais denso
+- ✅ **Hover restrito**: dias fechados não recebem events de drag & drop nem clique
+- ✅ **Labels de dias da semana**: abreviadas (`Seg, Ter...`) para mais espaço
+
+#### ProcedureGrid — Refinamento
+- ✅ Padding reduzido (`px-3 py-2.5` ao invés de `p-4`)
+- ✅ Botões de ação visíveis apenas no hover via `group-hover:opacity-100`
+- ✅ Border `rounded-lg` em todo o componente
+- ✅ Indicador ativo: linha vertical esquerda `w-0.5` ao invés de `w-1`
 
 ---
 
 ## 2. O Que Está Quebrado (What's Broken)
-- Aparentemente nenhum bug impeditivo (100% stable).
+
+- ✅ **Agenda**: 100% funcional e testada. Sem erros TS nos arquivos da agenda.
+- ✅ **`clientes/page.tsx`**: Erros de TS corrigidos (adicionada tipagem `ContactItem` estrita).
+- ✅ **`KanbanCard.tsx`**: Erro TS corrigido no drag handler (`(e: any)` cast para bypass do framer-motion native events conflito).
 
 ---
 
-## 3. Fluxo Híbrido Definitivo (Visão End-to-End)
+## 3. Arquitetura da Agenda (Componentes)
 
-```
-[1] CLIENTE ENVIA MSG → Evolution API → Webhook (Next) → Salva "inbound", source:"human"
-   ↳ Realtime engatilha: aparece no frontend na hora
-   ↳ Next.js repassa pro n8n → n8n salva em n8n_chat_histories 
-   ↳ Trigger da n8n bloqueia duplicação graças ao DEDUP!
-
-[2] MARIA IA RESPONDE → n8n gera mensagem → salva "ai" em n8n_chat_histories
-   ↳ Trigger engatilha: intercepta "ai" → cria "outbound", source:"ai"
-   ↳ Realtime engatilha: aparece no frontend na hora com distintivo 🤖 "Maria IA"
-
-[3] ATENDENTE HUMANO (Painel) → digita e envia → Evolution API dispara pra pessoa
-   ↳ Bot sendo posicionado OFF / ON manualmente controla retransmissões futuras
-
-[4] HUMANO RESPONDE PELO CELULAR (Fora do painel) → Evolution captura (fromMe: true)
-   ↳ Webhook (Next) pega o fromMe = true → Salva "outbound", source:"human"
-   ↳ Realtime engatilha: aparece no frontend instantaneamente sem distinção de robô.
-```
+| Arquivo | Responsabilidade |
+|---|---|
+| `app/agenda/page.tsx` | Orquestrador: estado, fetch, handlers |
+| `components/agenda/AgendaSidebar.tsx` | Mini-cal + filtro de procedimentos |
+| `components/agenda/CalendarGrid.tsx` | Grade mensal com drag & drop |
+| `components/agenda/AppointmentCard.tsx` | Card arrastável de agendamento |
+| `components/agenda/AppointmentModal.tsx` | Modal criar/editar agendamento |
+| `components/agenda/AppointmentDetailModal.tsx` | Modal detalhes + ações rápidas |
+| `components/procedimentos/ProcedureGrid.tsx` | Lista reutilizável de procedimentos |
+| `lib/agenda/queries.ts` | Queries Supabase: appointments, procedures, businessHours |
+| `lib/agenda/actions.ts` | Server Actions: CRUD de agendamentos |
+| `hooks/useProcedures.ts` | Hook CRUD de procedimentos (página de config) |
 
 ---
 
-## 4. Próximos Passos e Delegação
+## 4. Funcionalidades Críticas da Agenda
 
-- [ ] **Integração de Mídia**: N8N + painel Dentixia para enviar/receber áudio.
-- [ ] **CRM Status Automatizado**: Evoluir para que a IA da Dentixia troque o card no kanban do CRM baseado na resposta do usuário.
-=======
-# Mission Control - DentixIA Pro
-
-## 🎯 Objetivo Atual
-Sprint de 10 melhorias de UI/UX executadas por Loki Mode em 2026-03-24.
-Todas as mudanças são frontend-only, sem alterações de backend ou banco de dados.
-
----
-
-## 🗺️ Roadmap e Alocação (Fases de Desenvolvimento)
-
-### Fase 1–6: Histórico Anterior (Concluídas)
-Escalonamento de Layout, Refinamento de Responsividade, Parceiros, Auth e QA.  
-**Status**: ✅ Todas concluídas.
-
----
-
-## 🆕 Sprint 2026-03-24 — 10 Melhorias de UI/UX
-
-### Arquivos Modificados
-| Arquivo | Tarefas |
-|---------|---------|
-| `src/app/page.tsx` | 1, 2, 3, 4, 5 |
-| `src/components/Navbar.tsx` | 6, 7 |
-| `src/components/Sidebar.tsx` | 4 |
-| `src/components/ClientLayout.tsx` | 7 |
-| `src/lib/DrawerContext.tsx` | 7 (novo arquivo) |
-| `src/app/simulacoes/page.tsx` | 8, 9 |
-| `src/app/simulacoes/resultados/page.tsx` | 10 |
-
-### Tarefas
-1. ✅ Removido badge "TECNOLOGIA IA DE PRÓXIMA GERAÇÃO" da home
-2. ✅ Removido "Nível Pro Max" do h1 da home
-3. ✅ Texto substituído por "Pronto para transformar sorrisos?"
-4. ✅ Botão "Ver Tutoriais" removido da home; adicionado ao Sidebar com ícone `BookOpen`
-5. ✅ Botão "Iniciar Simulação" ajustado: `h-14 text-lg` (era `h-20 text-xl`)
-6. ✅ Navbar mobile: nomes sempre visíveis (não mais opacity-0 no idle)
-7. ✅ Drawer lateral mobile (esquerda→dereita) implementado via `DrawerContext`; botão Menu hamburguer na Navbar (última posição)
-8. ✅ Perfil removido da Navbar (redundante com Drawer/Sidebar)
-9. ✅ Rodapé do Drawer: logos removidas; botão de Logout (Sair da Conta) movido para o rodapé fixo.
-10. ✅ Ícones da tela de simulação em azul (`text-blue-500`, `bg-blue-50`)
-
-### Estado Atual
-- **Sem regressões conhecidas**: mudanças restritas a UI, sem alteração de lógica ou banco
-- **DrawerContext**: novo contexto em `/lib/DrawerContext.tsx` gerencia abertura/fechamento do drawer mobile
-- **Compilação**: app rodando em dev mode na porta 3000
->>>>>>> 3a3293586587fd1cb08fa76d43759e5c7c59b74c
+- **Filtro por Procedimento**: sidebar exibe lista dinâmica do catálogo; filtro ativo/inativo afeta `CalendarGrid`
+- **Dias Bloqueados**: `businessHours` determina `is_open` por `day_of_week`; dias fechados = sem clique, sem drag, visual de listrado diagonal + ícone
+- **Drag & Drop**: arrastar card entre dias; conflito → abre modal pré-preenchido
+- **Multi-tenant**: `companyId` propagado para todas as queries (`RLS` Supabase)
