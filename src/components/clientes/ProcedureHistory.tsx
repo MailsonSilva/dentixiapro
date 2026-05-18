@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
+  CalendarDays,
+  MessageSquare,
   Plus,
   CheckCircle2,
   Clock,
@@ -15,7 +17,14 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getProcedureRecords, ProcedureRecord } from "@/lib/clientes/queries";
+import {
+  getPatientAppointments,
+  getPatientMessages,
+  getProcedureRecords,
+  PatientAppointmentRecord,
+  PatientMessageRecord,
+  ProcedureRecord,
+} from "@/lib/clientes/queries";
 import { addProcedureRecord, deleteProcedureRecord } from "@/lib/clientes/actions";
 import { getProcedureCatalog, ProcedureCatalogItem } from "@/lib/agenda/queries";
 import { ProcedureGrid } from "@/components/procedimentos/ProcedureGrid";
@@ -50,6 +59,8 @@ interface Props {
 export function ProcedureHistory({ contactId, companyId }: Props) {
   const { notify } = useNotification();
   const [records, setRecords] = useState<ProcedureRecord[]>([]);
+  const [appointments, setAppointments] = useState<PatientAppointmentRecord[]>([]);
+  const [messages, setMessages] = useState<PatientMessageRecord[]>([]);
   const [catalog, setCatalog] = useState<ProcedureCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -72,14 +83,20 @@ export function ProcedureHistory({ contactId, companyId }: Props) {
         getProcedureRecords(contactId),
         getProcedureCatalog(companyId),
       ]);
+      const [apps, msgs] = await Promise.all([
+        getPatientAppointments(contactId),
+        getPatientMessages(contactId),
+      ]);
       setRecords(recs);
       setCatalog(cat);
+      setAppointments(apps);
+      setMessages(msgs);
     } catch {
       notify("Erro", "Não foi possível carregar o histórico.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [contactId, notify]);
+  }, [companyId, contactId, notify]);
 
   useEffect(() => {
     fetchRecords();
@@ -135,6 +152,70 @@ export function ProcedureHistory({ contactId, companyId }: Props) {
 
   return (
     <div className="mt-6">
+      <div className="mb-5 space-y-4">
+        <div>
+          <h4 className="font-bold text-slate-700 text-xs capitalize tracking-wider flex items-center gap-2 mb-3">
+            <CalendarDays size={14} />
+            Historico de Agendamentos
+            <span className="ml-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {appointments.length}
+            </span>
+          </h4>
+          {isLoading ? null : appointments.length === 0 ? (
+            <p className="text-xs text-slate-400">Nenhum agendamento registrado.</p>
+          ) : (
+            <div className="space-y-2">
+              {appointments.slice(0, 5).map((app) => (
+                <div key={app.id} className="bg-white border border-slate-100 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate">{app.procedure_name}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {format(parseISO(app.start_time), "dd/MM/yyyy HH:mm")}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                      {app.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h4 className="font-bold text-slate-700 text-xs capitalize tracking-wider flex items-center gap-2 mb-3">
+            <MessageSquare size={14} />
+            Conversas Recentes
+            <span className="ml-1 bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {messages.length}
+            </span>
+          </h4>
+          {isLoading ? null : messages.length === 0 ? (
+            <p className="text-xs text-slate-400">Nenhuma mensagem registrada.</p>
+          ) : (
+            <div className="space-y-2">
+              {messages.slice(0, 6).map((msg) => (
+                <div key={msg.id} className="bg-white border border-slate-100 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs text-slate-600 line-clamp-2">
+                      <span className="font-bold">
+                        {msg.direction === "inbound" ? "Paciente: " : "Clinica: "}
+                      </span>
+                      {msg.message?.type === "audio" ? "Audio recebido" : msg.message?.text || "Mensagem sem conteudo"}
+                    </p>
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      {format(parseISO(msg.created_at), "dd/MM")}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Section Header */}
       <button
         onClick={() => setIsExpanded((v) => !v)}

@@ -79,24 +79,17 @@ export default function MensagensPage() {
 
     const channel = supabase
       .channel(`team_chat_${companyId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "n8n_chat_histories" }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, (payload) => {
         const row = payload.new;
         const currentActive = activeConvRef.current;
-        
-        // n8n salva como JSON no formato {"type": "human"|"ai", "data": {"content": "..."}}
-        const type = row.message?.type || "human";
-        const content = row.message?.data?.content || row.message?.content || "";
-        
+
         const newMsg: Message = {
           id: String(row.id),
-          conversation_id: row.conversation_id || row.session_id,
-          direction: type === "human" ? "inbound" : "outbound",
-          message: {
-            text: content,
-            type: "text",
-            source: type === "ai" ? "ai" : undefined
-          },
-          created_at: row.hora_data_mensagem || new Date().toISOString()
+          conversation_id: row.conversation_id,
+          direction: row.direction,
+          message: row.message || {},
+          created_at: row.created_at || new Date().toISOString(),
+          delivery_status: row.delivery_status,
         };
 
         if (currentActive && newMsg.conversation_id === currentActive.id) {
@@ -116,6 +109,15 @@ export default function MensagensPage() {
           }
           return prev;
         });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_messages" }, (payload) => {
+        const row = payload.new;
+        const currentActive = activeConvRef.current;
+        if (!currentActive || row.conversation_id !== currentActive.id) return;
+        setMessages(prev => prev.map(m => m.id === String(row.id)
+          ? { ...m, message: row.message || m.message, delivery_status: row.delivery_status }
+          : m
+        ));
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations" }, async () => {
         // Nova conversa foi gerada no backend automaticamente (ex: pelo trigger do N8N)
@@ -150,14 +152,6 @@ export default function MensagensPage() {
     const msgText = text.trim();
     setText("");
 
-    // Otimista
-    const tempMsg: Message = {
-      id: `temp-${Date.now()}`, conversation_id: activeConv.id,
-      direction: "outbound", message: { text: msgText, type: "text" },
-      created_at: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, tempMsg]);
-
     try {
       await sendMessageAction({
         text: msgText,
@@ -171,7 +165,6 @@ export default function MensagensPage() {
     } catch (err: unknown) {
       const error = err as Error;
       notify("Erro", error.message, "error");
-      setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setText(msgText);
     } finally {
       setSending(false);

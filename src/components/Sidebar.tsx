@@ -54,13 +54,14 @@ export function Sidebar({ type }: SidebarProps) {
   const { isCollapsed, toggle } = useSidebar();
   const { notify } = useNotification();
   
-  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  /*
     // Default open if pathname matches
     const isGestaoActive = pathname?.includes('/crm') || pathname?.includes('/mensagens') || pathname?.includes('/clientes') || pathname?.includes('/agenda');
     return {
       'Gestão de Clientes': isGestaoActive || true // We can keep it always initially true as well
     };
-  });
+  */
 
   const toggleMenu = (name: string) => {
     setOpenMenus(prev => ({ ...prev, [name]: !prev[name] }));

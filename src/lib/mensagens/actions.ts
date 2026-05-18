@@ -1,15 +1,12 @@
 import { supabase } from "../supabase";
 
-/**
- * Envia uma mensagem via Evolution API e persiste no Supabase.
- */
 export async function sendMessageAction({
   text,
   conversationId,
   companyId,
   contactId,
   channelIdentifier,
-  phone
+  phone,
 }: {
   text: string;
   conversationId: string;
@@ -18,7 +15,25 @@ export async function sendMessageAction({
   channelIdentifier: string;
   phone: string;
 }) {
-  // 1. Evolution API Call
+  const now = new Date().toISOString();
+
+  const { data: fastMsg, error: fastMsgError } = await supabase
+    .from("chat_messages")
+    .insert({
+      conversation_id: conversationId,
+      company_id: companyId,
+      contact_id: contactId,
+      direction: "outbound",
+      message: { text, type: "text", source: "agent" },
+      source: "app",
+      delivery_status: "sending",
+      created_at: now,
+    })
+    .select("id")
+    .single();
+
+  if (fastMsgError) throw fastMsgError;
+
   const res = await fetch("/api/evolution/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,45 +45,54 @@ export async function sendMessageAction({
   });
 
   const resData = await res.json();
-  if (!res.ok) throw new Error(resData?.error || "Falha do Evolution API");
 
-  // 2. Persistência no DB nativo do N8N
-  const { error: msgError } = await supabase.from("n8n_chat_histories").insert({
-    session_id: contactId, // Mantendo compatibilidade com N8N que usa o contactId como session
+  if (!res.ok) {
+    await supabase
+      .from("chat_messages")
+      .update({ delivery_status: "failed" })
+      .eq("id", fastMsg.id);
+    throw new Error(resData?.error || "Falha do Evolution API");
+  }
+
+  await supabase
+    .from("chat_messages")
+    .update({
+      delivery_status: "sent",
+      external_id: resData?.evolution?.key?.id || resData?.evolution?.id || null,
+    })
+    .eq("id", fastMsg.id);
+
+  const { error: memoryError } = await supabase.from("n8n_chat_histories").insert({
+    session_id: contactId,
     conversation_id: conversationId,
     company_id: companyId,
     contact_id: contactId,
-    message: { 
-      type: "ai", 
+    message: {
+      type: "ai",
       data: { content: text },
-      additional_kwargs: { created_at: new Date().toISOString() }
+      additional_kwargs: { created_at: now },
     },
-    // hora_data_mensagem pode ser populado via trigger ou defaultValue, 
-    // mas enviamos também por garantia:
-    hora_data_mensagem: new Date().toISOString()
+    hora_data_mensagem: now,
   });
 
-  if (msgError) throw msgError;
+  if (memoryError) throw memoryError;
 
-  // 3. Update conversation state (last_message, bot off)
-  await supabase.from("conversations").update({ 
-    last_message_at: new Date().toISOString(),
-    bot_enabled: false 
-  }).eq("id", conversationId);
+  await supabase
+    .from("conversations")
+    .update({
+      last_message_at: now,
+      bot_enabled: false,
+    })
+    .eq("id", conversationId);
 
   return { success: true };
 }
 
-/**
- * Alterna o estado do robô (Maria IA) para uma conversa.
- * Sincroniza Supabase (bot_enabled) + Redis do n8n (AgenteStatus).
- */
 export async function toggleBotState(
   conversationId: string,
   enabled: boolean,
-  remoteJid?: string  // Identificador da conversa no WhatsApp (IdConversa no Redis)
+  remoteJid?: string
 ) {
-  // 1. Supabase
   const { error } = await supabase
     .from("conversations")
     .update({ bot_enabled: enabled })
@@ -76,13 +100,12 @@ export async function toggleBotState(
 
   if (error) throw error;
 
-  // 2. Redis n8n — via API route interna
   if (remoteJid) {
     await fetch("/api/chat/toggle-bot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ remoteJid, enabled }),
-    }).catch(() => {/* silent — Redis é best-effort */});
+    }).catch(() => {});
   }
 
   return { success: true };

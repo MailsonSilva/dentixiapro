@@ -57,6 +57,27 @@ async function checkConflict(
   return !!data;
 }
 
+async function setContactStageByName(contactId: string, companyId: string, stageName: string) {
+  const { error } = await supabase.rpc("set_contact_stage_by_name", {
+    p_contact_id: contactId,
+    p_company_id: companyId,
+    p_stage_name: stageName,
+  });
+
+  if (error) {
+    const { data: stage } = await supabase
+      .from("crm_stages")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("name", stageName)
+      .maybeSingle();
+
+    if (stage?.id) {
+      await supabase.from("contacts").update({ stage_id: stage.id }).eq("id", contactId);
+    }
+  }
+}
+
 // ────────────────────────────────────────────────────────────
 // Criar agendamento
 // ────────────────────────────────────────────────────────────
@@ -106,6 +127,7 @@ export async function createAppointmentAction({
     .single();
 
   if (error) throw error;
+  await setContactStageByName(contactId, companyId, "AvaliaÃ§Ã£o Agendada");
   return data;
 }
 
@@ -156,6 +178,7 @@ export async function updateAppointmentAction(
     .eq("id", id);
 
   if (error) throw error;
+  await setContactStageByName(contactId, companyId, "AvaliaÃ§Ã£o Agendada");
   return { success: true };
 }
 
@@ -193,7 +216,7 @@ export async function updateAppointmentDateAction(
   // Validação de Expediente para mover
   try {
     await checkBusinessHours(companyId, newStart, newEnd);
-  } catch(err: any) {
+  } catch(err: unknown) {
     // Como é drag and drop, vamos voltar um conflito genérico ou estender DropResult.
     // Por simplicidade, passamos o erro adiante se o dev quiser catch ou block silence.
     throw err;
@@ -221,12 +244,28 @@ export async function updateAppointmentDateAction(
 // Atualizar status
 // ────────────────────────────────────────────────────────────
 export async function updateAppointmentStatusAction(id: string, status: string) {
+  const { data: current } = await supabase
+    .from("appointments")
+    .select("contact_id, company_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("appointments")
     .update({ status })
     .eq("id", id);
 
   if (error) throw error;
+
+  if (current?.contact_id && current?.company_id) {
+    if (status === "completed") {
+      await setContactStageByName(current.contact_id, current.company_id, "Em OrÃ§amento");
+    }
+    if (status === "cancelled") {
+      await setContactStageByName(current.contact_id, current.company_id, "Em Atendimento");
+    }
+  }
+
   return { success: true };
 }
 
@@ -234,11 +273,20 @@ export async function updateAppointmentStatusAction(id: string, status: string) 
 // Excluir agendamento (soft-cancel)
 // ────────────────────────────────────────────────────────────
 export async function deleteAppointmentAction(id: string) {
+  const { data: current } = await supabase
+    .from("appointments")
+    .select("contact_id, company_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("appointments")
     .update({ status: "cancelled" })
     .eq("id", id);
 
   if (error) throw error;
+  if (current?.contact_id && current?.company_id) {
+    await setContactStageByName(current.contact_id, current.company_id, "Em Atendimento");
+  }
   return { success: true };
 }

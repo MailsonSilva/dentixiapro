@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { useRef, useState, useCallback } from "react";
 
 export function BeforeAfterSlider({ before, after }: { before: string; after: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderPos, setSliderPos] = useState(50);
   const isDragging = useRef(false);
+  const safeSliderPos = Math.max(sliderPos, 0.1);
 
   const updateSlider = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -27,17 +27,17 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-col-resize select-none shadow-2xl"
+      className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
       onMouseDown={onMouseDown}
       onTouchMove={(e) => updateSlider(e.touches[0].clientX)}
     >
-      <img src={after} alt="Depois" className="absolute inset-0 w-full h-full object-cover" />
+      <img src={after} alt="Depois" className="absolute inset-0 w-full h-full object-contain" />
       <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPos}%` }}>
         <img 
           src={before} 
           alt="Antes" 
-          className="absolute inset-0 w-full h-full object-cover" 
-          style={{ width: `${10000 / sliderPos}%`, maxWidth: "none" }} 
+          className="absolute inset-0 w-full h-full object-contain" 
+          style={{ width: `${10000 / safeSliderPos}%`, maxWidth: "none" }} 
         />
       </div>
       <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl" style={{ left: `${sliderPos}%` }}>
