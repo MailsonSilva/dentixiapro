@@ -28,13 +28,19 @@ export interface Message {
   id: string;
   conversation_id: string;
   direction: "inbound" | "outbound";
-  message: { text?: string; type?: string; source?: string };
+  message: {
+    text?: string;
+    type?: string;
+    source?: string;
+    media_url?: string;
+    mimetype?: string;
+    seconds?: number;
+    file_name?: string;
+  };
   created_at: string;
+  delivery_status?: string;
 }
 
-/**
- * Busca todas as conversas de uma empresa (Multi-Tenant).
- */
 export async function getConversations(companyId: string): Promise<Conversation[]> {
   const { data, error } = await supabase
     .from("conversations")
@@ -46,36 +52,13 @@ export async function getConversations(companyId: string): Promise<Conversation[
   return (data || []) as Conversation[];
 }
 
-/**
- * Busca histórico de mensagens de uma conversa.
- * Lê diretamente da tabela nativa do N8N Memory e mapeia para a interface UI.
- */
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const { data, error } = await supabase
-    .from("n8n_chat_histories")
-    .select("*")
+    .from("chat_messages")
+    .select("id, conversation_id, direction, message, created_at, delivery_status")
     .eq("conversation_id", conversationId)
-    .order("hora_data_mensagem", { ascending: true }); // campo q existia
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
-  
-  return (data || []).map((row: any) => {
-    // n8n salva como JSON no formato {"type": "human"|"ai", "data": {"content": "..."}}
-    const type = row.message?.type || "human";
-    const content = row.message?.data?.content || row.message?.content || "";
-    
-    return {
-      id: String(row.id),
-      conversation_id: row.conversation_id || row.session_id,
-      // Se type for human, é inbound. Senão (ai) é outbound
-      direction: type === "human" ? "inbound" : "outbound",
-      message: {
-        text: content,
-        type: "text",
-        source: type === "ai" ? "ai" : undefined
-      },
-      // Usamos hora_data_mensagem ou um fallback local
-      created_at: row.hora_data_mensagem || new Date().toISOString()
-    } as Message;
-  });
+  return (data || []) as Message[];
 }

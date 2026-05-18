@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -11,23 +11,17 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  // Inicialização sem efeito para evitar hidratação inconsistente
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved !== null) {
-      setIsCollapsed(saved === "true");
-    }
-    setMounted(true);
-  }, []);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = window.localStorage.getItem("sidebar-collapsed");
+    return saved === null ? true : saved === "true";
+  });
 
   const toggle = () => {
     setIsCollapsed((prev) => {
       const newState = !prev;
       if (typeof window !== "undefined") {
-        localStorage.setItem("sidebar-collapsed", String(newState));
+        window.localStorage.setItem("sidebar-collapsed", String(newState));
       }
       return newState;
     });
@@ -35,9 +29,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed, toggle }}>
-      <div className={mounted ? "" : "opacity-0 transition-opacity"}>
-        {children}
-      </div>
+      {children}
     </SidebarContext.Provider>
   );
 }

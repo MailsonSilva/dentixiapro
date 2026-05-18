@@ -169,16 +169,16 @@ export default function ResultadosPage() {
 
                   <div className="space-y-2 text-center">
                     <span className="text-[11px] font-semibold capitalize tracking-tighter text-gray-400">Antes</span>
-                    <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
-                       <Image src={item.img_original_url} alt="Antes" width={400} height={300} className="w-full h-full object-cover" />
+                    <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-slate-100">
+                       <Image src={item.img_original_url} alt="Antes" width={400} height={300} className="w-full h-full object-contain" />
                     </div>
                   </div>
 
                   <div className="space-y-2 text-center">
                     <span className="text-[11px] font-semibold capitalize tracking-tighter text-primary">Depois</span>
-                    <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
+                    <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-inner bg-slate-100">
                        {item.img_simulada_url ? (
-                         <Image src={item.img_simulada_url} alt="Depois" width={400} height={300} className="w-full h-full object-cover" />
+                         <Image src={item.img_simulada_url} alt="Depois" width={400} height={300} className="w-full h-full object-contain" />
                        ) : (
                          <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
                             <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin"></div>
@@ -238,10 +238,22 @@ export default function ResultadosPage() {
                     </p>
                  </div>
 
-                 <div className="relative w-full aspect-video md:aspect-[16/10] rounded-[32px] overflow-hidden shadow-2xl border-4 border-white">
+                 <div className="relative w-full max-h-[58vh] aspect-[4/3] md:aspect-video rounded-[32px] overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
                    <ReactCompareSlider
-                      itemOne={<ReactCompareSliderImage src={selectedSim.img_original_url} alt="Antes" />}
-                      itemTwo={<ReactCompareSliderImage src={selectedSim.img_simulada_url} alt="Depois" />}
+                      itemOne={
+                        <ReactCompareSliderImage
+                          src={selectedSim.img_original_url}
+                          alt="Antes"
+                          style={{ objectFit: "contain", objectPosition: "center" }}
+                        />
+                      }
+                      itemTwo={
+                        <ReactCompareSliderImage
+                          src={selectedSim.img_simulada_url}
+                          alt="Depois"
+                          style={{ objectFit: "contain", objectPosition: "center" }}
+                        />
+                      }
                       style={{ width: '100%', height: '100%' }}
                    />
                  </div>
