@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { SidebarProvider } from "@/lib/SidebarContext";
 import { DrawerProvider, useDrawer } from "@/lib/DrawerContext";
 import { NotificationProvider } from "@/lib/NotificationContext";
@@ -137,6 +138,22 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<'comum' | 'parceiro'>('comum');
   const [userRole, setUserRole] = useState<'admin' | 'manager' | 'user' | 'super_admin' | null>(null);
   const { closeDrawer } = useDrawer();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && pathname.startsWith("/clientes")) {
+      router.replace("/");
+    }
+  }, [isMobile, pathname, router]);
 
   const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot");
   const isFullscreenPage = pathname === "/planos";
@@ -259,7 +276,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       <MobileDrawer userType={userType} userRole={userRole} />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {userType !== 'parceiro' && <Navbar type={userType} />}
+        {userType !== 'parceiro' ? <BottomNavigation /> : <Navbar type={userType} />}
         <main className={cn(
           "flex-1 overflow-y-auto",
           pathname === "/mensagens" ? "h-full" : "pb-24 md:pb-8 pt-4"

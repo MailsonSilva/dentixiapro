@@ -166,7 +166,7 @@ export function AppointmentModal({
                     value={date}
                     min={format(new Date(), "yyyy-MM-dd")}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full text-base px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
                 <div>
@@ -177,7 +177,7 @@ export function AppointmentModal({
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full text-base px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
               </div>
@@ -211,7 +211,7 @@ export function AppointmentModal({
                       value={searchContact}
                       onChange={(e) => { setSearchContact(e.target.value); setIsDropdownOpen(true); }}
                       onFocus={() => setIsDropdownOpen(true)}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full text-base pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     {isDropdownOpen && searchContact && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 shadow-xl rounded-lg max-h-40 overflow-y-auto">
