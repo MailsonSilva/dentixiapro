@@ -16,6 +16,12 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "DentixIA Pro - Inteligência Artificial para Odontologia",
   description: "Transformando sorrisos com o poder da inteligência artificial. Gestão e simulações de ponta para dentistas.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    title: "DentixiaPro",
+    statusBarStyle: "default",
+    capable: true,
+  },
 };
 
 import { ClientLayout } from "@/components/ClientLayout";

@@ -92,7 +92,7 @@ export function ChatWindow({
 
       {/* Messages */}
       <div
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-2 bg-[#f8fafc]"
+        className="flex-1 overflow-y-auto scrolling-touch px-4 py-6 space-y-2 bg-[#f8fafc]"
         style={{
           backgroundImage: "radial-gradient(at 0% 0%, rgba(15,80,166,0.03) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(17,160,217,0.03) 0, transparent 50%)"
         }}
@@ -140,7 +140,7 @@ export function ChatWindow({
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
             placeholder="Digite uma mensagem..."
             rows={1}
-            className="flex-1 bg-transparent border-0 ring-0 px-0 outline-none resize-none text-sm"
+            className="flex-1 bg-transparent border-0 ring-0 px-0 outline-none resize-none text-base"
           />
           <button className="p-1.5 text-gray-400 hover:text-primary">
             <Smile size={18} />

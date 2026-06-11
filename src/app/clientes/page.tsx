@@ -372,9 +372,11 @@ export default function ClientesPage() {
           {/* Drawer de detalhes */}
           {selectedContact && (
             <motion.div
-              initial={{ opacity: 0, x: 50, width: 0 }}
-              animate={{ opacity: 1, x: 0, width: "400px" }}
-              className="bg-white border text-sm border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden shrink-0"
+              initial={{ opacity: 0, x: "100%" }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed md:relative inset-y-0 md:inset-auto right-0 z-50 md:z-0 w-full max-w-md md:w-[400px] h-full md:h-auto bg-white border text-sm border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden shrink-0 shadow-2xl md:shadow-sm"
             >
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="font-bold text-slate-800">Detalhes do Paciente</h3>

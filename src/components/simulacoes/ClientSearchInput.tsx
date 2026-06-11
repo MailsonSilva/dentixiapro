@@ -85,7 +85,7 @@ export function ClientSearchInput({ contacts, onSelect, initialName = "" }: Clie
           onChange={handleChange}
           onFocus={() => query.trim().length > 0 && setOpen(true)}
           placeholder="Buscar ou digitar nome do paciente..."
-          className="flex-1 bg-transparent outline-none text-sm font-medium text-gray-700 placeholder-gray-400 font-['Poppins']"
+          className="flex-1 bg-transparent outline-none text-base font-medium text-gray-700 placeholder-gray-400 font-['Poppins']"
         />
 
         {/* Badge de selecionado ou botão limpar */}
