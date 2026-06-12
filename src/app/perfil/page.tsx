@@ -188,7 +188,7 @@ function Modal({
               <h2 className="text-lg font-semibold text-gray-800 tracking-wide capitalize">{title}</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 <X size={20} className="text-gray-400" />
               </button>
@@ -419,12 +419,12 @@ export default function PerfilPage() {
               <Image
                 src={logoUrl ?? userData.logo_url}
                 alt="Logo"
-                width={80}
-                height={80}
-                className="w-20 h-20 rounded-full object-cover shadow-xl"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full object-cover shadow-xl"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-xl">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-4xl font-semibold text-white shadow-xl">
                 {userData?.nome_completo?.charAt(0)?.toUpperCase() || "D"}
               </div>
             )}
@@ -481,11 +481,13 @@ export default function PerfilPage() {
           <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Integrações & Geral</p>
           <div className="divide-y divide-gray-50">
             {isComum && (
-              <SettingsRow
-                icon={Link2}
-                label="WhatsApp & Integrações"
-                onClick={() => router.push("/configuracoes/integracoes")}
-              />
+              <div className="hidden md:block">
+                <SettingsRow
+                  icon={Link2}
+                  label="WhatsApp & Integrações"
+                  onClick={() => router.push("/configuracoes/integracoes")}
+                />
+              </div>
             )}
             {isComum && (
               <SettingsRow
@@ -538,12 +540,12 @@ export default function PerfilPage() {
                 <Image
                   src={logoUrl}
                   alt="Logo"
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 rounded-full object-cover shadow-lg"
+                  width={96}
+                  height={96}
+                  className="w-24 h-24 rounded-full object-cover shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-3xl font-semibold text-white shadow-lg">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-4xl font-semibold text-white shadow-lg">
                   {editNome?.charAt(0)?.toUpperCase() || "D"}
                 </div>
               )}
@@ -551,9 +553,9 @@ export default function PerfilPage() {
               <button
                 onClick={() => logoInputRef.current?.click()}
                 disabled={logoUploading}
-                className="absolute bottom-0 right-0 w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+                className="absolute bottom-0 right-0 w-11 h-11 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
               >
-                {logoUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                {logoUploading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
               </button>
               <input
                 ref={logoInputRef}
