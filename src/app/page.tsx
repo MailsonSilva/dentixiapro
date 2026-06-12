@@ -81,7 +81,7 @@ export default function Home() {
           >
             <Link href="/simulacoes">
               <Button size="lg" className="px-10 h-14 text-lg font-semibold bg-primary hover:bg-primary-glow group relative overflow-hidden ring-4 ring-primary-glow/10" leftIcon={<Camera className="transition-transform group-hover:rotate-12" size={22} />}>
-                Iniciar Simulação
+                Nova Simulação
               </Button>
             </Link>
           </motion.div>

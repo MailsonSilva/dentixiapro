@@ -151,7 +151,7 @@ export default function ResultadosPage() {
                    </div>
                    <button 
                      onClick={(e) => handleDelete(e, item.id)}
-                     className="p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
+                     className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
                    >
                      <Trash2 size={20} />
                    </button>
@@ -266,7 +266,7 @@ export default function ResultadosPage() {
                     <div className="flex-1 h-12 md:h-14 bg-primary rounded-2xl flex items-center justify-center text-white font-semibold capitalize text-sm shadow-xl shadow-primary/20">
                       Depois
                     </div>
-                 </div>
+                  </div>
               </div>
             </motion.div>
           </div>

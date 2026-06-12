@@ -75,7 +75,7 @@ function MobileDrawer({
           <div className="p-6 pt-12 border-b border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <Image src="/logo.png" alt="DentixIA" width={130} height={32} className="h-8 w-auto object-contain" priority />
-              <button onClick={closeDrawer} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
+              <button onClick={closeDrawer} className="p-3 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
                 <X size={22} />
               </button>
             </div>
@@ -278,7 +278,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {userType !== 'parceiro' ? <BottomNavigation /> : <Navbar type={userType} />}
         <main className={cn(
-          "flex-1 overflow-y-auto",
+          "flex-1 overflow-y-auto overflow-x-hidden",
           pathname === "/mensagens" ? "h-full" : "pb-24 md:pb-8 pt-4"
         )}>
           {children}
