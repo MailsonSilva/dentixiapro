@@ -3,10 +3,9 @@ import { execSync } from 'child_process';
 import path from 'path';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { action, message } = req.query;
+  const { action, message, files = '.' } = req.query;
   const commitMessage = (message as string) || 'chore: updates from git-expert';
 
-  // Apenas desenvolvimento
   if (process.env.NODE_ENV !== 'development') {
     return res.status(403).json({ error: 'Apenas em modo de desenvolvimento' });
   }
@@ -20,7 +19,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     } else if (action === 'diff') {
       command = 'git diff';
     } else if (action === 'add') {
-      command = 'git add -A';
+      command = `git add ${files}`;
     } else if (action === 'commit') {
       const safeMessage = commitMessage.replace(/"/g, '\\"');
       command = `git commit -m "${safeMessage}"`;
@@ -35,6 +34,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   } catch (error: any) {
     return res.status(200).json({ 
       success: false, 
+      command: error.cmd,
+      cwd: appPath,
       error: error.message, 
       stdout: error.stdout?.toString(), 
       stderr: error.stderr?.toString() 
