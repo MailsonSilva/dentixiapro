@@ -142,8 +142,9 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const { closeDrawer } = useDrawer();
   const [isMobile, setIsMobile] = useState(false);
 
-  const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot") || pathname.includes("/redefinir-senha");
-  const isFullscreenPage = pathname === "/planos";
+  const path = pathname ?? "";
+  const isAuthPage = path.includes("/login") || path.includes("/register") || path.includes("/forgot") || path.includes("/redefinir-senha");
+  const isFullscreenPage = path === "/planos";
 
   useEffect(() => {
     const handleResize = () => {
