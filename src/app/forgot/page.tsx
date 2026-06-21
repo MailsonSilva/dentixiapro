@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { resetPasswordForEmailAction } from "@/lib/auth/actions";
 import { Mail, ArrowRight, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,12 +26,11 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const origin = window.location.origin;
+      const { error } = await resetPasswordForEmailAction(email, origin);
 
       if (error) {
-        notify("Erro na recuperação", error.message, "error");
+        notify("Erro na recuperação", error, "error");
       } else {
         notify("E-mail enviado!", "Verifique sua caixa de entrada para redefinir a senha.", "success");
         setSent(true);

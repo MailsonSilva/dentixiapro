@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { getPlansAction, getPlanosUserDataAction, createCheckoutSessionAction } from "@/lib/planos/actions";
 import { useNotification } from "@/lib/NotificationContext";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Sparkles, ShieldCheck, Star } from "lucide-react";
@@ -17,9 +17,6 @@ interface Plan {
   product_name: string;
   product_description: string | null;
 }
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const PERKS = [
   "7 dias gratuitos para testar",
@@ -44,51 +41,18 @@ export default function PlanosPage() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-
-      // Busca dados do usuario
-      const { data: u } = await supabase
-        .from("usuarios")
-        .select("nome_completo,email,cpf,telefone,address,city,postal_code,state,id,referral_code")
-        .eq("id", user.id).single();
-
-      // Busca o company_id mais recente (usa order+limit para evitar erro com múltiplos registros)
-      const { data: uc } = await supabase
-        .from("user_company")
-        .select("company_id")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (u) {
-        setUserData({
-          ...(u as any),
-          company_id: uc?.company_id ?? user.id, // fallback para user.id se nao tiver company
-        });
+      const userRes = await getPlanosUserDataAction();
+      if (userRes.error || !userRes.data) {
+        router.push("/login");
+        return;
       }
+      
+      setUserData(userRes.data as any);
 
-      const { data: priceRows, error } = await supabase
-        .from("prices")
-        .select("id, unit_amount, interval, currency, active, product_id, products(name, description)")
-        .eq("active", true)
-        .order("unit_amount", { ascending: true });
-
-      if (error) console.error("Erro ao buscar planos:", error);
-
-      if (priceRows && priceRows.length > 0) {
-        const mapped: Plan[] = (priceRows as any[]).map((p) => ({
-          id: p.id,
-          unit_amount: p.unit_amount,
-          interval: p.interval,
-          currency: p.currency,
-          active: p.active,
-          product_name: p.products?.name ?? (p.interval === "year" ? "Plano Anual" : "Plano Mensal"),
-          product_description: p.products?.description ?? null,
-        }));
-        setPlans(mapped);
-        setSelectedId(mapped[0].id);
+      const plansRes = await getPlansAction();
+      if (plansRes.plans && plansRes.plans.length > 0) {
+        setPlans(plansRes.plans);
+        setSelectedId(plansRes.plans[0].id);
       }
       setLoadingPlans(false);
     }
@@ -106,37 +70,31 @@ export default function PlanosPage() {
     setCheckoutLoading(true);
     try {
       const return_url = `${window.location.origin}/perfil`;
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${ANON_KEY}`,
-          apikey: ANON_KEY,
+      const res = await createCheckoutSessionAction({
+        price_id: planId,
+        email: userData.email,
+        company_id: userData.company_id,
+        return_url,
+        name: userData.nome_completo,
+        cpf: userData.cpf,
+        address: {
+          line1: userData.address || "",
+          city: userData.city || "",
+          postal_code: userData.postal_code || "",
+          state: userData.state || "",
         },
-        body: JSON.stringify({
-          price_id: planId,
-          email: userData.email,
-          company_id: userData.company_id, // company_id REAL de user_company
-          return_url,
-          name: userData.nome_completo,
-          cpf: userData.cpf,
-          address: {
-            line1: userData.address || "",
-            city: userData.city || "",
-            postal_code: userData.postal_code || "",
-            state: userData.state || "",
-          },
-          phone: userData.telefone,
-          referral_code: userData.referral_code,
-        }),
+        phone: userData.telefone,
+        referral_code: userData.referral_code,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Erro ao criar sessao de pagamento.");
+
+      if (res.error) {
+        throw new Error(res.error);
       }
-      const json = await res.json();
-      if (json?.url) { window.location.href = json.url; }
-      else { throw new Error("URL de checkout nao retornada."); }
+      if (res.url) {
+        window.location.href = res.url;
+      } else {
+        throw new Error("URL de checkout não retornada.");
+      }
     } catch (err: unknown) {
       notify("Erro", err instanceof Error ? err.message : "Tente novamente.", "error");
     } finally {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase, signInWithGoogle } from "@/lib/supabase";
+import { signInWithPasswordAction, signInWithGoogleAction } from "@/lib/auth/actions";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -47,13 +47,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await signInWithPasswordAction(email, password);
 
       if (error) {
-        notify("Erro ao entrar", translateAuthError(error.message), "error");
+        notify("Erro ao entrar", translateAuthError(error), "error");
       } else if (data?.user) {
         notify("Seja bem-vindo!", "Login realizado com sucesso.", "success");
         router.push('/');
@@ -68,9 +65,12 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     try {
-      const { error } = await signInWithGoogle();
+      const origin = window.location.origin;
+      const { data, error } = await signInWithGoogleAction(origin);
       if (error) {
-        notify("Erro ao entrar", "Falha ao iniciar autenticação com o Google: " + translateAuthError(error.message), "error");
+        notify("Erro ao entrar", "Falha ao iniciar autenticação com o Google: " + translateAuthError(error), "error");
+      } else if (data?.url) {
+        window.location.href = data.url;
       }
     } catch {
       notify("Erro ao entrar", "Não foi possível conectar com o Google.", "error");

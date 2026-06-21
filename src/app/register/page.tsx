@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { signUpAction } from "@/lib/auth/actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Mail, Lock, ArrowRight, Tag, Phone, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -71,35 +71,24 @@ function RegisterContent() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await signUpAction({
       email,
       password,
-      options: {
-        data: {
-          nome_completo: nome.trim(),
-          full_name: nome.trim(), // compatibilidade OAuth
-          whatsapp: whatsapp,
-          telefone: whatsapp,
-          user_referredbycode: refCode || null,
-          tipo: "comum",
-          commission_rate: 10
-        }
+      optionsData: {
+        nome_completo: nome.trim(),
+        full_name: nome.trim(), // compatibilidade OAuth
+        whatsapp: whatsapp,
+        telefone: whatsapp,
+        user_referredbycode: refCode || null,
+        tipo: "comum",
+        commission_rate: 10
       }
     });
 
     if (error) {
-      notify("Erro no cadastro", error.message, "error");
+      notify("Erro no cadastro", error, "error");
       setLoading(false);
       return;
-    }
-
-    // Salva o consentimento na tabela consentimentos
-    if (data?.user) {
-      await supabase.from("consentimentos").insert({
-        user_id: data.user.id,
-        aceitou_em: new Date().toISOString(),
-        versao_politica: "1.0",
-      });
     }
 
     notify("Conta criada!", "Verifique seu e-mail para confirmar o cadastro.", "success");

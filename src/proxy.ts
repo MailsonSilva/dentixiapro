@@ -75,7 +75,7 @@ export default async function proxy(request: NextRequest) {
   const isAuthPage = pathname.startsWith('/login') || 
                      pathname.startsWith('/register') ||
                      pathname.startsWith('/forgot') ||
-                     pathname.startsWith('/reset-password');
+                     pathname.startsWith('/redefinir-senha');
 
   // Páginas públicas — acessíveis sem autenticação
   const isPublicPage = pathname === '/planos';
@@ -151,6 +151,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - logo.png
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|logo.png|forgot|reset-password).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.png|forgot|redefinir-senha).*)',
   ],
 };

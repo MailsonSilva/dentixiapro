@@ -8,7 +8,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { SidebarProvider } from "../lib/SidebarContext";
 import { DrawerProvider, useDrawer } from "../lib/DrawerContext";
 import { NotificationProvider } from "../lib/NotificationContext";
-import { supabase } from "@/lib/supabase";
+import { getClientLayoutDataAction, signOutAction } from "@/lib/auth/actions";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -115,7 +115,7 @@ function MobileDrawer({
           <div className="p-6 border-t border-gray-100">
             <button
               onClick={async () => {
-                await supabase.auth.signOut();
+                await signOutAction();
                 router.push("/login");
               }}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
@@ -142,6 +142,9 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const { closeDrawer } = useDrawer();
   const [isMobile, setIsMobile] = useState(false);
 
+  const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot") || pathname.includes("/redefinir-senha");
+  const isFullscreenPage = pathname === "/planos";
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -149,124 +152,52 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     handleResize();
     window.addEventListener("resize", handleResize);
 
-    // onAuthStateChange já dispara com a sessão atual (INITIAL_SESSION)
-    // quando createBrowserClient persiste em cookies
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user ?? null);
-      setAuthInitialized(true);
-    });
-
     return () => {
       window.removeEventListener("resize", handleResize);
-      subscription.unsubscribe();
     };
   }, []);
 
-  useEffect(() => {
-    if (isMobile && pathname.startsWith("/clientes")) {
-      router.replace("/");
-    }
-  }, [isMobile, pathname, router]);
 
-  const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot") || pathname.includes("/redefinir-senha");
-  const isFullscreenPage = pathname === "/planos";
 
   useEffect(() => {
-    if (!authInitialized) return;
-
     async function loadUserData() {
       // Auth/fullscreen pages: sem layout, sem loading
       if (isAuthPage || isFullscreenPage) {
         setLoading(false);
-        return;
-      }
-
-      const user = currentUser;
-      // Sem usuário: middleware já redirecionou, só para o loading
-      if (!user) {
-        setLoading(false);
+        setAuthInitialized(true);
         return;
       }
 
       try {
-        // ── Passo 1: tipo do usuário (parceiro vs comum) ──
-        const { data: usuarioData, error: usuarioErr } = await supabase
-          .from('usuarios')
-          .select('tipo')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (usuarioErr) {
-          console.error('Erro ao buscar tipo do usuário:', usuarioErr.message);
+        const res = await getClientLayoutDataAction();
+        if (res.error || !res.data) {
+          setCurrentUser(null);
+          setLoading(false);
+          setAuthInitialized(true);
+          return;
         }
 
-        const metaType = user.user_metadata?.tipo;
-        let finalTipo = usuarioData?.tipo || 'comum';
+        const { user, userType: type, userRole: role, trialExpired: expired } = res.data;
+        setCurrentUser(user as any);
+        setUserType(type);
+        setUserRole(role as any);
+        setTrialExpired(expired);
 
-        if (metaType === 'parceiro' && finalTipo !== 'parceiro') {
-          await supabase.from('usuarios').update({ tipo: 'parceiro' }).eq('id', user.id);
-          finalTipo = 'parceiro';
-        }
-
-        // ── Passo 2: Parceiro ─────────────────────────────
-        if (finalTipo === 'parceiro') {
-          setUserType('parceiro');
-          setUserRole(null);
-          setTrialExpired(false);
+        if (type === 'parceiro') {
           const parceiroRoutes = ['/parceiros', '/perfil', '/redefinir-senha', '/indique-e-ganhe'];
           const isParceiroRoute = parceiroRoutes.some(r => pathname.startsWith(r));
           if (!isParceiroRoute) router.push('/parceiros');
-          setLoading(false);
-          return;
         }
-
-        // ── Passo 3: Comum → role na empresa ──────────────
-        setUserType('comum');
-
-        const { data: ucData, error: ucErr } = await supabase
-          .from('user_company')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (ucErr) {
-          console.error('Erro ao buscar role:', ucErr.message);
-        }
-
-        const role = ucData?.role as 'admin' | 'manager' | 'user' | null;
-        setUserRole(role);
-
-        if (role === 'admin') {
-          setTrialExpired(false);
-          setLoading(false);
-          return;
-        }
-
-        const { data: statusData, error: statusErr } = await supabase
-          .from('verificar_status_usuario')
-          .select('status_code, descricao, dias_restantes')
-          .maybeSingle();
-
-        if (statusErr) {
-          console.error('Erro ao verificar status:', statusErr.message);
-          setLoading(false);
-          return;
-        }
-
-        setTrialExpired(statusData ? statusData.status_code !== 3 : false);
       } catch (err) {
-        console.error('Erro ao carregar dados do usuário:', err);
+        console.error('Erro ao carregar dados do layout:', err);
       } finally {
         setLoading(false);
+        setAuthInitialized(true);
       }
     }
 
     loadUserData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, isAuthPage, isFullscreenPage, authInitialized, currentUser]);
+  }, [pathname, isAuthPage, isFullscreenPage, isMobile, router]);
 
   // Fechar drawer ao mudar de rota
   useEffect(() => {
@@ -334,7 +265,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
                 
                 <button
                   onClick={async () => {
-                    await supabase.auth.signOut();
+                    await signOutAction();
                     router.push("/login");
                   }}
                   className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm font-semibold transition-colors"

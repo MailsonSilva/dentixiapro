@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Users, Copy, Check, Loader2, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { getReferralDataAction } from "@/lib/indique-e-ganhe/actions";
 
 interface HeaderData {
   nome_completo: string;
@@ -69,50 +69,30 @@ export default function IndiqueEGanhePage() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const res = await getReferralDataAction();
+      if (res.error || !res.data) {
+        setLoading(false);
+        return;
+      }
 
-      const userYear = new Date(user.created_at).getFullYear();
+      const { userCreatedAt, userData, header, resumo, lista } = res.data;
+
+      const userYear = new Date(userCreatedAt).getFullYear();
       setRegistrationYear(userYear);
       // Initialize filters to show everything from current year
       setSelectedYear(currentYear);
       setSelectedMonth("todos");
 
-      // 1. Buscamos dados direto da tabela usuarios para garantir nome e código
-      const { data: userData } = await supabase
-        .from('usuarios')
-        .select('nome_completo, referral_code, commission_rate')
-        .eq('id', user.id)
-        .single();
-
-      // 2. Opcionalmente pegamos dados extras da view_header se houver
-      const { data: header } = await supabase
-        .from('view_parceiro_header')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      const { data: resumo } = await supabase
-        .from('view_parceiro_resumo_cards')
-        .select('*')
-        .eq('id_parceiro_user', user.id);
-
-      // 4. Trazemos toda a lista, e depois filtramos dinamicamente na UI para simplificar views db
-      const { data: lista } = await supabase
-        .from('view_parceiro_lista_indicados')
-        .select('*')
-        .eq('id_parceiro_user', user.id);
-
       const mergedHeader = {
-        nome_completo: userData?.nome_completo || user.user_metadata?.nome_completo || header?.nome_completo || "",
+        nome_completo: userData?.nome_completo || header?.nome_completo || "",
         referral_code: userData?.referral_code || header?.referral_code || "",
         commission_rate: userData?.commission_rate ?? header?.commission_rate ?? 10,
         link_completo: header?.link_completo
       };
 
       setHeaderData(mergedHeader);
-      setResumoCardsRaw(resumo || []);
-      setIndicados(lista || []);
+      setResumoCardsRaw(resumo);
+      setIndicados(lista);
       setLoading(false);
     }
     loadData();

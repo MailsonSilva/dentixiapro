@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, KeyRound, Loader2, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { updateUserPasswordAction } from "@/lib/auth/actions";
 import { useNotification } from "@/lib/NotificationContext";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -34,8 +34,8 @@ export default function RedefinirSenhaPage() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      const { error } = await updateUserPasswordAction(newPassword);
+      if (error) throw new Error(error);
 
       setSuccess(true);
       notify("Senha alterada!", "Sua senha foi atualizada com sucesso.", "success");

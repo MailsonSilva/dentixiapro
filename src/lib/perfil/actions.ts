@@ -118,3 +118,42 @@ export async function updateUserLogoAction(logoUrl: string) {
   return { error: null };
 }
 
+export async function uploadUserLogoAction(base64Data: string, mimeType: string, fileExt: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { error: "Não autenticado", url: null };
+  }
+
+  const path = `${user.id}.${fileExt}`;
+  const buffer = Buffer.from(base64Data, "base64");
+
+  const { error: uploadError } = await supabase.storage
+    .from("logoEmpresa")
+    .upload(path, buffer, {
+      upsert: true,
+      contentType: mimeType,
+      cacheControl: '0'
+    });
+
+  if (uploadError) {
+    return { error: uploadError.message, url: null };
+  }
+
+  const { data: publicUrlResult } = supabase.storage.from("logoEmpresa").getPublicUrl(path);
+
+  // Também atualiza o profile
+  const { error: dbError } = await supabase
+    .from("usuarios")
+    .update({ logo_url: publicUrlResult.publicUrl })
+    .eq("id", user.id);
+
+  if (dbError) {
+    return { error: dbError.message, url: null };
+  }
+
+  return { error: null, url: publicUrlResult.publicUrl };
+}
+
+

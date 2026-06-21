@@ -30,12 +30,13 @@ import {
   Link2
 } from "lucide-react";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase";
+import { getCurrentUserAction, signOutAction } from "@/lib/auth/actions";
 import {
   getProfileCompanyAction,
   getUserProfileAction,
   updateUserProfileAction,
   updateUserLogoAction,
+  uploadUserLogoAction,
 } from "@/lib/perfil/actions";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/lib/NotificationContext";
@@ -254,8 +255,8 @@ export default function PerfilPage() {
 
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+      const { user, error: userError } = await getCurrentUserAction();
+      if (userError || !user) { router.push("/login"); return; }
 
       // Busca dados de perfil no servidor e companyId em paralelo
       const [profileResult, companyIdVal] = await Promise.all([
@@ -292,7 +293,7 @@ export default function PerfilPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOutAction();
     notify("Sessão encerrada", "Você saiu da sua conta.", "info");
     router.push("/login");
   };
@@ -342,47 +343,45 @@ export default function PerfilPage() {
 
     setLogoUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = async () => {
+        try {
+          const base64 = (reader.result as string).split(",")[1];
+          const ext = file.name.split(".").pop() || "";
+          
+          const uploadRes = await uploadUserLogoAction(base64, file.type, ext);
+          if (uploadRes.error || !uploadRes.url) {
+            throw new Error(uploadRes.error || "Erro no upload da imagem.");
+          }
 
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}.${ext}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("logoEmpresa")
-        .upload(path, file, { 
-          upsert: true, 
-          contentType: file.type,
-          cacheControl: '0'
-        });
-      
-      if (upErr) throw upErr;
-
-      const { data: { publicUrl } } = supabase.storage.from("logoEmpresa").getPublicUrl(path);
-
-      // Chamada segura Server-Side para atualização no BD
-      const res = await updateUserLogoAction(publicUrl);
-      if (res.error) throw new Error(res.error);
-
-      setLogoUrl(publicUrl);
-      setImageError(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setUserData((prev: any) => ({ ...prev, logo_url: publicUrl }));
-      notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+          setLogoUrl(uploadRes.url);
+          setImageError(false);
+          setUserData((prev: any) => ({ ...prev, logo_url: uploadRes.url }));
+          notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
+        } catch (err: any) {
+          console.error("Erro no processamento da imagem:", err);
+          notify("Erro", err.message || "Não foi possível processar a imagem.", "error");
+        } finally {
+          setLogoUploading(false);
+          if (logoInputRef.current) logoInputRef.current.value = "";
+        }
+      };
+      reader.onerror = () => {
+        throw new Error("Erro ao ler arquivo local.");
+      };
+    } catch (err: any) {
       console.error("Erro ao subir logo:", err);
       notify("Erro", err.message || "Não foi possível enviar a imagem.", "error");
-    } finally {
       setLogoUploading(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
     }
   };
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
+      const { user, error: userError } = await getCurrentUserAction();
+      if (userError || !user) throw new Error("Não autenticado");
 
       // Chamada segura Server-Side para atualização cadastral no BD
       const res = await updateUserProfileAction({

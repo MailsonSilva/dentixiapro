@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # dependencies
 /node_modules
 /.pnp
@@ -9,11 +8,13 @@
 testsprite_tests/
 testsprite_tests
 .testsprite
+.testsprite/
 
 # next.js
 /.next/
 /out/
 /build
+dist/
 
 # misc
 .DS_Store
@@ -33,13 +34,10 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local
-
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo
@@ -50,23 +48,3 @@ next-env.d.ts
 .venv
 __pycache__/
 *.pyc
-=======
-node_modules/
-.next/
-build/
-dist/
-.venv/
-__pycache__/
-*.pyc
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.testsprite/
-testsprite_tests/
-.agent/
-.gemini/
-*.log
-.DS_Store
->>>>>>> 3a3293586587fd1cb08fa76d43759e5c7c59b74c

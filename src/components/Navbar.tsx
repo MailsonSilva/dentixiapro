@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Sparkles, MessageSquare, LayoutDashboard, Gift, Menu } from "lucide-react";
+import { Home, Sparkles, LayoutDashboard, Gift, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useDrawer } from "@/lib/DrawerContext";
@@ -23,13 +23,12 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
   ] : [
     { name: 'Início', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
-    { name: 'CRM', href: '/crm', icon: MessageSquare },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-blue-50 px-2 pb-[env(safe-area-inset-bottom)] md:hidden h-16">
       <div className="max-w-screen-xl mx-auto flex justify-around items-center h-full">
-        {/* Navigation Items (Início, Simulações, CRM) */}
+        {/* Navigation Items */}
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { getUserProfileAction } from "@/lib/perfil/actions";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -13,16 +13,11 @@ export default function Home() {
 
   useEffect(() => {
     async function loadUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const res = await getUserProfileAction();
+      if (res.error || !res.data) return;
+      const profile = res.data.profile;
 
-      const { data: userData } = await supabase
-        .from('usuarios')
-        .select('nome_completo')
-        .eq('id', user.id)
-        .single();
-
-      const rawName = userData?.nome_completo || user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
+      const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
       const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
       const firstName = cleanName.split(' ')[0];
       const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();

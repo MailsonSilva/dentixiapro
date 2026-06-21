@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { signUpAction } from "@/lib/auth/actions";
 import { useRouter } from "next/navigation";
 import { User, Mail, Lock, ArrowRight, Phone, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -58,21 +58,19 @@ function RegisterParceiroContent() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { error } = await signUpAction({
       email,
       password,
-      options: {
-        data: {
-          nome_completo: nome,
-          whatsapp: whatsapp,
-          user_referredbycode: null,
-          tipo: "parceiro"
-        }
+      optionsData: {
+        nome_completo: nome,
+        whatsapp: whatsapp,
+        user_referredbycode: null,
+        tipo: "parceiro"
       }
     });
 
     if (error) {
-      notify("Erro no cadastro", error.message, "error");
+      notify("Erro no cadastro", error, "error");
     } else {
       notify("Parceiro cadastrado!", "Verifique seu e-mail para ativar sua conta de parceiro.", "success");
       router.push("/login");

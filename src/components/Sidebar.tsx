@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { signOutAction } from "@/lib/auth/actions";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -41,7 +41,7 @@ export function Sidebar({ type }: SidebarProps) {
   const { notify } = useNotification();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOutAction();
     notify("Sessão encerrada", "Você saiu da sua conta.", "info");
     router.push("/login");
   };
