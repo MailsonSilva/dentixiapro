@@ -13,7 +13,7 @@ function getSupabaseAdmin() {
     }
     supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey);
   }
-  return supabaseAdminInstance;
+  return supabaseAdminInstance as any;
 }
 
 export interface Simulacao {

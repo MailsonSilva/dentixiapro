@@ -15,12 +15,12 @@ function getSupabaseAdmin() {
     }
     supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey);
   }
-  return supabaseAdminInstance;
+  return supabaseAdminInstance as any;
 }
 
 export async function getProfileCompanyAction(userId: string) {
   // Queries public.company using the user's ID as fallback or checking if it exists
-  const admin = getSupabaseAdmin() as any;
+  const admin = getSupabaseAdmin();
   const { data: companyData } = await admin
     .from("company")
     .select("id")

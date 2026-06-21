@@ -15,7 +15,7 @@ function getSupabaseAdmin() {
     }
     supabaseAdminInstance = createClient(url, key);
   }
-  return supabaseAdminInstance;
+  return supabaseAdminInstance as any;
 }
 
 function base64ToBuffer(base64: string): Buffer {
