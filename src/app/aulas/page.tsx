@@ -1,6 +1,5 @@
 "use client";
 
-import { Navbar } from "@/components/Navbar";
 import { motion } from "framer-motion";
 import { Play, BookOpen, Clock, ChevronRight, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,8 +24,7 @@ const tracks = [
 
 export default function AulasPage() {
   return (
-    <div className="flex flex-col min-h-screen pb-24 md:pb-0 md:pt-20 bg-secondary-bg">
-      <Navbar />
+    <div className="flex flex-col min-h-full flex-1 pb-24 md:pb-8 bg-secondary-bg">
 
       <main className="max-w-6xl mx-auto w-full px-6 py-8">
         <header className="mb-12">

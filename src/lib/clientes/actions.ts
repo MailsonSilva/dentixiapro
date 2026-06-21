@@ -1,42 +1,80 @@
-import { supabase } from "../supabase";
+import { supabase } from "@/lib/supabase";
 
-interface AddProcedureRecordInput {
-  companyId: string;
-  contactId: string;
-  procedureName: string;
-  catalogId?: string | null;
-  performedAt: string; // "yyyy-MM-dd"
-  status: "realizado" | "cancelado" | "pendente";
-  notes?: string;
-}
-
-/**
- * Adiciona um registro de procedimento ao histórico do paciente.
- */
-export async function addProcedureRecord(input: AddProcedureRecordInput) {
-  const { data, error } = await supabase
-    .from("procedure_records")
-    .insert([
-      {
-        company_id: input.companyId,
-        contact_id: input.contactId,
-        catalog_id: input.catalogId ?? null,
-        procedure_name: input.procedureName,
-        performed_at: input.performedAt,
-        status: input.status,
-        notes: input.notes ?? null,
-      },
-    ])
+export async function upsertContact(data: {
+  name: string;
+  company_id: string;
+  id?: string;
+}) {
+  const { data: contact, error } = await supabase
+    .from("contacts")
+    .upsert({
+      id: data.id,
+      name: data.name,
+      company_id: data.company_id,
+    })
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return contact;
 }
 
-/**
- * Remove um registro de histórico de procedimento.
- */
+export async function addProcedureToCatalog(data: {
+  companyId: string;
+  name: string;
+  durationMin: number;
+}) {
+  const { data: procedure, error } = await supabase
+    .from("procedure_catalog")
+    .insert({
+      company_id: data.companyId,
+      name: data.name,
+      duration_min: data.durationMin,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return procedure;
+}
+
+export async function deleteProcedureFromCatalog(id: string) {
+  const { error } = await supabase
+    .from("procedure_catalog")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return true;
+}
+
+export async function addProcedureRecord(data: {
+  companyId: string;
+  contactId: string;
+  procedureName: string;
+  catalogId: string | null;
+  performedAt: string;
+  status: "realizado" | "cancelado" | "pendente";
+  notes?: string;
+}) {
+  const { data: record, error } = await supabase
+    .from("procedure_records")
+    .insert({
+      company_id: data.companyId,
+      contact_id: data.contactId,
+      procedure_name: data.procedureName,
+      catalog_id: data.catalogId,
+      performed_at: data.performedAt,
+      status: data.status,
+      notes: data.notes,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return record;
+}
+
 export async function deleteProcedureRecord(id: string) {
   const { error } = await supabase
     .from("procedure_records")
@@ -44,46 +82,5 @@ export async function deleteProcedureRecord(id: string) {
     .eq("id", id);
 
   if (error) throw error;
-  return { success: true };
-}
-
-interface ProcedureCatalogInput {
-  companyId: string;
-  name: string;
-  durationMin: number;
-}
-
-/**
- * Adiciona um procedimento personalizado ao catálogo da empresa.
- */
-export async function addProcedureToCatalog(input: ProcedureCatalogInput) {
-  const { data, error } = await supabase
-    .from("procedure_catalog")
-    .insert([
-      {
-        company_id: input.companyId,
-        name: input.name,
-        duration_min: input.durationMin,
-        is_system: false,
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Remove um procedimento personalizado do catálogo (apenas não-sistema).
- */
-export async function deleteProcedureFromCatalog(id: string) {
-  const { error } = await supabase
-    .from("procedure_catalog")
-    .delete()
-    .eq("id", id)
-    .eq("is_system", false);
-
-  if (error) throw error;
-  return { success: true };
+  return true;
 }

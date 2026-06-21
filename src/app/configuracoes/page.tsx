@@ -500,13 +500,6 @@ export default function ConfiguracoesPage() {
           <div className="divide-y divide-gray-50">
             {isComum && (
               <SettingsRow
-                icon={Plug}
-                label="Integrações (API)"
-                onClick={() => router.push("/configuracoes/integracoes")}
-              />
-            )}
-            {isComum && (
-              <SettingsRow
                 icon={Gift}
                 label="Indique e Ganhe"
                 onClick={() => router.push("/indique-e-ganhe")}

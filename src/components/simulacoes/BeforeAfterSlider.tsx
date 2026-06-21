@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 
 export function BeforeAfterSlider({ before, after }: { before: string; after: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sliderPos, setSliderPos] = useState(50);
   const isDragging = useRef(false);
-  const safeSliderPos = Math.max(sliderPos, 0.1);
 
   const updateSlider = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -15,40 +15,96 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
     setSliderPos(pct);
   }, []);
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  // Mouse drag
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
     isDragging.current = true;
     updateSlider(e.clientX);
     const onMove = (ev: MouseEvent) => { if (isDragging.current) updateSlider(ev.clientX); };
-    const onUp = () => { isDragging.current = false; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    const onUp = () => {
+      isDragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  };
+  }, [updateSlider]);
+
+  // Touch drag — passive:false para preventDefault funcionar no PWA Mobile
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      isDragging.current = true;
+      updateSlider(e.touches[0].clientX);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault(); // impede scroll conflitante
+      updateSlider(e.touches[0].clientX);
+    };
+    const onTouchEnd = () => { isDragging.current = false; };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [updateSlider]);
+
+  // clipPath corta a imagem "before" sem divisão — sem risco de Infinity
+  const clipRight = 100 - sliderPos;
 
   return (
     <div
       ref={containerRef}
       className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
       onMouseDown={onMouseDown}
-      onTouchMove={(e) => updateSlider(e.touches[0].clientX)}
     >
-      <img src={after} alt="Depois" className="absolute inset-0 w-full h-full object-contain" />
-      <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPos}%` }}>
-        <img 
-          src={before} 
-          alt="Antes" 
-          className="absolute inset-0 w-full h-full object-contain" 
-          style={{ width: `${10000 / safeSliderPos}%`, maxWidth: "none" }} 
-        />
-      </div>
-      <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl" style={{ left: `${sliderPos}%` }}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary">
-          <div className="w-1 h-4 bg-primary/20 rounded-full mx-0.5" />
-          <div className="w-1 h-6 bg-primary rounded-full mx-0.5" />
-          <div className="w-1 h-4 bg-primary/20 rounded-full mx-0.5" />
+      {/* Camada DEPOIS — fundo completo */}
+      <Image
+        src={after}
+        alt="Depois"
+        fill
+        unoptimized
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        draggable={false}
+      />
+
+      {/* Camada ANTES — clipada pela direita via clipPath */}
+      <Image
+        src={before}
+        alt="Antes"
+        fill
+        unoptimized
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        style={{ clipPath: `inset(0 ${clipRight}% 0 0)` }}
+        draggable={false}
+      />
+
+      {/* Linha divisória */}
+      <div
+        className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl pointer-events-none"
+        style={{ left: `${sliderPos}%` }}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary overflow-hidden p-1.5 pointer-events-none">
+          <Image
+            src="/logo-icon.png"
+            alt="Drag"
+            width={24}
+            height={24}
+            className="w-full h-full object-contain"
+          />
         </div>
       </div>
-      <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/60 text-white text-[10px] font-semibold capitalize rounded-full">Antes</div>
-      <div className="absolute bottom-4 right-4 px-3 py-1 bg-primary text-white text-[10px] font-semibold capitalize rounded-full">Depois</div>
+
+      {/* Labels */}
+      <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/60 text-white text-[10px] font-semibold capitalize rounded-full pointer-events-none">Antes</div>
+      <div className="absolute bottom-4 right-4 px-3 py-1 bg-primary text-white text-[10px] font-semibold capitalize rounded-full pointer-events-none">Depois</div>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 
 export default function Home() {
-  const [userName, setUserName] = useState("Doutor");
+  const [userName, setUserName] = useState("Dentista");
 
   useEffect(() => {
     async function loadUser() {
@@ -22,11 +22,12 @@ export default function Home() {
         .eq('id', user.id)
         .single();
 
-      if (userData?.nome_completo) {
-        setUserName(userData.nome_completo.split(' ')[0]);
-      } else if (user.user_metadata?.nome_completo) {
-        setUserName(user.user_metadata.nome_completo.split(' ')[0]);
-      }
+      const rawName = userData?.nome_completo || user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
+      const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
+      const firstName = cleanName.split(' ')[0];
+      const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+      
+      setUserName(formattedName);
     }
     loadUser();
   }, []);
@@ -43,18 +44,16 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mb-10 w-full flex justify-center md:hidden"
+          className="mb-14 w-full flex justify-center"
         >
-          <div className="p-4 glass-card shadow-2xl">
-            <Image
-              src="/logo.png"
-              alt="DentixIA"
-              width={160}
-              height={40}
-              className="h-8 w-auto object-contain"
-              priority
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="DentixIA"
+            width={340}
+            height={85}
+            className="h-20 w-auto object-contain"
+            priority
+          />
         </motion.div>
 
         <div className="space-y-8">

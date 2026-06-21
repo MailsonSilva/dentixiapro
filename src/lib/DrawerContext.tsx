@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 interface DrawerContextType {
-  drawerOpen: boolean;
+  isOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
 }
@@ -11,19 +11,13 @@ interface DrawerContextType {
 const DrawerContext = createContext<DrawerContextType | undefined>(undefined);
 
 export function DrawerProvider({ children }: { children: React.ReactNode }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const openDrawer = useCallback(() => setDrawerOpen(true), []);
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-
-  const value = useMemo(() => ({
-    drawerOpen,
-    openDrawer,
-    closeDrawer,
-  }), [drawerOpen, openDrawer, closeDrawer]);
+  const openDrawer = () => setIsOpen(true);
+  const closeDrawer = () => setIsOpen(false);
 
   return (
-    <DrawerContext.Provider value={value}>
+    <DrawerContext.Provider value={{ isOpen, openDrawer, closeDrawer }}>
       {children}
     </DrawerContext.Provider>
   );

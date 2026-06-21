@@ -1,12 +1,24 @@
 # 🗺️ Mission Control: Estado do Projeto (Project State)
 
-**Última atualização**: 2026-04-11 — Sprint: Documentação Full-Stack & Reverse Engineering
+**Última atualização**: 2026-06-20 — Sprint: Liberação de Acesso Admin no Supabase
 
 ---
 
 ## 1. O Que Mudou (What Changed)
 
-### Sprint Atual (2026-04-11 — Documentação Exaustiva)
+### Sprint Atual (2026-06-20 — Liberação de Acesso Admin e Fluxo de Simulações)
+
+- ✅ **Skill de Git/GitHub (git-expert)**: Criada nova Agent Skill em `.agent/skills/git-expert/SKILL.md` para padronizar e assegurar o fluxo de versionamento com revisões (`status`, `diff`), commits semânticos em PT-BR e proibição estrita de force push.
+- ✅ **Salvamento de Simulações e Galeria**:
+  - Implementado utilitário `supabaseServer.ts` para gestão segura de sessão/cookies do usuário no Next.js 15.
+  - Atualizada Server Action `saveSimulationAction` para obter o `user_id` de forma segura no servidor, gerando paths únicos com UUID v4 para salvar as imagens no bucket `simulacoes`.
+  - Criada nova Server Action `deleteSimulationAction` permitindo exclusão segura e limpeza de imagens no storage.
+  - Criadas queries seguras no servidor em `queries.ts`.
+  - Convertida a página `/simulacoes/resultados` para Server Component, passando dados dinâmicos para o componente cliente interativo `SimulationGallery` (que lida com buscas, exclusão com feedback de toasts e modal de comparação com ReactCompareSlider).
+- ⏳ **Migração de View de Status Criada**: Criada migração local `20260620210200_update_view_status_admin.sql` para atualizar a view `public.verificar_status_usuario` liberando acesso total ao perfil `admin` (`status_code = 3`, `dias_restantes = 999`, `descricao = 'Acesso Liberado (Admin).'`). O deploy em Produção está pendente via `supabase db push`.
+- ⏳ **Migração do Bucket 'simulacoes' Criada**: Criada migração local `20260620223253_create_simulacoes_bucket_and_rls.sql` para criar o bucket `simulacoes` no storage do Supabase e configurar as políticas de Row Level Security (RLS) para uploads/deleções seguras. O deploy está pendente via `supabase db push`.
+
+### Sprint Anterior (2026-04-11 — Documentação Exaustiva)
 
 - ✅ **Engenharia Reversa Concluída**: Analisado todo o código-fonte (App Router, Supabase, Migrations, Actions, Hooks, Components).
 - ✅ **Criação da pasta `/docs`**: Gerada toda a documentação técnica consolidando informações vitais em um só lugar.

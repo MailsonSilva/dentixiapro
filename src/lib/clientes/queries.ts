@@ -1,72 +1,53 @@
-import { supabase } from "../supabase";
-
-export interface ProcedureRecord {
-  id: string;
-  contact_id: string;
-  company_id: string;
-  catalog_id: string | null;
-  procedure_name: string;
-  performed_at: string;
-  status: "realizado" | "cancelado" | "pendente";
-  notes: string | null;
-  created_at: string;
-}
+import { supabase } from "@/lib/supabase";
 
 export interface PatientAppointmentRecord {
   id: string;
-  start_time: string;
-  end_time: string;
   procedure_name: string;
+  start_time: string;
   status: string;
-  created_at?: string;
 }
 
 export interface PatientMessageRecord {
   id: string;
   direction: "inbound" | "outbound";
   message: {
+    type: string;
     text?: string;
-    type?: string;
-    source?: string;
-    media_url?: string;
   };
   created_at: string;
 }
 
-/**
- * Busca o histórico de procedimentos de um paciente.
- */
-export async function getProcedureRecords(contactId: string): Promise<ProcedureRecord[]> {
-  const { data, error } = await supabase
-    .from("procedure_records")
-    .select("*")
-    .eq("contact_id", contactId)
-    .order("performed_at", { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as ProcedureRecord[];
+export interface ProcedureRecord {
+  id: string;
+  procedure_name: string;
+  performed_at: string;
+  status: "realizado" | "cancelado" | "pendente";
+  notes?: string;
 }
 
 export async function getPatientAppointments(contactId: string): Promise<PatientAppointmentRecord[]> {
   const { data, error } = await supabase
     .from("appointments")
-    .select("id, start_time, end_time, procedure_name, status, created_at")
+    .select("id, procedure_name, start_time, status")
     .eq("contact_id", contactId)
-    .order("start_time", { ascending: false })
-    .limit(20);
+    .order("start_time", { ascending: false });
 
-  if (error) throw error;
-  return (data || []) as PatientAppointmentRecord[];
+  if (error) return [];
+  return data || [];
 }
 
 export async function getPatientMessages(contactId: string): Promise<PatientMessageRecord[]> {
-  const { data, error } = await supabase
-    .from("chat_messages")
-    .select("id, direction, message, created_at")
-    .eq("contact_id", contactId)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  // Retorna vazio conforme a remoção do módulo de chat em Junho 2026
+  return [];
+}
 
-  if (error) throw error;
-  return (data || []) as PatientMessageRecord[];
+export async function getProcedureRecords(contactId: string): Promise<ProcedureRecord[]> {
+  const { data, error } = await supabase
+    .from("procedure_records")
+    .select("id, procedure_name, performed_at, status, notes")
+    .eq("contact_id", contactId)
+    .order("performed_at", { ascending: false });
+
+  if (error) return [];
+  return (data as ProcedureRecord[]) || [];
 }

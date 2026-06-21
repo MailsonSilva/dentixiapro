@@ -22,3 +22,5 @@
 - [x] Garantir propagação de `companyId` para evitar catálogos vazios em multi-tenant.
 - [x] Atualizar documentação de estado (`STATE.md`).
 - [x] Verificação final de estabilidade.
+- [x] Correção do carregamento de dados e imagem do perfil de usuário via Server Actions.
+

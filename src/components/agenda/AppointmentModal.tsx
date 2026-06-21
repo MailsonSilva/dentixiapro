@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, User, Loader2, AlertTriangle, CalendarDays } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import { Contact } from "@/lib/crm/queries";
+import { Contact } from "@/lib/clientes/types";
 import { getProcedureCatalog, ProcedureCatalogItem, Appointment } from "@/lib/agenda/queries";
 import { ProcedureGrid } from "@/components/procedimentos/ProcedureGrid";
 

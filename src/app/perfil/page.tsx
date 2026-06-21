@@ -31,6 +31,12 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import {
+  getProfileCompanyAction,
+  getUserProfileAction,
+  updateUserProfileAction,
+  updateUserLogoAction,
+} from "@/lib/perfil/actions";
 import { useRouter } from "next/navigation";
 import { useNotification } from "@/lib/NotificationContext";
 import { Input } from "@/components/ui/Input";
@@ -68,20 +74,34 @@ function TrialBanner({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "flex items-center gap-3 px-5 py-4 rounded-2xl border text-sm font-semibold mb-6 shadow-sm",
+          "flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 rounded-2xl border text-sm font-semibold mb-6 shadow-sm",
           urgent
             ? "bg-amber-50 border-amber-200 text-amber-700"
             : "bg-emerald-50 border-emerald-200 text-emerald-700"
         )}
       >
-        {urgent ? (
-          <Clock size={20} className="flex-shrink-0" />
-        ) : (
-          <CheckCircle2 size={20} className="flex-shrink-0" />
-        )}
-        <span className="flex-1">
-          {`Seu teste acaba em: ${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}.`}
-        </span>
+        <div className="flex items-center gap-3">
+          {urgent ? (
+            <Clock size={20} className="flex-shrink-0" />
+          ) : (
+            <CheckCircle2 size={20} className="flex-shrink-0" />
+          )}
+          <span className="flex-1">
+            {`Seu teste acaba em: ${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}.`}
+          </span>
+        </div>
+        <button
+          onClick={() => router.push("/planos")}
+          className={cn(
+            "px-4 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] self-start sm:self-auto",
+            urgent
+              ? "bg-amber-600 hover:bg-amber-700 text-white"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+          )}
+        >
+          Assinar Agora
+          <ArrowRight size={14} />
+        </button>
       </motion.div>
     );
   }
@@ -103,7 +123,7 @@ function TrialBanner({
         onClick={() => router.push("/planos")}
         className="mt-1 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
       >
-        Ver Planos Agora
+        Assinar Agora
         <ArrowRight size={16} />
       </button>
     </motion.div>
@@ -208,9 +228,11 @@ export default function PerfilPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [userData, setUserData] = useState<any>(null);
+  const [userFallbackName, setUserFallbackName] = useState("Dentista");
   const [loading, setLoading] = useState(true);
   const [statusCode, setStatusCode] = useState<number | null>(null);
   const [diasRestantes, setDiasRestantes] = useState<number | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   // modal states
   const [showEdit, setShowEdit] = useState(false);
@@ -235,33 +257,35 @@ export default function PerfilPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      // Busca dados do usuário e status de assinatura em paralelo
-      const [{ data }, { data: statusData }, { data: ucData }] = await Promise.all([
-        supabase.from("usuarios").select("*").eq("id", user.id).single(),
-        supabase
-          .from("verificar_status_usuario")
-          .select("status_code, dias_restantes")
-          .single(),
-        supabase
-          .from("user_company")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+      // Busca dados de perfil no servidor e companyId em paralelo
+      const [profileResult, companyIdVal] = await Promise.all([
+        getUserProfileAction(),
+        getProfileCompanyAction(user.id),
       ]);
 
-      setUserData(data);
-      setStatusCode(statusData?.status_code ?? null);
-      setDiasRestantes(statusData?.dias_restantes ?? null);
-      setCompanyId(ucData?.company_id ?? null);
-      setEditNome(data?.nome_completo || "");
-      setEditEmail(data?.email || "");
-      setEditTelefone(data?.telefone || "");
-      setEditEmpresa(data?.empresa || "");
-      setEditCpf(data?.cpf || "");
-      setEditPix(data?.PIX || "");
-      setLogoUrl(data?.logo_url || null);
+      if (profileResult.error || !profileResult.data) {
+        console.error("Erro ao carregar perfil:", profileResult.error);
+        notify("Erro", "Erro ao carregar os dados de perfil.", "error");
+        setLoading(false);
+        return;
+      }
+
+      const { profile, status } = profileResult.data;
+
+      setUserData(profile);
+      const rawFallback = user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
+      setUserFallbackName(rawFallback);
+      setStatusCode(status?.status_code ?? null);
+      setDiasRestantes(status?.dias_restantes ?? null);
+      setCompanyId(companyIdVal ?? null);
+      setEditNome(profile?.nome_completo || "");
+      setEditEmail(profile?.email || "");
+      setEditTelefone(profile?.telefone || "");
+      setEditEmpresa(profile?.empresa || "");
+      setEditCpf(profile?.cpf || "");
+      setEditPix(profile?.PIX || "");
+      setLogoUrl(profile?.logo_url || null);
+      setImageError(false);
       setLoading(false);
     }
     loadProfile();
@@ -336,14 +360,12 @@ export default function PerfilPage() {
 
       const { data: { publicUrl } } = supabase.storage.from("logoEmpresa").getPublicUrl(path);
 
-      const { error: dbErr } = await supabase
-        .from("usuarios")
-        .update({ logo_url: publicUrl })
-        .eq("id", user.id);
-      
-      if (dbErr) throw dbErr;
+      // Chamada segura Server-Side para atualização no BD
+      const res = await updateUserLogoAction(publicUrl);
+      if (res.error) throw new Error(res.error);
 
       setLogoUrl(publicUrl);
+      setImageError(false);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setUserData((prev: any) => ({ ...prev, logo_url: publicUrl }));
       notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
@@ -362,18 +384,16 @@ export default function PerfilPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
 
-      const { error } = await supabase
-        .from("usuarios")
-        .update({
-          nome_completo: editNome,
-          telefone: editTelefone,
-          empresa: editEmpresa,
-          cpf: editCpf,
-          PIX: editPix,
-        })
-        .eq("id", user.id);
+      // Chamada segura Server-Side para atualização cadastral no BD
+      const res = await updateUserProfileAction({
+        nome_completo: editNome,
+        telefone: editTelefone,
+        empresa: editEmpresa,
+        cpf: editCpf,
+        PIX: editPix,
+      });
 
-      if (error) throw error;
+      if (res.error) throw new Error(res.error);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setUserData((prev: any) => ({
@@ -386,8 +406,8 @@ export default function PerfilPage() {
       }));
       notify("Perfil atualizado!", "Suas informações foram salvas.", "success");
       setShowEdit(false);
-    } catch {
-      notify("Erro", "Não foi possível salvar.", "error");
+    } catch (err: any) {
+      notify("Erro", err?.message || "Não foi possível salvar.", "error");
     } finally {
       setIsSaving(false);
     }
@@ -415,13 +435,14 @@ export default function PerfilPage() {
           className="flex flex-col items-center mb-8"
         >
           <div className="relative mb-3">
-            {logoUrl || userData?.logo_url ? (
+            {logoUrl && !imageError ? (
               <Image
-                src={logoUrl ?? userData.logo_url}
+                src={logoUrl}
                 alt="Logo"
                 width={96}
                 height={96}
                 className="w-24 h-24 rounded-full object-cover shadow-xl"
+                onError={() => setImageError(true)}
               />
             ) : (
               <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-4xl font-semibold text-white shadow-xl">
@@ -429,7 +450,14 @@ export default function PerfilPage() {
               </div>
             )}
           </div>
-          <h1 className="text-xl font-semibold text-gray-800">{userData?.nome_completo || "Usuário"}</h1>
+          <h1 className="text-xl font-semibold text-gray-800">
+            {`Dr(a). ${(() => {
+              const rawName = userData?.nome_completo || userFallbackName;
+              const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
+              const firstName = cleanName.split(" ")[0];
+              return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+            })()}`}
+          </h1>
           <p className="text-sm text-gray-400">{userData?.email}</p>
         </motion.div>
 
@@ -451,21 +479,31 @@ export default function PerfilPage() {
             />
             {/* Assinatura — aparece apenas para usuários comuns que possuem assinatura (paga ou trial) */}
             {isComum && statusCode === 3 ? (
-              <button
-                onClick={handleOpenPortal}
-                disabled={portalLoading}
-                className="w-full flex items-center justify-between px-4 py-3.5 transition-colors group text-gray-700 hover:bg-primary/5 disabled:opacity-60"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:bg-primary/10 group-hover:text-primary">
-                    {portalLoading ? <Loader2 size={18} className="animate-spin" /> : <Receipt size={18} />}
+              diasRestantes !== 999 ? (
+                /* Período de Trial ativo */
+                <SettingsRow
+                  icon={CreditCard}
+                  label="Assinar Agora"
+                  onClick={() => router.push("/planos")}
+                />
+              ) : (
+                /* Assinatura ativa paga */
+                <button
+                  onClick={handleOpenPortal}
+                  disabled={portalLoading}
+                  className="w-full flex items-center justify-between px-4 py-3.5 transition-colors group text-gray-700 hover:bg-primary/5 disabled:opacity-60"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:bg-primary/10 group-hover:text-primary">
+                      {portalLoading ? <Loader2 size={18} className="animate-spin" /> : <Receipt size={18} />}
+                    </div>
+                    <span className="font-semibold text-[15px]">
+                      {portalLoading ? "Abrindo..." : "Minha Assinatura"}
+                    </span>
                   </div>
-                  <span className="font-semibold text-[15px]">
-                    {portalLoading ? "Abrindo..." : "Minha Assinatura"}
-                  </span>
-                </div>
-                <ChevronRight size={18} className="text-gray-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
-              </button>
+                  <ChevronRight size={18} className="text-gray-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                </button>
+              )
             ) : isComum && statusCode !== 3 ? (
               <SettingsRow
                 icon={CreditCard}
@@ -478,17 +516,8 @@ export default function PerfilPage() {
 
         {/* Geral */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Integrações & Geral</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-widest px-4 pt-4 pb-1">Geral</p>
           <div className="divide-y divide-gray-50">
-            {isComum && (
-              <div className="hidden md:block">
-                <SettingsRow
-                  icon={Link2}
-                  label="WhatsApp & Integrações"
-                  onClick={() => router.push("/configuracoes/integracoes")}
-                />
-              </div>
-            )}
             {isComum && (
               <SettingsRow
                 icon={Gift}
@@ -536,13 +565,14 @@ export default function PerfilPage() {
           {/* Logo upload */}
           <div className="flex flex-col items-center mb-2">
             <div className="relative">
-              {logoUrl ? (
+              {logoUrl && !imageError ? (
                 <Image
                   src={logoUrl}
                   alt="Logo"
                   width={96}
                   height={96}
                   className="w-24 h-24 rounded-full object-cover shadow-lg"
+                  onError={() => setImageError(true)}
                 />
               ) : (
                 <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-blue-400 flex items-center justify-center text-4xl font-semibold text-white shadow-lg">

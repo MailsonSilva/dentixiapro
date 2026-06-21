@@ -5,15 +5,16 @@ import { useEffect, useState, Suspense } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { SidebarProvider } from "@/lib/SidebarContext";
-import { DrawerProvider, useDrawer } from "@/lib/DrawerContext";
-import { NotificationProvider } from "@/lib/NotificationContext";
+import { SidebarProvider } from "../lib/SidebarContext";
+import { DrawerProvider, useDrawer } from "../lib/DrawerContext";
+import { NotificationProvider } from "../lib/NotificationContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, MessageSquare, User, Gift, BookOpen, LogOut } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 type UserRole = 'admin' | 'manager' | 'user' | 'super_admin' | null;
 
@@ -26,18 +27,17 @@ function MobileDrawer({
   userRole: UserRole;
 }) {
   const pathname = usePathname();
-  const { drawerOpen, closeDrawer } = useDrawer();
+  const router = useRouter();
+  const { isOpen: drawerOpen, closeDrawer } = useDrawer();
 
   const navItems = userType === 'parceiro' ? [
     { name: 'Dashboard', href: '/parceiros', icon: Home },
     { name: 'Indique e Ganhe', href: '/indique-e-ganhe', icon: Gift },
     { name: 'Perfil', href: '/perfil', icon: User },
   ] : [
-    { name: 'Página Inicial', href: '/', icon: Home },
+    { name: 'Início', href: '/', icon: Home },
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
-    { name: 'Ver Tutoriais', href: '/aulas', icon: BookOpen },
-    { name: 'CRM', href: '/crm', icon: MessageSquare },
-    { name: 'Indique e Ganhe', href: '/indique-e-ganhe', icon: Gift },
+    { name: 'Aulas', href: '/aulas', icon: BookOpen },
     { name: 'Perfil', href: '/perfil', icon: User },
   ];
 
@@ -115,8 +115,8 @@ function MobileDrawer({
           <div className="p-6 border-t border-gray-100">
             <button
               onClick={async () => {
-                const { error } = await supabase.auth.signOut();
-                if (!error) window.location.href = "/login";
+                await supabase.auth.signOut();
+                router.push("/login");
               }}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
             >
@@ -133,6 +133,8 @@ function MobileDrawer({
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trialExpired, setTrialExpired] = useState(false);
   const [userType, setUserType] = useState<'comum' | 'parceiro'>('comum');
@@ -146,7 +148,18 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     };
     handleResize();
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    // onAuthStateChange já dispara com a sessão atual (INITIAL_SESSION)
+    // quando createBrowserClient persiste em cookies
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+      setAuthInitialized(true);
+    });
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -155,42 +168,47 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, [isMobile, pathname, router]);
 
-  const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot");
+  const isAuthPage = pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot") || pathname.includes("/redefinir-senha");
   const isFullscreenPage = pathname === "/planos";
-  const isPublicPage = pathname === "/" || isFullscreenPage;
 
   useEffect(() => {
-    async function checkAccess() {
+    if (!authInitialized) return;
+
+    async function loadUserData() {
+      // Auth/fullscreen pages: sem layout, sem loading
       if (isAuthPage || isFullscreenPage) {
         setLoading(false);
         return;
       }
 
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          if (!isAuthPage && !isPublicPage) router.replace('/login');
-          setLoading(false);
-          return;
-        }
+      const user = currentUser;
+      // Sem usuário: middleware já redirecionou, só para o loading
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-        // ── Passo 1: Verificar tipo global do usuário (parceiro vs comum) ──
-        const { data: usuarioData } = await supabase
+      try {
+        // ── Passo 1: tipo do usuário (parceiro vs comum) ──
+        const { data: usuarioData, error: usuarioErr } = await supabase
           .from('usuarios')
           .select('tipo')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (usuarioErr) {
+          console.error('Erro ao buscar tipo do usuário:', usuarioErr.message);
+        }
 
         const metaType = user.user_metadata?.tipo;
         let finalTipo = usuarioData?.tipo || 'comum';
 
-        // Sincronizar tipo com metadata do auth se necessário
         if (metaType === 'parceiro' && finalTipo !== 'parceiro') {
           await supabase.from('usuarios').update({ tipo: 'parceiro' }).eq('id', user.id);
           finalTipo = 'parceiro';
         }
 
-        // ── Passo 2: Parceiro → área restrita de parceiro ─────────────────
+        // ── Passo 2: Parceiro ─────────────────────────────
         if (finalTipo === 'parceiro') {
           setUserType('parceiro');
           setUserRole(null);
@@ -202,34 +220,35 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // ── Passo 3: Comum → verificar role na empresa ────────────────────
+        // ── Passo 3: Comum → role na empresa ──────────────
         setUserType('comum');
 
-        // Buscar role do usuário na empresa ativa
-        const { data: ucData } = await supabase
+        const { data: ucData, error: ucErr } = await supabase
           .from('user_company')
           .select('role')
           .eq('user_id', user.id)
           .eq('active', true)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
+
+        if (ucErr) {
+          console.error('Erro ao buscar role:', ucErr.message);
+        }
 
         const role = ucData?.role as 'admin' | 'manager' | 'user' | null;
         setUserRole(role);
 
-        // Admin tem acesso total — sem verificação de trial
         if (role === 'admin') {
           setTrialExpired(false);
           setLoading(false);
           return;
         }
 
-        // User e Manager: verificar status do trial/assinatura
         const { data: statusData, error: statusErr } = await supabase
           .from('verificar_status_usuario')
           .select('status_code, descricao, dias_restantes')
-          .single();
+          .maybeSingle();
 
         if (statusErr) {
           console.error('Erro ao verificar status:', statusErr.message);
@@ -239,15 +258,15 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
         setTrialExpired(statusData ? statusData.status_code !== 3 : false);
       } catch (err) {
-        console.error('Erro ao validar acesso:', err);
+        console.error('Erro ao carregar dados do usuário:', err);
       } finally {
         setLoading(false);
       }
     }
 
-    checkAccess();
+    loadUserData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, isAuthPage, isFullscreenPage, isPublicPage]);
+  }, [pathname, isAuthPage, isFullscreenPage, authInitialized, currentUser]);
 
   // Fechar drawer ao mudar de rota
   useEffect(() => {
@@ -258,15 +277,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-secondary-bg">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
-
-  const showBlocker = trialExpired && !isPublicPage;
+  const showBlocker = trialExpired;
 
   return (
     <div className="flex h-screen w-full bg-secondary-bg overflow-hidden relative">
@@ -275,13 +286,19 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Mobile Drawer (tarefa 7) */}
       <MobileDrawer userType={userType} userRole={userRole} />
 
+      {/* BottomNavigation — fixed, persiste em todas as rotas mobile */}
+      <BottomNavigation type={userType} />
+
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {userType !== 'parceiro' ? <BottomNavigation /> : <Navbar type={userType} />}
-        <main className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden",
-          pathname === "/mensagens" ? "h-full" : "pb-24 md:pb-8 pt-4"
-        )}>
-          {children}
+        {userType === 'parceiro' && <Navbar type={userType} />}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-8 pt-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
 
