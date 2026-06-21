@@ -78,7 +78,7 @@ export default async function proxy(request: NextRequest) {
                      pathname.startsWith('/reset-password');
 
   // Páginas públicas — acessíveis sem autenticação
-  const isPublicPage = pathname === '/planos' || pathname === '/git-expert';
+  const isPublicPage = pathname === '/planos';
 
   let user = null;
   try {
