@@ -20,7 +20,7 @@ function getSupabaseAdmin() {
 
 export async function getProfileCompanyAction(userId: string) {
   // Queries public.company using the user's ID as fallback or checking if it exists
-  const admin = getSupabaseAdmin();
+  const admin = getSupabaseAdmin() as any;
   const { data: companyData } = await admin
     .from("company")
     .select("id")
