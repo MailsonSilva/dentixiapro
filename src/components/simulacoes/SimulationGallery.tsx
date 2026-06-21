@@ -12,7 +12,6 @@ import {
   Info
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { ReactCompareSlider, ReactCompareSliderImage } from 'react-compare-slider';
 import { useNotification } from "@/lib/NotificationContext";
 import { Button } from "@/components/ui/Button";
@@ -147,7 +146,7 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                 <div className="space-y-2 text-center">
                   <span className="text-[11px] font-semibold capitalize tracking-tighter text-gray-400">Antes</span>
                   <div className="aspect-[4/3] rounded-lg overflow-hidden shadow-inner bg-slate-100 relative">
-                    <Image src={item.img_original_url} alt="Antes" fill unoptimized className="object-contain" />
+                    <img src={item.img_original_url} alt="Antes" className="w-full h-full object-contain" />
                   </div>
                 </div>
 
@@ -155,7 +154,7 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                   <span className="text-[11px] font-semibold capitalize tracking-tighter text-primary">Depois</span>
                   <div className="aspect-[4/3] rounded-lg overflow-hidden shadow-inner bg-slate-100 relative">
                     {item.img_simulada_url ? (
-                      <Image src={item.img_simulada_url} alt="Depois" fill unoptimized className="object-contain" />
+                      <img src={item.img_simulada_url} alt="Depois" className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
                         <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin"></div>
