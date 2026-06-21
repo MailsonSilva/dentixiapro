@@ -186,7 +186,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
         if (type === 'parceiro') {
           const parceiroRoutes = ['/parceiros', '/perfil', '/redefinir-senha', '/indique-e-ganhe'];
-          const isParceiroRoute = parceiroRoutes.some(r => pathname.startsWith(r));
+          const isParceiroRoute = parceiroRoutes.some(r => (pathname || "").startsWith(r));
           if (!isParceiroRoute) router.push('/parceiros');
         }
       } catch (err) {
