@@ -13,11 +13,13 @@ interface BottomNavigationProps {
 export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
   const pathname = usePathname();
 
+  const path = pathname ?? "";
+
   const navItems = [
-    { name: "Início",     href: "/",           icon: Home,     isActive: pathname === "/" },
-    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: pathname.startsWith("/simulacoes") },
-    { name: "Aulas",      href: "/aulas",      icon: BookOpen, isActive: pathname.startsWith("/aulas") },
-    { name: "Perfil",     href: "/perfil",     icon: User,     isActive: pathname.startsWith("/perfil") },
+    { name: "Início",     href: "/",           icon: Home,     isActive: path === "/" },
+    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: path.startsWith("/simulacoes") },
+    { name: "Aulas",      href: "/aulas",      icon: BookOpen, isActive: path.startsWith("/aulas") },
+    { name: "Perfil",     href: "/perfil",     icon: User,     isActive: path.startsWith("/perfil") },
   ];
 
   return (

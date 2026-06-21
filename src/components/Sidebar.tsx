@@ -36,6 +36,7 @@ type MenuItemShape = {
 
 export function Sidebar({ type }: SidebarProps) {
   const pathname = usePathname();
+  const path = pathname ?? "";
   const router = useRouter();
   const { isOpen, toggle } = useSidebar();
   const { notify } = useNotification();
@@ -118,7 +119,7 @@ export function Sidebar({ type }: SidebarProps) {
       <nav className="flex-1 px-4 space-y-1.5 mt-6 overflow-y-auto scrollbar-hide pb-20">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = path === item.href;
 
           return (
             <Link

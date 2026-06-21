@@ -26,8 +26,7 @@ import {
   QrCode,
   ArrowRight,
   Receipt,
-  Gift,
-  Link2
+  Gift
 } from "lucide-react";
 import Image from "next/image";
 import { getCurrentUserAction, signOutAction } from "@/lib/auth/actions";
@@ -35,7 +34,6 @@ import {
   getProfileCompanyAction,
   getUserProfileAction,
   updateUserProfileAction,
-  updateUserLogoAction,
   uploadUserLogoAction,
 } from "@/lib/perfil/actions";
 import { useRouter } from "next/navigation";
@@ -290,7 +288,7 @@ export default function PerfilPage() {
       setLoading(false);
     }
     loadProfile();
-  }, [router]);
+  }, [router, notify]);
 
   const handleLogout = async () => {
     await signOutAction();
@@ -357,11 +355,13 @@ export default function PerfilPage() {
 
           setLogoUrl(uploadRes.url);
           setImageError(false);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setUserData((prev: any) => ({ ...prev, logo_url: uploadRes.url }));
           notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Não foi possível processar a imagem.";
           console.error("Erro no processamento da imagem:", err);
-          notify("Erro", err.message || "Não foi possível processar a imagem.", "error");
+          notify("Erro", msg, "error");
         } finally {
           setLogoUploading(false);
           if (logoInputRef.current) logoInputRef.current.value = "";
@@ -370,9 +370,10 @@ export default function PerfilPage() {
       reader.onerror = () => {
         throw new Error("Erro ao ler arquivo local.");
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Não foi possível enviar a imagem.";
       console.error("Erro ao subir logo:", err);
-      notify("Erro", err.message || "Não foi possível enviar a imagem.", "error");
+      notify("Erro", msg, "error");
       setLogoUploading(false);
     }
   };
@@ -405,8 +406,9 @@ export default function PerfilPage() {
       }));
       notify("Perfil atualizado!", "Suas informações foram salvas.", "success");
       setShowEdit(false);
-    } catch (err: any) {
-      notify("Erro", err?.message || "Não foi possível salvar.", "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Não foi possível salvar.";
+      notify("Erro", msg, "error");
     } finally {
       setIsSaving(false);
     }

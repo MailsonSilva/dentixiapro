@@ -24,7 +24,7 @@ function RegisterContent() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   
   const searchParams = useSearchParams();
-  const [refCode, setRefCode] = useState(searchParams.get("ref") || "");
+  const [refCode, setRefCode] = useState(searchParams?.get("ref") || "");
   const [loading, setLoading] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);

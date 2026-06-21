@@ -3,14 +3,25 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseAdmin() {
+  if (!supabaseAdminInstance) {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Credenciais do Supabase Admin não configuradas no servidor.");
+    }
+    supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey);
+  }
+  return supabaseAdminInstance;
+}
 
 export async function getProfileCompanyAction(userId: string) {
   // Queries public.company using the user's ID as fallback or checking if it exists
-  const { data: companyData } = await supabaseAdmin
+  const admin = getSupabaseAdmin();
+  const { data: companyData } = await admin
     .from("company")
     .select("id")
     .eq("id", userId)

@@ -1,10 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseAdmin() {
+  if (!supabaseAdminInstance) {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Credenciais do Supabase Admin não configuradas no servidor.");
+    }
+    supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey);
+  }
+  return supabaseAdminInstance;
+}
 
 export interface Simulacao {
   id: number;
@@ -27,7 +37,8 @@ export async function getSimulationsAction(): Promise<Simulacao[]> {
     throw new Error("Usuário não autenticado.");
   }
 
-  const { data, error } = await supabaseAdmin
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
     .from("simulacoes")
     .select("*")
     .eq("usuario_id", user.id)

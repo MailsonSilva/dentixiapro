@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, Save, RotateCcw, Plus, X,
@@ -173,8 +173,9 @@ export default function SimulationPage() {
 
       setResultBase64(resultDataUri);
       setStep("result");
-    } catch (err: any) {
-      notify("Erro", err.message ?? "Falha na simulação.", "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha na simulação.";
+      notify("Erro", msg, "error");
     } finally {
       setIsProcessing(false);
     }
@@ -237,8 +238,9 @@ export default function SimulationPage() {
 
       notify("Sucesso", "Simulação salva!", "success");
       router.push("/simulacoes/resultados");
-    } catch (err: any) {
-      notify("Erro", err.message, "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao salvar simulação.";
+      notify("Erro", msg, "error");
     } finally {
       setIsSaving(false);
     }
@@ -271,13 +273,13 @@ export default function SimulationPage() {
                   <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-1 border-2 border-white m-2">
                     <X size={16} className="text-white" strokeWidth={3} />
                   </div>
-                  <img src="/wrong_tip.png" alt="Exemplo Incorreto" className="w-full h-full object-cover" />
+                  <Image src="/wrong_tip.png" alt="Exemplo Incorreto" fill className="object-cover" />
                 </div>
                 <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-md">
                   <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-1 border-2 border-white m-2">
                     <Check size={16} className="text-white" strokeWidth={3} />
                   </div>
-                  <img src="/correct_tip.png" alt="Exemplo Correta" className="w-full h-full object-cover" />
+                  <Image src="/correct_tip.png" alt="Exemplo Correta" fill className="object-cover" />
                 </div>
               </div>
 
@@ -380,6 +382,7 @@ export default function SimulationPage() {
                     </div>
                   ) : (
                     <div className="relative w-full h-full flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imageBase64} alt="Preview" className="max-h-[300px] rounded-2xl shadow-xl" />
                       <button onClick={() => setImageBase64(null)} className="absolute top-0 right-0 p-2 bg-red-500 text-white rounded-full shadow-lg cursor-pointer">
                         <X size={16} />

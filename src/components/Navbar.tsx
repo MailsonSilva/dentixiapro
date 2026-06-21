@@ -14,8 +14,9 @@ interface NavbarProps {
 export function Navbar({ type = 'comum' }: NavbarProps) {
   const pathname = usePathname();
   const { openDrawer } = useDrawer();
+  const path = pathname ?? "";
 
-  if (pathname.includes("/login") || pathname.includes("/register") || pathname.includes("/forgot")) return null;
+  if (path.includes("/login") || path.includes("/register") || path.includes("/forgot")) return null;
 
   const navItems = type === 'parceiro' ? [
     { name: 'Dashboard', href: '/parceiros', icon: LayoutDashboard },
