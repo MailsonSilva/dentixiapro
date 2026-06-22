@@ -253,39 +253,44 @@ export default function PerfilPage() {
 
   useEffect(() => {
     async function loadProfile() {
-      const { user, error: userError } = await getCurrentUserAction();
-      if (userError || !user) { router.push("/login"); return; }
+      try {
+        const { user, error: userError } = await getCurrentUserAction();
+        if (userError || !user) { router.push("/login"); return; }
 
-      // Busca dados de perfil no servidor e companyId em paralelo
-      const [profileResult, companyIdVal] = await Promise.all([
-        getUserProfileAction(),
-        getProfileCompanyAction(user.id),
-      ]);
+        // Busca dados de perfil no servidor e companyId em paralelo
+        const [profileResult, companyIdVal] = await Promise.all([
+          getUserProfileAction(),
+          getProfileCompanyAction(user.id),
+        ]);
 
-      if (profileResult.error || !profileResult.data) {
-        console.error("Erro ao carregar perfil:", profileResult.error);
-        notify("Erro", "Erro ao carregar os dados de perfil.", "error");
+        if (profileResult.error || !profileResult.data) {
+          console.error("Erro ao carregar perfil:", profileResult.error);
+          notify("Erro de conexão", "Verifique as configurações.", "error");
+          return;
+        }
+
+        const { profile, status } = profileResult.data;
+
+        setUserData(profile);
+        const rawFallback = user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
+        setUserFallbackName(rawFallback);
+        setStatusCode(status?.status_code ?? null);
+        setDiasRestantes(status?.dias_restantes ?? null);
+        setCompanyId(companyIdVal ?? null);
+        setEditNome(profile?.nome_completo || "");
+        setEditEmail(profile?.email || "");
+        setEditTelefone(profile?.telefone || "");
+        setEditEmpresa(profile?.empresa || "");
+        setEditCpf(profile?.cpf || "");
+        setEditPix(profile?.PIX || "");
+        setLogoUrl(profile?.logo_url || null);
+        setImageError(false);
+      } catch (error) {
+        console.error("Erro fatal ao carregar perfil:", error);
+        notify("Erro de conexão", "Verifique as configurações.", "error");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const { profile, status } = profileResult.data;
-
-      setUserData(profile);
-      const rawFallback = user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
-      setUserFallbackName(rawFallback);
-      setStatusCode(status?.status_code ?? null);
-      setDiasRestantes(status?.dias_restantes ?? null);
-      setCompanyId(companyIdVal ?? null);
-      setEditNome(profile?.nome_completo || "");
-      setEditEmail(profile?.email || "");
-      setEditTelefone(profile?.telefone || "");
-      setEditEmpresa(profile?.empresa || "");
-      setEditCpf(profile?.cpf || "");
-      setEditPix(profile?.PIX || "");
-      setLogoUrl(profile?.logo_url || null);
-      setImageError(false);
-      setLoading(false);
     }
     loadProfile();
   }, [router, notify]);

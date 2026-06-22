@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Camera,
@@ -28,7 +28,11 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
   const [search, setSearch] = useState("");
   const [selectedSim, setSelectedSim] = useState<Simulacao | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const { notify } = useNotification();
+
+  // Prevents hydration mismatch from Date and browser-only libs
+  useEffect(() => setIsMounted(true), []);
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
@@ -53,6 +57,14 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
     (s.procedimento ?? '').toLowerCase().includes(search.toLowerCase()) ||
     (s.nome_paciente ?? '').toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!isMounted) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
