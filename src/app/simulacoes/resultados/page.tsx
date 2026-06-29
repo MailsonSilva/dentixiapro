@@ -1,11 +1,11 @@
-import { getSimulationsAction } from "@/lib/simulacoes/queries";
+import { getSimulationsAction, type Simulacao } from "@/lib/simulacoes/queries";
 import { SimulationGallery } from "@/components/simulacoes/SimulationGallery";
 
 // Força renderização dinâmica para sempre trazer dados atualizados do banco
 export const dynamic = "force-dynamic";
 
 export default async function ResultadosPage() {
-  let initialSimulations = [];
+  let initialSimulations: Simulacao[] = [];
   try {
     initialSimulations = await getSimulationsAction();
   } catch (error) {
