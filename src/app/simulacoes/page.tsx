@@ -255,45 +255,45 @@ export default function SimulationPage() {
         {step === "tips" && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-white rounded-[32px] w-full max-w-lg p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex items-center justify-between mb-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-white rounded-2xl md:rounded-[32px] w-full max-w-lg p-5 md:p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div className="flex-1" />
-                <h2 className="text-lg font-bold text-gray-800 tracking-wide uppercase text-center flex-1">Dicas</h2>
+                <h2 className="text-base md:text-lg font-bold text-gray-800 tracking-wide uppercase text-center flex-1">Dicas</h2>
                 <div className="flex-1 flex justify-end">
                   <button onClick={() => router.push("/")} className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
-                    <X size={24} />
+                    <X size={20} className="md:w-6 md:h-6" />
                   </button>
                 </div>
               </div>
 
-              <p className="text-center text-gray-600 mb-8 font-medium text-sm leading-relaxed px-4">
+              <p className="text-center text-gray-600 mb-4 md:mb-6 font-medium text-xs md:text-sm leading-relaxed px-2 md:px-4">
                 Para obter o melhor desempenho da tecnologia, capture suas fotos conforme o protocolo abaixo.
               </p>
 
-              <div className="flex justify-center gap-6 mb-8">
-                <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-md">
-                  <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-1 border-2 border-white m-2">
-                    <X size={16} className="text-white" strokeWidth={3} />
+              <div className="flex justify-center gap-4 md:gap-6 mb-4 md:mb-6">
+                <div className="relative w-24 h-24 sm:w-36 sm:h-36 rounded-xl md:rounded-2xl overflow-hidden shadow-md">
+                  <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-0.5 md:p-1 border-2 border-white m-1.5 md:m-2">
+                    <X className="text-white w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
                   </div>
                   <Image src="/wrong_tip.png" alt="Exemplo Incorreto" fill className="object-cover" />
                 </div>
-                <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-md">
-                  <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-1 border-2 border-white m-2">
-                    <Check size={16} className="text-white" strokeWidth={3} />
+                <div className="relative w-24 h-24 sm:w-36 sm:h-36 rounded-xl md:rounded-2xl overflow-hidden shadow-md">
+                  <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-0.5 md:p-1 border-2 border-white m-1.5 md:m-2">
+                    <Check className="text-white w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
                   </div>
                   <Image src="/correct_tip.png" alt="Exemplo Correta" fill className="object-cover" />
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8 text-sm text-gray-600 px-2">
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Iluminação:</strong> Garanta boa iluminação.</span></li>
+              <ul className="space-y-2 md:space-y-3 mb-5 md:mb-6 text-xs md:text-sm text-gray-600 px-1 md:px-2">
+                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[1px]">•</span> <span><strong className="text-gray-800">Iluminação:</strong> Garanta boa iluminação.</span></li>
                 <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Posição:</strong> O paciente deve estar sentado com a postura ereta, de costas para uma parede.</span></li>
                 <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Sorriso:</strong> Peça para o paciente sorrir.</span></li>
                 <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Ângulo:</strong> A câmera deve estar perpendicular ao rosto.</span></li>
                 <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Formatos:</strong> Use arquivos .jpeg ou .png.</span></li>
               </ul>
 
-              <button onClick={() => setStep("procedure")} className="w-full bg-[#0f50a6] py-3.5 rounded-xl text-white font-semibold hover:bg-[#0f50a6]/90 transition-all shadow-md cursor-pointer text-sm">
+              <button onClick={() => setStep("procedure")} className="w-full bg-[#0f50a6] py-2.5 md:py-3.5 rounded-xl text-white font-semibold hover:bg-[#0f50a6]/90 transition-all shadow-md cursor-pointer text-xs md:text-sm">
                 Continuar
               </button>
             </motion.div>
