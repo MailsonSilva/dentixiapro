@@ -4,12 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, Save, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, Check
+  Upload, ImageIcon, Camera, Check, User
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotification } from "@/lib/NotificationContext";
+import { Input } from "@/components/ui/Input";
 
 // SSD Layers
 import { procedures, toothColors } from "@/lib/simulacoes/utils";
@@ -111,6 +112,7 @@ export default function SimulationPage() {
   const [resultBase64, setResultBase64] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [patientName, setPatientName] = useState("");
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
@@ -335,17 +337,6 @@ export default function SimulationPage() {
 
           {step === "upload" && (
             <motion.div key="up" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold capitalize text-gray-400 tracking-wider font-['Poppins']">Paciente</h3>
-                <input
-                  type="text"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="Nome do paciente"
-                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-100 bg-gray-50/55 outline-none text-base font-medium text-gray-700 placeholder-gray-400 font-['Poppins'] focus:border-[#0f50a6]/50 focus:bg-white transition-all"
-                />
-              </div>
-
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Image Upload / Preview */}
                 <div className="bg-white p-6 rounded-[32px] border-2 border-dashed border-primary/20 min-h-[380px] flex flex-col items-center justify-center relative overflow-hidden">
@@ -402,11 +393,11 @@ export default function SimulationPage() {
                     <ColorPicker selectedId={selectedColor} onSelect={setSelectedColor} />
                   </div>
                   <button
-                    disabled={!imageBase64 || !patientName.trim() || isProcessing}
+                    disabled={!imageBase64 || isProcessing}
                     onClick={handleGenerate}
                     className={cn(
                       "w-full py-4 rounded-2xl text-white font-semibold transition-all shadow-xl flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
-                      !imageBase64 || !patientName.trim() || isProcessing ? "bg-gray-300" : "bg-primary"
+                      !imageBase64 || isProcessing ? "bg-gray-300" : "bg-primary"
                     )}
                   >
                     {isProcessing ? <><Loader2 className="animate-spin" /> Processando...</> : <><Sparkles size={20} /> Gerar Simulação</>}
@@ -438,7 +429,7 @@ export default function SimulationPage() {
                 </button>
               </div>
               <button
-                onClick={handleSave}
+                onClick={() => setShowSaveModal(true)}
                 disabled={isSaving}
                 className={cn("w-full py-4 rounded-2xl text-white font-semibold shadow-xl flex items-center justify-center gap-3 cursor-pointer", isSaving ? "bg-gray-300" : "bg-primary")}
               >
@@ -448,6 +439,67 @@ export default function SimulationPage() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Modal: Inserir Nome do Paciente ao Salvar */}
+      <AnimatePresence>
+        {showSaveModal && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSaveModal(false)}
+              className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full sm:max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col p-6 space-y-6"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-800 tracking-wide uppercase">Salvar Simulação</h2>
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="space-y-4">
+                <Input
+                  label="Nome do Paciente"
+                  placeholder="Digite o nome do paciente"
+                  value={patientName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPatientName(e.target.value)}
+                  icon={<User size={18} />}
+                />
+              </div>
+
+              {/* Actions */}
+              <button
+                disabled={isSaving || !patientName.trim()}
+                onClick={async () => {
+                  await handleSave();
+                  setShowSaveModal(false);
+                }}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-semibold transition-all shadow-lg",
+                  isSaving || !patientName.trim()
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                )}
+              >
+                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
+                Confirmar e Salvar
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

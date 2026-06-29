@@ -483,34 +483,14 @@ export default function PerfilPage() {
               label="Editar Perfil"
               onClick={() => setShowEdit(true)}
             />
-            {/* Assinatura — aparece apenas para usuários comuns que possuem assinatura (paga ou trial) */}
-            {isComum && statusCode === 3 ? (
-              diasRestantes !== 999 ? (
-                /* Período de Trial ativo */
-                <SettingsRow
-                  icon={CreditCard}
-                  label="Assinar Agora"
-                  onClick={() => router.push("/planos")}
-                />
-              ) : (
-                /* Assinatura ativa paga */
-                <button
-                  onClick={handleOpenPortal}
-                  disabled={portalLoading}
-                  className="w-full flex items-center justify-between px-4 py-3.5 transition-colors group text-gray-700 hover:bg-primary/5 disabled:opacity-60"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600 group-hover:bg-primary/10 group-hover:text-primary">
-                      {portalLoading ? <Loader2 size={18} className="animate-spin" /> : <Receipt size={18} />}
-                    </div>
-                    <span className="font-semibold text-[15px]">
-                      {portalLoading ? "Abrindo..." : "Minha Assinatura"}
-                    </span>
-                  </div>
-                  <ChevronRight size={18} className="text-gray-300 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
-                </button>
-              )
-            ) : isComum && statusCode !== 3 ? (
+            {/* Assinatura — se ativa e paga (statusCode===3 e diasRestantes===999), mostra campo "Assinatura" para ir ao portal, senão mostra "Assinar Agora" */}
+            {isComum && statusCode === 3 && diasRestantes === 999 ? (
+              <SettingsRow
+                icon={CreditCard}
+                label="Assinatura"
+                onClick={handleOpenPortal}
+              />
+            ) : isComum ? (
               <SettingsRow
                 icon={CreditCard}
                 label="Assinar Agora"

@@ -1,7 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export default async function proxy(request: NextRequest) {
+// Forçando recompilação do Next.js dev server
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -141,6 +142,8 @@ export default async function proxy(request: NextRequest) {
   return response;
 }
 
+export default proxy;
+
 export const config = {
   matcher: [
     /*
@@ -150,7 +153,11 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - logo.png
+     * - login (auth page)
+     * - register (auth page)
+     * - forgot (auth page)
+     * - redefinir-senha (auth page)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|logo.png|forgot|redefinir-senha).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.png|login|register|forgot|redefinir-senha).*)',
   ],
 };
