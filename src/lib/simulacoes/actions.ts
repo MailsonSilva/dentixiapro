@@ -1,22 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createSupabaseServerClient } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
-
-let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
-
-function getSupabaseAdmin() {
-  if (!supabaseAdminInstance) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-      throw new Error("Credenciais do Supabase Admin não configuradas no servidor.");
-    }
-    supabaseAdminInstance = createClient(url, key);
-  }
-  return supabaseAdminInstance as any;
-}
 
 function base64ToBuffer(base64: string): Buffer {
   if (!base64 || typeof base64 !== "string") {
@@ -88,13 +73,11 @@ export async function saveSimulationAction(
     bufferSimuladoLength: bufferSimulado.length,
   });
 
-  const admin = getSupabaseAdmin();
-
   const [uploadBefore, uploadAfter] = await Promise.all([
-    admin.storage.from(bucket).upload(originalPath, bufferOriginal, {
+    supabaseServer.storage.from(bucket).upload(originalPath, bufferOriginal, {
       contentType: "image/png",
     }),
-    admin.storage.from(bucket).upload(simuladaPath, bufferSimulado, {
+    supabaseServer.storage.from(bucket).upload(simuladaPath, bufferSimulado, {
       contentType: "image/png",
     }),
   ]);
@@ -110,18 +93,18 @@ export async function saveSimulationAction(
 
   console.log("Uploads successful. Fetching public URLs...");
 
-  const { data: { publicUrl: originalUrl } } = admin.storage
+  const { data: { publicUrl: originalUrl } } = supabaseServer.storage
     .from(bucket)
     .getPublicUrl(originalPath);
 
-  const { data: { publicUrl: simuladaUrl } } = admin.storage
+  const { data: { publicUrl: simuladaUrl } } = supabaseServer.storage
     .from(bucket)
     .getPublicUrl(simuladaPath);
 
   console.log("Public URLs retrieved:", { originalUrl, simuladaUrl });
 
   console.log("Inserting simulation record into database...");
-  const { data: inserted, error } = await admin
+  const { data: inserted, error } = await supabaseServer
     .from("simulacoes")
     .insert({
       usuario_id: userId,
@@ -150,10 +133,8 @@ export async function deleteSimulationAction(id: number): Promise<void> {
     throw new Error("Usuário não autenticado.");
   }
   
-  const admin = getSupabaseAdmin();
-
   // Buscar a simulação para garantir propriedade
-  const { data: sim, error: fetchError } = await admin
+  const { data: sim, error: fetchError } = await supabaseServer
     .from("simulacoes")
     .select("usuario_id, img_original_url, img_simulada_url")
     .eq("id", id)
@@ -168,7 +149,7 @@ export async function deleteSimulationAction(id: number): Promise<void> {
   }
 
   // Deletar do banco de dados
-  const { error: deleteDbError } = await admin
+  const { error: deleteDbError } = await supabaseServer
     .from("simulacoes")
     .delete()
     .eq("id", id);
@@ -189,7 +170,7 @@ export async function deleteSimulationAction(id: number): Promise<void> {
 
     const pathsToDelete = [pathOriginal, pathSimulada].filter(Boolean) as string[];
     if (pathsToDelete.length > 0) {
-      await admin.storage.from(bucket).remove(pathsToDelete);
+      await supabaseServer.storage.from(bucket).remove(pathsToDelete);
     }
   } catch (storageErr) {
     console.error("Erro ao remover arquivos do storage:", storageErr);
