@@ -1,7 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Forçando recompilação do Next.js dev server
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -109,7 +108,7 @@ export async function proxy(request: NextRequest) {
     } else {
       user = data.user;
     }
-  } catch (e) {
+  } catch {
     // Silencia erros inesperados na busca do usuário
   }
 

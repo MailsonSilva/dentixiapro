@@ -1,16 +1,36 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabaseServer";
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
 
   if (code) {
-    const supabase = await createClient();
+    const response = NextResponse.redirect(new URL("/", request.url));
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value;
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            response.cookies.set({ name, value, ...options });
+          },
+          remove(name: string, options: CookieOptions) {
+            response.cookies.set({ name, value: "", ...options, maxAge: 0 });
+          },
+        },
+      }
+    );
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     
     if (error) {
       console.error("Erro ao trocar o código pela sessão:", error.message);
+      return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url));
     } else if (data?.user) {
       const user = data.user;
       
@@ -30,7 +50,7 @@ export async function GET(request: Request) {
               id: user.id,
               email: user.email,
               nome_completo: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Dentista",
-              tipo: "comum", // Tipo padrão padrão do SaaS
+              tipo: "comum", // Tipo padrão do SaaS
             });
 
           if (insertError) {
@@ -41,9 +61,11 @@ export async function GET(request: Request) {
         console.error("Erro inesperado ao sincronizar perfil do usuário:", dbErr);
       }
     }
+
+    return response;
   }
 
-  // Redirecionamento absoluto e seguro conforme Next.js 15
-  return NextResponse.redirect(new URL("/", request.url));
+  return NextResponse.redirect(new URL("/login", request.url));
 }
+
 
