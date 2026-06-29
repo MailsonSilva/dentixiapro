@@ -14,7 +14,7 @@ import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOp
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+
 
 type UserRole = 'admin' | 'manager' | 'user' | 'super_admin' | null;
 
@@ -43,10 +43,10 @@ function MobileDrawer({
 
   // Badge descritivo do role
   const roleBadge: Record<NonNullable<UserRole>, { label: string; color: string }> = {
-    admin:       { label: 'Administrador', color: 'bg-primary/10 text-primary' },
-    manager:     { label: 'Gerente',       color: 'bg-violet-100 text-violet-600' },
-    user:        { label: 'Usuário',       color: 'bg-gray-100 text-gray-500' },
-    super_admin: { label: 'Super Admin',   color: 'bg-amber-100 text-amber-600' },
+    admin: { label: 'Administrador', color: 'bg-primary/10 text-primary' },
+    manager: { label: 'Gerente', color: 'bg-violet-100 text-violet-600' },
+    user: { label: 'Usuário', color: 'bg-gray-100 text-gray-500' },
+    super_admin: { label: 'Super Admin', color: 'bg-amber-100 text-amber-600' },
   };
   const badge = userRole ? roleBadge[userRole] : null;
 
@@ -80,8 +80,8 @@ function MobileDrawer({
               </button>
             </div>
             {badge && userType === 'comum' && (
-              <span className={`inline-flex text-[10px] font-semibold capitalize tracking-widest px-2.5 py-1 rounded-full ${badge.color}`}>
-                {badge.label}
+              <span className={`inline-flex text-[10px] font-semibold capitalize tracking-widest px-2.5 py-1 rounded-full ${badge?.color || ''}`}>
+                {badge?.label || ''}
               </span>
             )}
           </div>
@@ -97,7 +97,7 @@ function MobileDrawer({
                   href={item.href}
                   onClick={closeDrawer}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all",
+                    "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-bold transition-all",
                     isActive
                       ? "bg-primary text-white shadow-lg shadow-primary/20"
                       : "text-gray-500 hover:bg-primary/5 hover:text-primary"
@@ -108,7 +108,7 @@ function MobileDrawer({
                 </Link>
               );
             })}
-            
+
           </nav>
 
           {/* Rodapé com Opção de Sair (Logout) */}
@@ -118,7 +118,7 @@ function MobileDrawer({
                 await signOutAction();
                 router.push("/login");
               }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
+              className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
             >
               <LogOut size={20} />
               Sair da Conta
@@ -133,8 +133,6 @@ function MobileDrawer({
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
-  const [authInitialized, setAuthInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [trialExpired, setTrialExpired] = useState(false);
   const [userType, setUserType] = useState<'comum' | 'parceiro'>('comum');
@@ -165,23 +163,19 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       // Auth/fullscreen pages: sem layout, sem loading
       if (isAuthPage || isFullscreenPage) {
         setLoading(false);
-        setAuthInitialized(true);
         return;
       }
 
       try {
         const res = await getClientLayoutDataAction();
         if (res.error || !res.data) {
-          setCurrentUser(null);
           setLoading(false);
-          setAuthInitialized(true);
           return;
         }
 
-        const { user, userType: type, userRole: role, trialExpired: expired } = res.data;
-        setCurrentUser(user as any);
+        const { userType: type, userRole: role, trialExpired: expired } = res.data;
         setUserType(type);
-        setUserRole(role as any);
+        setUserRole(role);
         setTrialExpired(expired);
 
         if (type === 'parceiro') {
@@ -193,7 +187,6 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
         console.error('Erro ao carregar dados do layout:', err);
       } finally {
         setLoading(false);
-        setAuthInitialized(true);
       }
     }
 
@@ -237,33 +230,33 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Bloqueio Global (Paywall) */}
       <AnimatePresence>
         {showBlocker && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 z-[9999] bg-gray-900/80 backdrop-blur-md flex items-center justify-center p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl text-center border border-white/20"
+              className="bg-white rounded-lg p-4 md:p-6 max-w-sm w-full shadow-2xl text-center border border-gray-100"
             >
-              <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <AlertCircle size={40} className="text-red-600" />
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={24} className="text-red-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-3">Acesso Expirado</h2>
               <p className="text-gray-500 mb-8 leading-relaxed">
                 Seu período de teste de 7 dias chegou ao fim. Assine um plano agora para continuar usando todas as ferramentas do DentixIA Pro.
               </p>
-              
+
               <div className="space-y-3">
                 <button
                   onClick={() => router.push("/planos")}
-                  className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20"
+                  className="w-full bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md shadow-primary/20"
                 >
                   Ver Planos e Assinar
                   <ArrowRight size={20} />
                 </button>
-                
+
                 <button
                   onClick={async () => {
                     await signOutAction();
