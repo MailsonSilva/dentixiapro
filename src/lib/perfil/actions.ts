@@ -11,7 +11,8 @@ let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
 function getSupabaseAdmin() {
   if (!supabaseAdminInstance) {
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Credenciais do Supabase Admin não configuradas no servidor.");
+      // Em vez de lançar erro, retorna null para que a função chamadora faça fallback
+      return null;
     }
     supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey);
   }
@@ -19,15 +20,20 @@ function getSupabaseAdmin() {
 }
 
 export async function getProfileCompanyAction(userId: string) {
-  // Queries public.company using the user's ID as fallback or checking if it exists
   const admin = getSupabaseAdmin();
-  const { data: companyData } = await admin
-    .from("company")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle();
+  // Se a service role key não estiver configurada, retorna userId como fallback silencioso
+  if (!admin) return userId;
 
-  return companyData?.id ?? userId;
+  try {
+    const { data: companyData } = await admin
+      .from("company")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+    return companyData?.id ?? userId;
+  } catch {
+    return userId;
+  }
 }
 
 export async function getUserProfileAction() {
@@ -38,35 +44,50 @@ export async function getUserProfileAction() {
     return { error: "Não autenticado", data: null };
   }
 
-  // Busca dados de perfil do usuário
+  // Metadados do auth (fallback para usuários OAuth - Google retorna full_name, picture, etc.)
+  const authMeta = user.user_metadata ?? {};
+  const authName = authMeta.full_name || authMeta.name || null;
+  const authAvatar = authMeta.avatar_url || authMeta.picture || null;
+
+  // Busca dados de perfil do usuário (maybeSingle evita crash se perfil ainda não existe)
   const { data: profile, error: dbError } = await supabase
     .from("usuarios")
     .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (dbError) {
     return { error: dbError.message, data: null };
   }
 
-  // Busca status de assinatura da view verificar_status_usuario
+  // Busca status de assinatura da view verificar_status_usuario (maybeSingle evita crash se não há rows)
   const { data: statusData } = await supabase
     .from("verificar_status_usuario")
     .select("status_code, dias_restantes")
-    .single();
+    .maybeSingle();
 
   // Converter logo_url para URL Pública se necessário
-  let logoUrl = profile.logo_url;
+  let logoUrl = profile?.logo_url || null;
   if (logoUrl && !logoUrl.startsWith("http")) {
     const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(logoUrl);
     logoUrl = data.publicUrl;
   }
+  // Fallback: usa avatar do Google/OAuth se não tiver logo no banco
+  if (!logoUrl && authAvatar) {
+    logoUrl = authAvatar;
+  }
+
+  // Fallback de nome: usa metadados do auth se nome do banco estiver vazio
+  const nomeCompleto = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
 
   return {
     error: null,
     data: {
       profile: {
-        ...profile,
+        ...(profile ?? {}),
+        id: user.id,
+        email: profile?.email || user.email || "",
+        nome_completo: nomeCompleto,
         logo_url: logoUrl,
       },
       status: {

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       try {
         const { data: profile, error: profileError } = await supabase
           .from("usuarios")
-          .select("id")
+          .select("id, logo_url, nome_completo")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -58,6 +58,22 @@ export async function GET(request: NextRequest) {
 
           if (insertError) {
             console.error("Erro ao criar perfil de usuário pós-OAuth:", insertError.message);
+          }
+        } else if (profile) {
+          // Usuário já existe — sincroniza dados sociais que podem estar faltando (ex: foto do Google)
+          const avatarFromOAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+          const nameFromOAuth = user.user_metadata?.full_name || user.user_metadata?.name || null;
+          if (avatarFromOAuth || nameFromOAuth) {
+            const updatePayload: Record<string, string> = {};
+            // Só atualiza logo_url se ainda não tiver uma foto personalizada
+            if (avatarFromOAuth && !profile.logo_url) updatePayload.logo_url = avatarFromOAuth;
+            // Só atualiza nome se ainda estiver vazio ou igual ao fallback de email
+            if (nameFromOAuth && (!profile.nome_completo || profile.nome_completo === user.email?.split("@")[0])) {
+              updatePayload.nome_completo = nameFromOAuth;
+            }
+            if (Object.keys(updatePayload).length > 0) {
+              await supabase.from("usuarios").update(updatePayload).eq("id", user.id);
+            }
           }
         }
 

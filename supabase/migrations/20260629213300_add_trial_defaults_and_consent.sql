@@ -1,6 +1,11 @@
--- 20260629213300_add_trial_defaults_and_consent.sql
--- Atualiza a função trigger de criação de perfil de usuário para incluir dias de trial padrão, consentimento automático e captação de dados de login social.
+-- ===================================================================
+-- MIGRATION: 20260629213300_add_trial_defaults_and_consent.sql
+-- 
+-- Execute este script no SQL Editor do Supabase Dashboard.
+-- ===================================================================
 
+-- 1. Atualiza o trigger de criação de usuário para incluir trial_ends_at,
+--    sincronização de dados OAuth (avatar, telefone) e consentimento automático.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -8,16 +13,21 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    COALESCE(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    ),
     'comum',
     now() + interval '7 days',
     COALESCE(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'),
-    COALESCE(new.phone, new.raw_user_meta_data->>'phone', new.raw_user_meta_data->>'phone_number')
+    COALESCE(
+      new.phone,
+      new.raw_user_meta_data->>'phone',
+      new.raw_user_meta_data->>'phone_number'
+    )
   )
-  ON CONFLICT (id) DO UPDATE SET
-    nome_completo = EXCLUDED.nome_completo,
-    logo_url = COALESCE(usuarios.logo_url, EXCLUDED.logo_url),
-    telefone = COALESCE(usuarios.telefone, EXCLUDED.telefone);
+  ON CONFLICT (id) DO NOTHING;
 
   -- Inserir consentimento automático para o novo usuário
   INSERT INTO public.consentimentos (user_id, aceitou_em, versao_politica)
@@ -28,21 +38,41 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 1. Executa o backfill do trial de 7 dias para usuários antigos onde trial_ends_at está NULL
+-- ===================================================================
+-- 2. BACKFILL: Concede 7 dias de trial a partir do created_at
+--    para todos os usuários existentes onde trial_ends_at é NULL.
+-- ===================================================================
 UPDATE public.usuarios 
 SET trial_ends_at = created_at + interval '7 days' 
 WHERE trial_ends_at IS NULL;
 
--- 2. Executa o backfill de dados sociais (logo/telefone) de logins anteriores que ficaram em branco
+-- ===================================================================
+-- 3. BACKFILL: Preenche logo_url com o avatar do Google/OAuth
+--    para usuários que fizeram login social mas estão sem foto.
+-- ===================================================================
 UPDATE public.usuarios u
 SET 
-  logo_url = COALESCE(u.logo_url, a.raw_user_meta_data->>'avatar_url', a.raw_user_meta_data->>'picture'),
-  telefone = COALESCE(u.telefone, a.phone, a.raw_user_meta_data->>'phone', a.raw_user_meta_data->>'phone_number')
+  logo_url = COALESCE(
+    u.logo_url,
+    a.raw_user_meta_data->>'avatar_url',
+    a.raw_user_meta_data->>'picture'
+  ),
+  nome_completo = CASE
+    WHEN u.nome_completo IS NULL OR u.nome_completo = split_part(a.email, '@', 1)
+    THEN COALESCE(
+      a.raw_user_meta_data->>'full_name',
+      a.raw_user_meta_data->>'name',
+      u.nome_completo
+    )
+    ELSE u.nome_completo
+  END
 FROM auth.users a
-WHERE u.id = a.id 
-  AND (u.logo_url IS NULL OR u.telefone IS NULL);
+WHERE u.id = a.id;
 
--- 3. Executa o backfill de consentimento de políticas para usuários já existentes
+-- ===================================================================
+-- 4. BACKFILL: Insere consentimento para usuários já existentes
+--    que não possuem registro na tabela consentimentos.
+-- ===================================================================
 INSERT INTO public.consentimentos (user_id, aceitou_em, versao_politica)
 SELECT id, COALESCE(created_at, now()), '1.0'
 FROM public.usuarios
