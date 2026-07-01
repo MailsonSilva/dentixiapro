@@ -5,21 +5,23 @@ import { toothColors } from "@/lib/simulacoes/utils";
 import { Check } from "lucide-react";
 
 export function ColorPicker({ selectedId, onSelect }: { selectedId: string, onSelect: (id: string) => void }) {
+  const allowedIds = ["BL1", "BL2", "BL3", "BL4", "A1"];
+  const filteredColors = toothColors.filter((item) => allowedIds.includes(item.id));
+
   return (
-    <div className="grid grid-cols-5 gap-3">
-      {toothColors.map((item) => (
+    <div className="flex justify-center gap-3">
+      {filteredColors.map((item) => (
         <button
           key={item.id}
           onClick={() => onSelect(item.id)}
-          className={cn("flex flex-col items-center gap-2", selectedId === item.id ? "scale-105" : "opacity-70")}
+          className={cn(
+            "w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-sm transition-all relative shrink-0",
+            selectedId === item.id ? "border-primary scale-105" : "border-gray-200 opacity-80"
+          )}
+          style={{ backgroundColor: item.hex }}
+          title={item.label}
         >
-          <div
-            className={cn("w-full aspect-square rounded-xl border-2 flex items-center justify-center shadow-sm transition-all", selectedId === item.id ? "border-primary" : "border-gray-200")}
-            style={{ backgroundColor: item.hex }}
-          >
-            {selectedId === item.id && <Check className="text-primary" size={18} strokeWidth={3} />}
-          </div>
-          <span className={cn("text-[10px] font-semibold", selectedId === item.id ? "text-primary" : "text-gray-400")}>{item.label}</span>
+          {selectedId === item.id && <Check className="text-primary" size={16} strokeWidth={3} />}
         </button>
       ))}
     </div>

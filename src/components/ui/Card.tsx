@@ -10,7 +10,7 @@ export function Card({ children, className, glass = true }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-3xl p-8 md:p-10 transition-all duration-300",
+        "rounded-2xl p-3 md:p-4 transition-all duration-300",
         glass ? "glass-card" : "bg-white border border-gray-100",
         className
       )}
@@ -21,7 +21,7 @@ export function Card({ children, className, glass = true }: CardProps) {
 }
 
 export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mb-6", className)}>{children}</div>;
+  return <div className={cn("mb-3", className)}>{children}</div>;
 }
 
 export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -29,5 +29,5 @@ export function CardContent({ children, className }: { children: React.ReactNode
 }
 
 export function CardFooter({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mt-6", className)}>{children}</div>;
+  return <div className={cn("mt-3", className)}>{children}</div>;
 }

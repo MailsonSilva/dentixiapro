@@ -38,7 +38,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   return (
     <NotificationContext.Provider value={{ notify }}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 z-[9999] flex flex-col gap-3 w-[90vw] md:w-[350px] pointer-events-none">
         <AnimatePresence>
           {notifications.map((n) => (
             <motion.div
@@ -46,7 +46,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               initial={{ opacity: 0, y: -20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="bg-white/95 backdrop-blur-md border border-gray-100 shadow-2xl p-4 rounded-2xl flex gap-3 pointer-events-auto items-start"
+              className="bg-white/95 backdrop-blur-md border border-gray-100 shadow-2xl p-4 rounded-2xl flex gap-3 pointer-events-auto items-start w-full mx-auto my-1.5"
             >
               <div className="flex-shrink-0 mt-0.5">
                 {n.type === "success" && <CheckCircle className="text-emerald-500" size={20} />}
@@ -54,13 +54,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
                 {n.type === "warning" && <AlertTriangle className="text-amber-500" size={20} />}
                 {n.type === "info" && <Info className="text-blue-500" size={20} />}
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-800">{n.title}</h4>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{n.message}</p>
+              <div className="flex-1 min-w-0 break-words">
+                <h4 className="text-sm font-semibold text-gray-800 break-words">{n.title}</h4>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed break-words">{n.message}</p>
               </div>
               <button
                 onClick={() => removeNotification(n.id)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-lg"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-lg shrink-0"
               >
                 <X size={16} />
               </button>

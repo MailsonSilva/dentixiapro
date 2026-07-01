@@ -205,7 +205,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const showBlocker = trialExpired;
 
   return (
-    <div className="flex h-screen w-full bg-secondary-bg overflow-hidden relative">
+    <div className="flex h-[100dvh] w-full bg-secondary-bg overflow-hidden relative">
       <Sidebar type={userType} />
 
       {/* Mobile Drawer (tarefa 7) */}
@@ -216,7 +216,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {userType === 'parceiro' && <Navbar type={userType} />}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-8 pt-4">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16 md:pb-8 pt-4">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="animate-spin text-primary" size={32} />

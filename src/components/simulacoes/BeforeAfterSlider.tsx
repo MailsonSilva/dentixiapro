@@ -62,7 +62,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
+      className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
       onMouseDown={onMouseDown}
     >
       {/* Camada DEPOIS — fundo completo */}

@@ -5,11 +5,11 @@
 -- ===================================================================
 
 -- 1. Atualiza o trigger de criação de usuário para incluir trial_ends_at,
---    sincronização de dados OAuth (avatar, telefone) e consentimento automático.
+--    sincronização de dados OAuth (avatar, telefone), consentimento automático e código de indicação.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.usuarios (id, email, nome_completo, tipo, trial_ends_at, logo_url, telefone)
+  INSERT INTO public.usuarios (id, email, nome_completo, tipo, trial_ends_at, logo_url, telefone, referral_code)
   VALUES (
     new.id,
     new.email,
@@ -25,7 +25,8 @@ BEGIN
       new.phone,
       new.raw_user_meta_data->>'phone',
       new.raw_user_meta_data->>'phone_number'
-    )
+    ),
+    UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))
   )
   ON CONFLICT (id) DO NOTHING;
 
@@ -40,8 +41,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ===================================================================
 -- 2. BACKFILL: Concede 7 dias de trial a partir do created_at
---    para todos os usuários existentes onde trial_ends_at é NULL.
+--    para todos os usuários existentes onde trial_ends_at é NULL,
+--    e preenche referral_code para quem não possui.
 -- ===================================================================
+UPDATE public.usuarios
+SET referral_code = UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))
+WHERE referral_code IS NULL;
+
 UPDATE public.usuarios 
 SET trial_ends_at = created_at + interval '7 days' 
 WHERE trial_ends_at IS NULL;

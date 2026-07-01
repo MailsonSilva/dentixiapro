@@ -123,31 +123,37 @@ Pode ocorrer por:
 
 export default function TermosPage() {
   const router = useRouter();
+  const sections = TERMS_TEXT.split(/──+/);
 
   return (
-    <div className="min-h-screen bg-secondary-bg pb-24 md:pb-12 text-gray-800">
-      <header className="bg-white px-6 py-5 flex items-center shadow-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-secondary-bg pb-12 text-gray-800">
+      <header className="bg-white px-4 py-3 flex items-center shadow-sm sticky top-0 z-50">
          <button 
            onClick={() => router.back()}
-           className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+           className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
          >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
          </button>
-         <div className="flex-1 flex justify-center items-center gap-2 -ml-10">
-           <Shield size={22} className="text-primary" />
-           <h1 className="text-lg font-semibold text-gray-800 capitalize tracking-wide">Termos de Uso</h1>
+         <div className="flex-1 flex items-center gap-2 pl-2">
+           <Shield size={18} className="text-primary" />
+           <h1 className="text-lg font-bold text-gray-800 capitalize tracking-tight">Termos de Uso</h1>
          </div>
       </header>
 
-      <main className="max-w-3xl mx-auto w-full px-6 py-10">
+      <main className="w-full max-w-md mx-auto px-4 py-3">
         <motion.div
            initial={{ opacity: 0, y: 10 }}
            animate={{ opacity: 1, y: 0 }}
-           className="bg-white rounded-[32px] shadow-sm border border-gray-100 p-8 sm:p-12"
+           className="space-y-4"
         >
-          <pre className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-sans">
-            {TERMS_TEXT}
-          </pre>
+          {sections.map((section, idx) => (
+            <div key={idx}>
+              {idx > 0 && <div className="w-full bg-slate-200 h-px my-3" />}
+              <pre className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans">
+                {section.trim()}
+              </pre>
+            </div>
+          ))}
         </motion.div>
       </main>
     </div>

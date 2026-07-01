@@ -69,26 +69,26 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
   return (
     <div className="w-full">
       {/* Header e Busca */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl font-semibold font-poppins text-gray-800 tracking-tight">Minhas Simulações</h1>
-          <p className="text-gray-400 font-medium">Histórico de transformações realizadas</p>
+          <h1 className="text-base font-bold font-poppins text-gray-800 tracking-tight leading-tight">Minhas Simulações</h1>
+          <p className="text-xs text-gray-400 font-medium leading-tight">Histórico de transformações realizadas</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 md:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
             <input
               type="text"
-              placeholder="Pesquisar paciente ou procedimento..."
+              placeholder="Pesquisar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-white border border-gray-100 rounded-2xl pl-12 pr-6 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none w-full md:w-64 transition-all shadow-sm"
+              className="bg-white border border-gray-100 rounded-xl pl-9 pr-4 h-9 text-base focus:ring-2 focus:ring-primary/20 outline-none w-full md:w-48 transition-all shadow-sm font-medium"
             />
           </div>
 
           <Link href="/simulacoes">
-            <Button size="sm" className="h-12 px-6 rounded-2xl" leftIcon={<Camera size={18} />}>
+            <Button size="sm" className="h-9 px-3.5 rounded-xl text-xs font-bold" leftIcon={<Camera size={14} />}>
               Nova
             </Button>
           </Link>
@@ -97,90 +97,98 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
 
       {filteredSimulacoes.length === 0 ? (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-24 glass-card rounded-xl border-dashed border-2 border-gray-100"
+          className="text-center py-16 bg-white rounded-2xl border-dashed border-2 border-gray-100 p-6 shadow-sm"
         >
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Camera className="text-gray-300" size={40} />
+          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Camera className="text-gray-300" size={28} />
           </div>
-          <h3 className="text-xl font-bold text-gray-700">Nenhuma simulação encontrada</h3>
-          <p className="text-gray-400 max-w-xs mx-auto mt-2">Você ainda não realizou nenhuma simulação ou a busca não retornou resultados.</p>
+          <h3 className="text-lg font-bold text-gray-700">Nenhuma simulação</h3>
+          <p className="text-xs text-gray-400 max-w-xs mx-auto mt-1 leading-snug">Você ainda não realizou nenhuma simulação ou a busca não retornou resultados.</p>
           <Link href="/simulacoes">
-            <Button variant="outline" className="mt-8">Criar primeira simulação</Button>
+            <Button variant="outline" className="mt-6 h-10 text-sm">Criar primeira</Button>
           </Link>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
-          {filteredSimulacoes.map((item) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={() => item.img_simulada_url && setSelectedSim(item)}
-              className={cn(
-                "glass-card rounded-xl overflow-hidden border border-white/40 shadow-xl transition-all group flex flex-col bg-white",
-                item.img_simulada_url ? "cursor-pointer hover:shadow-2xl hover:scale-[1.01]" : "cursor-wait"
-              )}
-            >
-              {/* Header do Card */}
-              <div className="p-6 flex items-center justify-between border-b border-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                    <User size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800 leading-tight capitalize">{item.nome_paciente || 'Paciente'}</h3>
-                    <p className="text-[11px] text-gray-400 font-bold capitalize tracking-wider">
-                      {item.procedimento || 'Simulação'} • {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => handleDelete(e, item.id)}
-                  disabled={deletingId === item.id}
-                  className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all disabled:opacity-50"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
+          {filteredSimulacoes.map((item) => {
+            const date = new Date(item.created_at);
+            const day = String(date.getDate()).padStart(2, "0");
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            const formattedDate = `Criado em: ${day}/${month}/${year} às ${hours}:${minutes}`;
 
-              {/* Área de Visualização Antes/Depois */}
-              <div className="p-4 grid grid-cols-2 gap-4 relative flex-1">
-                {!item.img_simulada_url && (
-                  <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center">
-                    <Sparkles className="text-primary animate-bounce mb-3" size={32} />
-                    <p className="text-gray-800 font-semibold text-sm">IA Processando...</p>
-                    <p className="text-gray-500 text-[10px] max-w-[150px] mt-1 font-medium">Isso pode levar até 2 minutos. Atualize em instantes.</p>
-                  </div>
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => item.img_simulada_url && setSelectedSim(item)}
+                className={cn(
+                  "bg-white rounded-2xl shadow-sm border border-slate-100 p-4 transition-all group flex flex-col justify-between",
+                  item.img_simulada_url ? "cursor-pointer hover:shadow-md hover:scale-[1.01]" : "cursor-wait"
                 )}
-
-                <div className="space-y-2 text-center">
-                  <span className="text-[11px] font-semibold capitalize tracking-tighter text-gray-400">Antes</span>
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden shadow-inner bg-slate-100 relative">
-                    <img src={item.img_original_url} alt="Antes" className="w-full h-full object-contain" />
+              >
+                <div>
+                  {/* Cabeçalho */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800 capitalize leading-tight">{item.nome_paciente || 'Paciente'}</h3>
+                      <p className="text-[10px] text-slate-400 font-bold capitalize tracking-wider mt-0.5">
+                        {item.procedimento || 'Simulação'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleDelete(e, item.id)}
+                      disabled={deletingId === item.id}
+                      className="p-1.5 text-red-500 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50 shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                </div>
 
-                <div className="space-y-2 text-center">
-                  <span className="text-[11px] font-semibold capitalize tracking-tighter text-primary">Depois</span>
-                  <div className="aspect-[4/3] rounded-lg overflow-hidden shadow-inner bg-slate-100 relative">
-                    {item.img_simulada_url ? (
-                      <img src={item.img_simulada_url} alt="Depois" className="w-full h-full object-contain" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
-                        <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin"></div>
+                  {/* Comparativo de Imagens */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-slate-700 text-center mb-2">Antes</span>
+                      <div className="aspect-[4/3] rounded-md overflow-hidden bg-slate-50 relative border border-slate-100 flex items-center justify-center">
+                        <img src={item.img_original_url} alt="Antes" className="w-full h-full object-cover rounded-md" />
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex flex-col relative">
+                      <span className="text-sm font-medium text-slate-700 text-center mb-2">Depois</span>
+                      <div className="aspect-[4/3] rounded-md overflow-hidden bg-slate-50 relative border border-slate-100 flex items-center justify-center">
+                        {item.img_simulada_url ? (
+                          <img src={item.img_simulada_url} alt="Depois" className="w-full h-full object-cover rounded-md" />
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] p-2 text-center">
+                            <Sparkles className="text-primary animate-bounce mb-1" size={16} />
+                            <span className="text-[9px] text-gray-500 font-semibold">Processando...</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="px-6 py-4 bg-gray-50/30 flex items-center justify-center group-hover:bg-primary transition-colors mt-auto">
-                <p className="text-[11px] font-semibold capitalize text-gray-400 group-hover:text-white transition-colors">Clique para ver comparação detalhada</p>
-              </div>
-            </motion.div>
-          ))}
+                {/* Rodapé */}
+                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {formattedDate}
+                  </span>
+                  {item.img_simulada_url && (
+                    <span className="text-[10px] font-bold text-primary group-hover:underline">
+                      Ver Comparação
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -203,24 +211,24 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
               className="relative w-full max-w-5xl bg-white rounded-xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col"
             >
               {/* Top Bar Modal */}
-              <div className="p-6 md:px-10 border-b border-gray-100 flex items-center justify-between">
+              <div className="p-3 md:px-6 border-b border-gray-100 flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold text-gray-800 tracking-tight capitalize">{selectedSim.nome_paciente || 'Paciente'}</h2>
-                  <p className="text-xs text-gray-400 font-bold capitalize tracking-wider">Procedimento: {selectedSim.procedimento || 'Simulação'} </p>
+                  <h2 className="text-base font-bold text-gray-800 tracking-tight capitalize">{selectedSim.nome_paciente || 'Paciente'}</h2>
+                  <p className="text-[10px] text-gray-400 font-bold capitalize tracking-wider">Procedimento: {selectedSim.procedimento || 'Simulação'} </p>
                 </div>
                 <button
                   onClick={() => setSelectedSim(null)}
-                  className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                  className="p-2 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
                 >
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Slider Area */}
-              <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col items-center">
-                <div className="bg-blue-50/50 rounded-xl p-4 mb-6 flex items-center gap-3 w-full max-w-2xl border border-blue-100">
-                  <Info className="text-primary flex-shrink-0" size={20} />
-                  <p className="text-[11px] md:text-sm text-gray-600 font-medium leading-relaxed italic">
+              <div className="flex-1 overflow-hidden p-3 md:p-4 flex flex-col items-center">
+                <div className="bg-blue-50/50 rounded-xl p-3 mb-3 flex items-center gap-2.5 w-full max-w-2xl border border-blue-100">
+                  <Info className="text-primary flex-shrink-0" size={16} />
+                  <p className="text-[10px] md:text-xs text-gray-600 font-medium leading-relaxed italic">
                     O resultado real depende de fatores clínicos individuais. Esta é uma projeção baseada em IA.
                   </p>
                 </div>
@@ -253,12 +261,12 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                   />
                 </div>
 
-                <div className="mt-8 flex items-center gap-6 w-full max-w-2xl">
-                  <div className="flex-1 h-12 md:h-14 bg-gray-800 rounded-lg flex items-center justify-center text-white font-semibold capitalize text-sm shadow-xl">
+                <div className="mt-4 flex items-center gap-4 w-full max-w-2xl">
+                  <div className="flex-1 h-9 bg-gray-800 rounded-lg flex items-center justify-center text-white font-semibold capitalize text-xs shadow-md">
                     Antes
                   </div>
-                  <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
-                  <div className="flex-1 h-12 md:h-14 bg-primary rounded-lg flex items-center justify-center text-white font-semibold capitalize text-sm shadow-xl shadow-primary/20">
+                  <div className="w-8 h-0.5 bg-gray-200 rounded-full"></div>
+                  <div className="flex-1 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-semibold capitalize text-xs shadow-md shadow-primary/10">
                     Depois
                   </div>
                 </div>

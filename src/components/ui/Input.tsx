@@ -34,9 +34,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={isPassword ? (showPassword ? "text" : "password") : type}
             ref={ref}
             className={cn(
-              "w-full bg-white border-2 border-gray-200/60 focus:border-primary/40 focus:bg-white rounded-xl py-2.5 md:py-2 outline-none transition-all duration-200 shadow-sm font-medium text-base md:text-sm",
-              icon ? "pl-10" : "px-4",
-              isPassword ? "pr-12" : "pr-4",
+              "w-full h-9 bg-white border-2 border-gray-200/60 focus:border-primary/40 focus:bg-white rounded-xl outline-none transition-all duration-200 shadow-sm font-medium text-base",
+              icon ? "pl-9" : "px-3",
+              isPassword ? "pr-9" : "pr-3",
               error && "border-red-500/50 focus:border-red-500/50",
               className
             )}

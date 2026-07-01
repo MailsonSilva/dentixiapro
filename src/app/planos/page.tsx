@@ -114,13 +114,15 @@ export default function PlanosPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#dce8f8] to-[#eef2f7] flex flex-col items-center pt-8 pb-16 px-4 font-sans">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-[#1a5fb4] p-1.5 rounded-xl shadow-lg">
-            <Image src="/logo.svg" alt="DentixIA" width={32} height={32} />
-          </div>
-          <span className="text-[28px] font-semibold text-[#1a2a4a] tracking-tight">
-            Dentix<span className="text-[#1a5fb4]">IA</span>
-          </span>
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/logo.png"
+            alt="DentixIA"
+            width={150}
+            height={38}
+            className="h-9 w-auto object-contain"
+            priority
+          />
         </div>
         <h1 className="text-2xl md:text-3xl font-semibold text-[#1a2a4a] text-center mb-2">
           Escolha o plano ideal
@@ -134,7 +136,7 @@ export default function PlanosPage() {
 
 
       {/* Grid de Planos */}
-      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         {plans.map((plan, i) => {
           const annual = isAnnual(plan);
           const monthlyEq = annual ? plan.unit_amount / 12 : plan.unit_amount;
@@ -158,17 +160,17 @@ export default function PlanosPage() {
 
               <div
                 onClick={() => setSelectedId(plan.id)}
-                className={`group flex flex-col h-full bg-white rounded-[32px] transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
+                className={`group flex flex-col h-full bg-white rounded-2xl transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
                   selected
                     ? "ring-4 ring-[#1a5fb4] shadow-2xl scale-[1.02] z-10"
                     : "hover:scale-[1.01] hover:shadow-lg border border-gray-100"
                 }`}
               >
-                <div className={`flex flex-col h-full p-6 sm:p-7 ${annual ? "pt-8 sm:pt-9" : "pt-6"}`}>
+                <div className="flex flex-col h-full p-4">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex-1">
-                      <p className={`font-semibold text-xl mb-1 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
+                      <p className={`font-semibold text-base mb-1 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
                         {plan.product_name}
                       </p>
                       {annual && (
@@ -189,7 +191,7 @@ export default function PlanosPage() {
                   {/* Preco */}
                   <div className="mb-6 flex flex-col justify-center min-h-[80px]">
                     <div className="flex items-baseline gap-1">
-                      <span className={`text-4xl sm:text-5xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
+                      <span className={`text-4xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
                         {formatCurrency(monthlyEq)}
                       </span>
                       <span className="text-gray-400 text-sm font-bold">/mes</span>
@@ -204,13 +206,13 @@ export default function PlanosPage() {
                   {/* Perks */}
                   <ul className="space-y-3.5 mb-8 flex-1">
                     {PERKS.map((perk, j) => (
-                      <li key={j} className="flex items-center gap-3 text-[13.5px] font-medium text-gray-600">
+                      <li key={j} className="flex items-center gap-3 text-[13px] font-medium text-gray-600">
                         <CheckCircle2 size={16} strokeWidth={2.5} className={selected ? "text-emerald-500" : "text-gray-300"} />
                         {perk}
                       </li>
                     ))}
                     {annual && (
-                      <li className="flex items-center gap-3 text-[13.5px] font-bold text-[#1a5fb4]">
+                      <li className="flex items-center gap-3 text-[13px] font-bold text-[#1a5fb4]">
                         <Star size={16} fill="currentColor" className="text-[#1a5fb4]" />
                         Economia real de 16%
                       </li>
@@ -225,7 +227,7 @@ export default function PlanosPage() {
                     className={`w-full py-3.5 rounded-2xl font-bold text-base shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                       selected
                         ? "bg-[#1a5fb4] text-white hover:bg-[#174fa0] shadow-blue-200"
-                        : "bg-gray-100 text-gray-400 group-hover:bg-gray-200 group-hover:text-gray-600 shadow-none"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 border border-gray-200 shadow-none"
                     } disabled:opacity-70 disabled:cursor-wait`}
                   >
                     {isLoadingThis ? (
