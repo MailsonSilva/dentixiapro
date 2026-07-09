@@ -203,7 +203,7 @@ export default function SimulationPage() {
 
   // ───────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-screen pb-24 md:pb-8 bg-secondary-bg">
+    <div className="flex-1 flex flex-col h-full bg-secondary-bg overflow-hidden">
       <AnimatePresence>
         {step === "tips" && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -253,8 +253,8 @@ export default function SimulationPage() {
         )}
       </AnimatePresence>
 
-      <main className="max-w-4xl mx-auto w-full px-3 py-4 md:pt-20">
-        <div className="flex items-center gap-2 mb-4">
+      <main className="max-w-4xl mx-auto w-full px-3 py-4 flex flex-col flex-1 overflow-y-auto md:pt-20">
+        <div className={cn("flex items-center gap-2 mb-4", step === "result" && "w-full max-w-2xl mx-auto")}>
           <button
             onClick={() => {
               if (step === "procedure") setStep("tips");
@@ -399,43 +399,51 @@ export default function SimulationPage() {
           )}
 
           {step === "result" && (urlSimulada || urlOriginal) && (
-            <motion.div key="res" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-              {/* Antes / Depois */}
-              <div className="bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain">
+            <motion.div 
+              key="res" 
+              initial={{ opacity: 0, x: 20 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              className="flex-1 flex flex-col items-center justify-center w-full gap-6 py-4"
+            >
+              {/* Slider de Comparação Centralizado com tamanho máximo */}
+              <div className="w-full max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
                 <BeforeAfterSlider
                   before={urlOriginal ?? imageBase64!}
                   after={urlSimulada ?? ""}
                 />
               </div>
 
-              {/* Botão de Salvar Simulação */}
-              <button
-                onClick={() => setShowSaveModal(true)}
-                disabled={isSaved}
-                className={cn(
-                  "w-full h-9 rounded-xl text-white font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all text-xs",
-                  isSaved ? "bg-[#10B981] cursor-not-allowed opacity-90" : "bg-primary hover:bg-primary/90"
-                )}
-              >
-                {isSaved ? <><Check size={14} /> Salva com Sucesso</> : <><Save size={14} /> Salvar Simulação</>}
-              </button>
+              {/* Container de Botões posicionado abaixo com espaçamento consistente */}
+              <div className="w-full max-w-md space-y-3 mt-2">
+                {/* Botão de Salvar Simulação */}
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  disabled={isSaved}
+                  className={cn(
+                    "w-full h-10 rounded-xl text-white font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all text-xs",
+                    isSaved ? "bg-[#10B981] cursor-not-allowed opacity-90" : "bg-primary hover:bg-primary/90"
+                  )}
+                >
+                  {isSaved ? <><Check size={14} /> Salva com Sucesso</> : <><Save size={14} /> Salvar Simulação</>}
+                </button>
 
-              {/* Ações rápidas */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleRetry}
-                  disabled={isProcessing}
-                  className="h-9 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                  {isProcessing ? "Gerando..." : "Refazer"}
-                </button>
-                <button
-                  onClick={handleNewSimulation}
-                  className="h-9 border-2 border-[#FB923C] bg-[#FB923C] rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1 cursor-pointer hover:bg-[#FB923C]/90 shadow-sm transition-all"
-                >
-                  <Plus size={14} /> Nova
-                </button>
+                {/* Ações rápidas */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleRetry}
+                    disabled={isProcessing}
+                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    {isProcessing ? "Gerando..." : "Refazer"}
+                  </button>
+                  <button
+                    onClick={handleNewSimulation}
+                    className="h-10 border-2 border-[#FB923C] bg-[#FB923C] rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FB923C]/90 shadow-sm transition-all"
+                  >
+                    <Plus size={14} /> Nova
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

@@ -13,8 +13,8 @@ export default async function ResultadosPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 md:pb-0 md:pt-20 bg-secondary-bg">
-      <main className="max-w-7xl mx-auto w-full px-3 py-4">
+    <div className="flex-1 flex flex-col overflow-y-auto bg-secondary-bg">
+      <main className="max-w-7xl mx-auto w-full px-3 py-4 md:pt-20">
         <SimulationGallery initialSimulations={initialSimulations} />
       </main>
     </div>
