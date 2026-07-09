@@ -3,24 +3,24 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, Sparkles, Loader2, Save, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, Check, User
+  ChevronLeft, Sparkles, Loader2, RotateCcw, Plus, X,
+  Upload, ImageIcon, Camera, History, Check, Save
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotification } from "@/lib/NotificationContext";
-import { Input } from "@/components/ui/Input";
 
 // SSD Layers
-import { procedures, toothColors } from "@/lib/simulacoes/utils";
-import {
-  saveSimulationAction
-} from "@/lib/simulacoes/actions";
+import { procedures } from "@/lib/simulacoes/utils";
+import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
 
 // UI Components
 import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
 import { ColorPicker } from "@/components/simulacoes/ColorPicker";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOADING_MESSAGES = [
@@ -28,7 +28,7 @@ const LOADING_MESSAGES = [
   "Fazendo melhorias...",
 ];
 
-const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL!;
+// n8n removido — pipeline migrado para Server Action nativa (src/lib/actions/simulacoes.ts)
 
 type Step = "tips" | "procedure" | "upload" | "result";
 
@@ -40,14 +40,6 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-function extractPureBase64(dataUri: string): string {
-  return dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
-}
-
-function getColorHex(colorId: string): string {
-  return toothColors.find((c) => c.id === colorId)?.hex ?? "#F7F5EC";
 }
 
 // ─── Loading Tracker ─────────────────────────────────────────────────────────
@@ -107,73 +99,77 @@ export default function SimulationPage() {
   const [step, setStep] = useState<Step>("tips");
   const [procedure, setProcedure] = useState<string>("Facetas");
   const [selectedColor, setSelectedColor] = useState<string>("BL1");
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null); // preview local
+  const [urlOriginal, setUrlOriginal] = useState<string | null>(null);
+  const [urlSimulada, setUrlSimulada] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [resultBase64, setResultBase64] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [patientName, setPatientName] = useState("");
+
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [nomePaciente, setNomePaciente] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
+  const handleSaveSimulation = async () => {
+    if (!nomePaciente.trim() || !urlOriginal || !urlSimulada) return;
+    setIsSaving(true);
+    try {
+      const res = await salvarSimulacaoConfirmada(
+        nomePaciente,
+        procedure,
+        urlOriginal,
+        urlSimulada,
+        selectedColor
+      );
+      if (res.success) {
+        notify("Sucesso", "Simulação salva com sucesso!", "success");
+        setIsSaved(true);
+        setShowSaveModal(false);
+      } else {
+        notify("Erro ao salvar", res.error || "Tente novamente.", "error");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao salvar.";
+      notify("Erro ao salvar", msg, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleFile = async (file: File) => {
+    setImageFile(file);
     const b64 = await fileToBase64(file);
     setImageBase64(b64);
   };
 
-  // ── Webhook pipeline ──────────────────────────────────────────────────────
+  // ── gerarSimulacaoNativa: pipeline completo em single-step ──────────────
   const handleGenerate = async () => {
-    if (!imageBase64) return;
+    if (!imageFile) return;
     setIsProcessing(true);
     try {
-      const colorHex = getColorHex(selectedColor);
-      const pureBase64 = extractPureBase64(imageBase64);
+      // Mapeia os valores da UI para os aceitos pela Server Action (type TipoTratamento)
+      const procedureMap: Record<string, "clareamento" | "faceta" | "implante"> = {
+        Clareamento: "clareamento",
+        Facetas: "faceta",
+        Implante: "implante",
+      };
+      const tipoTratamento = procedureMap[procedure] ?? "faceta";
 
-      // Normaliza casing: API espera "Facetas" ou "implante"
-      const procedureValue = procedure === "Implante" ? "implante" : procedure;
+      const fd = new FormData();
+      fd.append("imagem", imageFile);
+      fd.append("tipoTratamento", tipoTratamento);
 
-      const response = await fetch(N8N_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: pureBase64,
-          vitacor: colorHex,
-          procedure: procedureValue,
-        }),
-      });
+      const resultado = await gerarSimulacaoNativa(fd);
 
-      if (!response.ok) {
-        throw new Error(`Erro no servidor de IA: ${response.status}`);
+      if (!resultado.success) {
+        throw new Error(resultado.error ?? "Falha na simulação.");
       }
 
-      const json = await response.json();
-
-      // n8n retorna array: [{ data: "base64...", status, message }]
-      // Normaliza: aceita array ou objeto direto
-      const payload = Array.isArray(json) ? json[0] : json;
-
-      if (!payload) throw new Error("Resposta vazia do servidor de IA.");
-
-      // Tenta campos conhecidos em ordem de prioridade
-      const rawResult: string | null =
-        payload?.imagemBase64 ??
-        payload?.output_image ??
-        payload?.imagem_depois ??
-        payload?.data ??
-        (typeof payload === "string" ? payload : null);
-
-      if (!rawResult || typeof rawResult !== "string") {
-        throw new Error("Imagem não encontrada na resposta do servidor de IA.");
-      }
-
-      // Remove prefixo duplicado se vier "data:image/png;base64,data:image/png;base64,..."
-      const cleanBase64 = rawResult.replace(/^(data:image\/[^;]+;base64,)+/, "");
-
-      // Garante Data URI válida e limpa
-      const resultDataUri = `data:image/png;base64,${cleanBase64}`;
-
-      setResultBase64(resultDataUri);
+      setUrlOriginal(resultado.urlOriginal ?? null);
+      setUrlSimulada(resultado.urlSimulada ?? null);
       setStep("result");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha na simulação.";
@@ -183,117 +179,73 @@ export default function SimulationPage() {
     }
   };
 
-  // ── Refazer: reutiliza estados em memória, re-chama webhook ───────────────
+  // ── Refazer: reutiliza o File em memória, re-chama a Server Action ────────
   const handleRetry = async () => {
-    setResultBase64(null);
-    setStep("upload"); // mostra loading overlay durante o re-fetch
+    setUrlSimulada(null);
+    setUrlOriginal(null);
+    setStep("upload");
     await handleGenerate();
   };
 
-  // ── Nova Simulação: reset total de todos os estados ───────────────────────
+  // ── Nova Simulação: reset total ───────────────────────────────────────────
   const handleNewSimulation = () => {
+    setImageFile(null);
     setImageBase64(null);
-    setResultBase64(null);
-    setPatientName("");
+    setUrlOriginal(null);
+    setUrlSimulada(null);
     setSelectedColor("BL1");
     setProcedure("Facetas");
     setIsProcessing(false);
+    setIsSaved(false);
+    setNomePaciente("");
     setStep("procedure");
   };
 
-  // ── Save to Storage + DB ──────────────────────────────────────────────────
-  const handleSave = async () => {
-    console.log("handleSave debug info:", {
-      hasImageBase64: !!imageBase64,
-      hasResultBase64: !!resultBase64,
-      patientName,
-    });
-    
-    if (!imageBase64 || !resultBase64) {
-      notify("Erro", "Imagens original ou simulada ausentes.", "error");
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      if (typeof imageBase64 !== "string") {
-        throw new Error("Imagem original inválida.");
-      }
-      if (typeof resultBase64 !== "string") {
-        throw new Error("Imagem simulada inválida.");
-      }
-      if (!patientName || !patientName.trim()) {
-        throw new Error("Nome do paciente é obrigatório.");
-      }
-
-      const base64Antes = extractPureBase64(imageBase64);
-      const base64Depois = extractPureBase64(resultBase64);
-
-      const formData = new FormData();
-      formData.append("nome_paciente", patientName.trim());
-      formData.append("procedimento", procedure);
-      formData.append("imagem_original", base64Antes);
-      formData.append("imagem_simulada", base64Depois);
-      formData.append("cor", getColorHex(selectedColor));
-
-      await saveSimulationAction(formData);
-
-      notify("Sucesso", "Simulação salva!", "success");
-      router.push("/simulacoes/resultados");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao salvar simulação.";
-      notify("Erro", msg, "error");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-screen pb-24 md:pb-8 bg-secondary-bg">
+    <div className="flex-1 flex flex-col h-full bg-secondary-bg overflow-hidden">
       <AnimatePresence>
         {step === "tips" && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-white rounded-2xl md:rounded-[32px] w-full max-w-lg p-5 md:p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative bg-white rounded-xl w-full max-w-sm p-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex-1" />
-                <h2 className="text-base md:text-lg font-bold text-gray-800 tracking-wide uppercase text-center flex-1">Dicas</h2>
+                <h2 className="text-sm font-bold text-gray-800 tracking-wide uppercase text-center flex-1">Dicas</h2>
                 <div className="flex-1 flex justify-end">
                   <button onClick={() => router.push("/")} className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
-                    <X size={20} className="md:w-6 md:h-6" />
+                    <X size={18} />
                   </button>
                 </div>
               </div>
 
-              <p className="text-center text-gray-600 mb-4 md:mb-6 font-medium text-xs md:text-sm leading-relaxed px-2 md:px-4">
+              <p className="text-center text-gray-500 mb-3 font-medium text-xs leading-snug px-2">
                 Para obter o melhor desempenho da tecnologia, capture suas fotos conforme o protocolo abaixo.
               </p>
 
-              <div className="flex justify-center gap-4 md:gap-6 mb-4 md:mb-6">
-                <div className="relative w-24 h-24 sm:w-36 sm:h-36 rounded-xl md:rounded-2xl overflow-hidden shadow-md">
-                  <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-0.5 md:p-1 border-2 border-white m-1.5 md:m-2">
-                    <X className="text-white w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
+              <div className="flex justify-center gap-3 mb-3">
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-sm">
+                  <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-0.5 border border-white m-1">
+                    <X className="text-white w-2.5 h-2.5" strokeWidth={3} />
                   </div>
                   <Image src="/wrong_tip.png" alt="Exemplo Incorreto" fill className="object-cover" />
                 </div>
-                <div className="relative w-24 h-24 sm:w-36 sm:h-36 rounded-xl md:rounded-2xl overflow-hidden shadow-md">
-                  <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-0.5 md:p-1 border-2 border-white m-1.5 md:m-2">
-                    <Check className="text-white w-3 h-3 md:w-4 md:h-4" strokeWidth={3} />
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-sm">
+                  <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-0.5 border border-white m-1">
+                    <Check className="text-white w-2.5 h-2.5" strokeWidth={3} />
                   </div>
                   <Image src="/correct_tip.png" alt="Exemplo Correta" fill className="object-cover" />
                 </div>
               </div>
 
-              <ul className="space-y-2 md:space-y-3 mb-5 md:mb-6 text-xs md:text-sm text-gray-600 px-1 md:px-2">
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[1px]">•</span> <span><strong className="text-gray-800">Iluminação:</strong> Garanta boa iluminação.</span></li>
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Posição:</strong> O paciente deve estar sentado com a postura ereta, de costas para uma parede.</span></li>
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Sorriso:</strong> Peça para o paciente sorrir.</span></li>
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Ângulo:</strong> A câmera deve estar perpendicular ao rosto.</span></li>
-                <li className="flex items-start gap-2"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-800">Formatos:</strong> Use arquivos .jpeg ou .png.</span></li>
+              <ul className="space-y-1.5 mb-4 text-xs text-gray-500 leading-snug px-1">
+                <li className="flex items-start gap-1.5"><span className="font-bold text-gray-800 mt-[1px]">•</span> <span><strong className="text-gray-700">Iluminação:</strong> Garanta boa iluminação.</span></li>
+                <li className="flex items-start gap-1.5"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-700">Posição:</strong> O paciente deve estar ereto e encostado.</span></li>
+                <li className="flex items-start gap-1.5"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-700">Sorriso:</strong> Peça para o paciente sorrir.</span></li>
+                <li className="flex items-start gap-1.5"><span className="font-bold text-gray-800 mt-[2px]">•</span> <span><strong className="text-gray-700">Ângulo:</strong> Câmera perpendicular ao rosto.</span></li>
               </ul>
 
-              <button onClick={() => setStep("procedure")} className="w-full bg-[#0f50a6] py-2.5 md:py-3.5 rounded-xl text-white font-semibold hover:bg-[#0f50a6]/90 transition-all shadow-md cursor-pointer text-xs md:text-sm">
+              <button onClick={() => setStep("procedure")} className="w-full bg-[#0f50a6] h-9 rounded-xl text-white font-semibold hover:bg-[#0f50a6]/90 transition-all shadow-sm cursor-pointer text-xs">
                 Continuar
               </button>
             </motion.div>
@@ -301,45 +253,94 @@ export default function SimulationPage() {
         )}
       </AnimatePresence>
 
-      <main className="max-w-4xl mx-auto w-full px-6 py-8 md:pt-20">
-        <div className="flex items-center gap-4 mb-8">
+      <main className="max-w-4xl mx-auto w-full px-3 py-4 flex flex-col flex-1 overflow-y-auto md:pt-20">
+        <div className={cn("flex items-center gap-2 mb-4", step === "result" && "w-full max-w-2xl mx-auto")}>
           <button
             onClick={() => {
               if (step === "procedure") setStep("tips");
               else if (step === "upload") setStep("procedure");
-              else if (step === "result") { setStep("upload"); setResultBase64(null); }
+              else if (step === "result") { setStep("upload"); }
             }}
-            className="p-2 bg-white rounded-full cursor-pointer"
+            className="p-1 bg-white rounded-full cursor-pointer shadow-sm border border-gray-100"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={16} />
           </button>
-          <h1 className="text-2xl font-semibold text-gray-800 capitalize tracking-tight">Simulação IA</h1>
+          <h1 className="text-base font-bold text-gray-800 capitalize tracking-tight">Simulação IA</h1>
         </div>
 
         <AnimatePresence mode="wait">
           {step === "procedure" && (
-            <motion.div key="proc" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-6 max-w-sm mx-auto">
-              <div className="grid grid-cols-2 gap-6">
-                {procedures.map((p) => (
-                  <button key={p.id} onClick={() => setProcedure(p.id)} className={cn("flex flex-col items-center gap-4 p-8 rounded-[32px] border-2 transition-all hover:-translate-y-1 hover:shadow-lg cursor-pointer font-['Poppins']", procedure === p.id ? "border-[#0f50a6] bg-[#0f50a6]/5 shadow-xl" : "border-gray-200 bg-white")}>
-                    <div className="w-16 h-16 relative">
-                      <Image src={p.id === "Facetas" ? "/facetas.svg" : "/implante.svg"} alt={p.label} fill className="object-contain" style={{ filter: "invert(24%) sepia(35%) saturate(3019%) hue-rotate(199deg) brightness(98%) contrast(97%)" }} />
+            <motion.div
+              key="proc"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col items-center justify-center min-h-[50vh] w-full max-w-sm mx-auto px-4 text-center"
+            >
+              <p className="text-xs text-slate-500 font-medium leading-tight mb-5 max-w-[280px]">
+                Escolha um dos procedimentos abaixo para iniciar a simulação.
+              </p>
+
+              <div className="flex gap-4 justify-center w-full mb-6">
+                {[...procedures].reverse().map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setProcedure(p.id)}
+                    className={cn(
+                      "flex flex-col items-center justify-center w-28 h-28 rounded-xl border transition-all duration-200 cursor-pointer shadow-sm",
+                      procedure === p.id
+                        ? "bg-blue-50 border-blue-500 text-blue-700 shadow-md scale-105"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="w-10 h-10 relative mb-2">
+                      <Image
+                        src={p.id === "Facetas" ? "/facetas.svg" : "/implante.svg"}
+                        alt={p.label}
+                        fill
+                        className="object-contain"
+                        style={{
+                          filter: procedure === p.id
+                            ? "invert(24%) sepia(35%) saturate(3019%) hue-rotate(199deg) brightness(98%) contrast(97%)"
+                            : "invert(40%) sepia(10%) saturate(200%) brightness(90%) contrast(85%)"
+                        }}
+                      />
                     </div>
-                    <span className="font-semibold text-sm capitalize text-[#0f50a6]">{p.label}</span>
+                    <span className="font-semibold text-xs capitalize">{p.label}</span>
                   </button>
                 ))}
               </div>
-              <button disabled={!procedure} onClick={() => setStep("upload")} className="w-full py-4 bg-primary text-white rounded-2xl font-semibold shadow-xl hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer">
+
+              <button
+                disabled={!procedure}
+                onClick={() => setStep("upload")}
+                className={cn(
+                  "w-40 h-9 rounded-xl text-white font-semibold shadow-sm transition-all text-xs cursor-pointer",
+                  procedure ? "bg-primary hover:bg-primary/90" : "bg-blue-400/60 cursor-not-allowed opacity-50"
+                )}
+              >
                 Avançar
               </button>
             </motion.div>
           )}
 
           {step === "upload" && (
-            <motion.div key="up" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-8">
+            <motion.div key="up" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+              <div className="flex flex-col gap-3">
+                {/* Selected Procedure on top */}
+                <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+                  <h3 className="text-[9px] font-semibold capitalize text-primary mb-0.5 tracking-wider">Procedimento Selecionado</h3>
+                  <p className="font-semibold text-gray-800 text-xs capitalize">{procedure}</p>
+                </div>
+
+                {/* Desired Color (ColorPicker) */}
+                <div className="my-6 py-2">
+                  <h3 className="text-sm font-medium text-slate-500 leading-tight mb-3 text-center">Escolha o tom desejado:</h3>
+                  <ColorPicker selectedId={selectedColor} onSelect={setSelectedColor} />
+                </div>
+
                 {/* Image Upload / Preview */}
-                <div className="bg-white p-6 rounded-[32px] border-2 border-dashed border-primary/20 min-h-[380px] flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 min-h-[240px] flex flex-col items-center justify-center relative overflow-hidden">
                   {/* Loading overlay while processing */}
                   <AnimatePresence>
                     {isProcessing && (
@@ -348,7 +349,7 @@ export default function SimulationPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-[28px]"
+                        className="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl"
                       >
                         <LoadingTracker />
                       </motion.div>
@@ -356,16 +357,16 @@ export default function SimulationPage() {
                   </AnimatePresence>
 
                   {!imageBase64 ? (
-                    <div className="flex flex-col items-center gap-6">
-                      <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                        <Upload size={32} />
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                        <Upload size={20} />
                       </div>
-                      <div className="flex gap-3">
-                        <button onClick={() => fileRef.current?.click()} className="px-5 py-3 bg-primary text-white rounded-2xl font-bold text-sm shadow-xl flex items-center gap-2 cursor-pointer">
-                          <ImageIcon size={18} /> Galeria
+                      <div className="flex gap-2">
+                        <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 bg-primary text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer">
+                          <ImageIcon size={14} /> Galeria
                         </button>
-                        <button onClick={() => camRef.current?.click()} className="px-5 py-3 border border-primary/20 rounded-2xl font-bold text-sm flex items-center gap-2 cursor-pointer">
-                          <Camera size={18} /> Câmera
+                        <button onClick={() => camRef.current?.click()} className="px-3 py-1.5 border border-primary/20 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer">
+                          <Camera size={14} /> Câmera
                         </button>
                       </div>
                       <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
@@ -374,128 +375,137 @@ export default function SimulationPage() {
                   ) : (
                     <div className="relative w-full h-full flex items-center justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageBase64} alt="Preview" className="max-h-[300px] rounded-2xl shadow-xl" />
-                      <button onClick={() => setImageBase64(null)} className="absolute top-0 right-0 p-2 bg-red-500 text-white rounded-full shadow-lg cursor-pointer">
-                        <X size={16} />
+                      <img src={imageBase64} alt="Preview" className="max-h-[220px] rounded-lg shadow-md" />
+                      <button onClick={() => { setImageBase64(null); setImageFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full flex items-center justify-center w-8 h-8 p-0 shadow-lg cursor-pointer">
+                        <X size={14} />
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* Config Panel */}
-                <div className="space-y-8">
-                  <div className="p-5 bg-primary/5 rounded-3xl border border-primary/10">
-                    <h3 className="text-[10px] font-semibold capitalize text-primary mb-1 tracking-wider">Procedimento Selecionado</h3>
-                    <p className="font-semibold text-gray-800 capitalize">{procedure}</p>
-                  </div>
-                  <div className="space-y-4">
-                    <h3 className="text-xs font-semibold capitalize text-gray-400 tracking-wider font-['Poppins']">Tom desejado</h3>
-                    <ColorPicker selectedId={selectedColor} onSelect={setSelectedColor} />
-                  </div>
+                {/* Submit button */}
+                <button
+                  disabled={!imageFile || isProcessing}
+                  onClick={handleGenerate}
+                  className={cn(
+                    "w-full h-9 rounded-xl text-white font-semibold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs",
+                    !imageFile || isProcessing ? "bg-gray-300" : "bg-primary"
+                  )}
+                >
+                  {isProcessing ? <><Loader2 className="animate-spin" size={14} /> Processando...</> : <><Sparkles size={14} /> Gerar Simulação</>}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === "result" && (urlSimulada || urlOriginal) && (
+            <motion.div 
+              key="res" 
+              initial={{ opacity: 0, x: 20 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              className="flex-1 flex flex-col items-center justify-center w-full gap-6 py-4"
+            >
+              {/* Slider de Comparação Centralizado com tamanho máximo */}
+              <div className="w-full max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
+                <BeforeAfterSlider
+                  before={urlOriginal ?? imageBase64!}
+                  after={urlSimulada ?? ""}
+                />
+              </div>
+
+              {/* Container de Botões posicionado abaixo com espaçamento consistente */}
+              <div className="w-full max-w-md space-y-3 mt-2">
+                {/* Botão de Salvar Simulação */}
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  disabled={isSaved}
+                  className={cn(
+                    "w-full h-10 rounded-xl text-white font-semibold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all text-xs",
+                    isSaved ? "bg-[#10B981] cursor-not-allowed opacity-90" : "bg-primary hover:bg-primary/90"
+                  )}
+                >
+                  {isSaved ? <><Check size={14} /> Salva com Sucesso</> : <><Save size={14} /> Salvar Simulação</>}
+                </button>
+
+                {/* Ações rápidas */}
+                <div className="grid grid-cols-2 gap-3">
                   <button
-                    disabled={!imageBase64 || isProcessing}
-                    onClick={handleGenerate}
-                    className={cn(
-                      "w-full py-4 rounded-2xl text-white font-semibold transition-all shadow-xl flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
-                      !imageBase64 || isProcessing ? "bg-gray-300" : "bg-primary"
-                    )}
+                    onClick={handleRetry}
+                    disabled={isProcessing}
+                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isProcessing ? <><Loader2 className="animate-spin" /> Processando...</> : <><Sparkles size={20} /> Gerar Simulação</>}
+                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    {isProcessing ? "Gerando..." : "Refazer"}
+                  </button>
+                  <button
+                    onClick={handleNewSimulation}
+                    className="h-10 border-2 border-[#FB923C] bg-[#FB923C] rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FB923C]/90 shadow-sm transition-all"
+                  >
+                    <Plus size={14} /> Nova
                   </button>
                 </div>
               </div>
             </motion.div>
           )}
-
-          {step === "result" && resultBase64 && imageBase64 && (
-            <motion.div key="res" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <div className="bg-white p-6 rounded-[40px] shadow-2xl overflow-hidden [&_img]:object-contain">
-                <BeforeAfterSlider before={imageBase64} after={resultBase64} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={handleRetry}
-                  disabled={isProcessing}
-                  className="py-4 border-2 border-primary/20 rounded-2xl font-semibold text-primary capitalize text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
-                  {isProcessing ? "Gerando..." : "Refazer"}
-                </button>
-                <button
-                  onClick={handleNewSimulation}
-                  className="py-4 border-2 border-[#FB923C] bg-[#FB923C] rounded-2xl font-semibold text-white capitalize text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-[#FB923C]/90 shadow-lg transition-all"
-                >
-                  <Plus size={18} /> Nova
-                </button>
-              </div>
-              <button
-                onClick={() => setShowSaveModal(true)}
-                disabled={isSaving}
-                className={cn("w-full py-4 rounded-2xl text-white font-semibold shadow-xl flex items-center justify-center gap-3 cursor-pointer", isSaving ? "bg-gray-300" : "bg-primary")}
-              >
-                {isSaving ? <><Loader2 className="animate-spin" /> Salvando...</> : <><Save size={20} /> Salvar Simulação</>}
-              </button>
-            </motion.div>
-          )}
         </AnimatePresence>
       </main>
 
-      {/* Modal: Inserir Nome do Paciente ao Salvar */}
+      {/* Modal para digitar o nome do paciente */}
       <AnimatePresence>
         {showSaveModal && (
-          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSaveModal(false)}
-              className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              className="relative w-full sm:max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col p-6 space-y-6"
+              exit={{ opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-800 tracking-wide uppercase">Salvar Simulação</h2>
-                <button
-                  onClick={() => setShowSaveModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
-              </div>
+              <Card className="shadow-2xl bg-white border border-gray-100 p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-800 text-xs">Salvar Simulação</h3>
+                  <button
+                    onClick={() => setShowSaveModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
 
-              {/* Form */}
-              <div className="space-y-4">
-                <Input
-                  label="Nome do Paciente"
-                  placeholder="Digite o nome do paciente"
-                  value={patientName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPatientName(e.target.value)}
-                  icon={<User size={18} />}
-                />
-              </div>
+                <CardContent className="space-y-3 p-0">
+                  <Input
+                    label="Nome do Paciente"
+                    placeholder="Digite o nome..."
+                    value={nomePaciente}
+                    onChange={(e) => setNomePaciente(e.target.value)}
+                  />
 
-              {/* Actions */}
-              <button
-                disabled={isSaving || !patientName.trim()}
-                onClick={async () => {
-                  await handleSave();
-                  setShowSaveModal(false);
-                }}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-semibold transition-all shadow-lg",
-                  isSaving || !patientName.trim()
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-primary hover:bg-primary/90 shadow-primary/20"
-                )}
-              >
-                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
-                Confirmar e Salvar
-              </button>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSaveModal(false)}
+                      className="flex-1 h-9 text-xs"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleSaveSimulation}
+                      loading={isSaving}
+                      disabled={!nomePaciente.trim() || isSaving}
+                      className="flex-1 h-9 text-xs"
+                    >
+                      Confirmar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </div>
         )}
