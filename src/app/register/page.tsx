@@ -54,6 +54,11 @@ function RegisterContent() {
       return;
     }
 
+    if (!whatsapp.trim() || whatsapp.length < 14) {
+      notify("WhatsApp obrigatório", "Preencha um número de WhatsApp válido.", "warning");
+      return;
+    }
+
     if (password !== confirmPassword) {
       notify("Senhas divergentes", "As senhas digitadas não coincidem.", "warning");
       return;
@@ -157,7 +162,7 @@ function RegisterContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 chars"
+                  placeholder="Mínimo 6 caracteres"
                   icon={<Lock size={20} />}
                 />
 
