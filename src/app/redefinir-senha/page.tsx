@@ -19,12 +19,12 @@ export default function RedefinirSenhaPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const isStrong = newPassword.length >= 8;
+  const isStrong = newPassword.length >= 6;
   const matches = newPassword === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async () => {
     if (!isStrong) {
-      notify("Senha fraca", "A senha deve ter pelo menos 8 caracteres.", "error");
+      notify("Senha fraca", "A senha deve ter pelo menos 6 caracteres.", "error");
       return;
     }
     if (!matches) {
@@ -87,7 +87,7 @@ export default function RedefinirSenhaPage() {
                     type={showNew ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     className={cn(
                       "w-full py-3 px-4 pr-12 rounded-xl border text-sm font-medium outline-none transition-colors",
                       newPassword.length > 0
@@ -107,7 +107,7 @@ export default function RedefinirSenhaPage() {
                 </div>
                 {newPassword.length > 0 && (
                   <p className={cn("text-xs mt-1.5", isStrong ? "text-emerald-600" : "text-red-500")}>
-                    {isStrong ? "✓ Senha forte" : "✗ Mínimo 8 caracteres"}
+                    {isStrong ? "✓ Senha forte" : "✗ Mínimo 6 caracteres"}
                   </p>
                 )}
               </div>

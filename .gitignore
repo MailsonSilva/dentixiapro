@@ -48,3 +48,8 @@ next-env.d.ts
 .venv
 __pycache__/
 *.pyc
+
+# Supabase Edge Functions / scripts locales
+stripe-webhook-fixed.ts
+/stripe-webhook-fixed.ts
+

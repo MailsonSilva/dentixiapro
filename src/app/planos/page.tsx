@@ -136,7 +136,7 @@ export default function PlanosPage() {
 
 
       {/* Grid de Planos */}
-      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-12 items-stretch">
         {plans.map((plan, i) => {
           const annual = isAnnual(plan);
           const monthlyEq = annual ? plan.unit_amount / 12 : plan.unit_amount;
@@ -189,9 +189,9 @@ export default function PlanosPage() {
                   </div>
 
                   {/* Preco */}
-                  <div className="mb-6 flex flex-col justify-center min-h-[80px]">
+                  <div className="mb-6 flex flex-col justify-center min-h-[60px]">
                     <div className="flex items-baseline gap-1">
-                      <span className={`text-4xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
+                      <span className={`text-3xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
                         {formatCurrency(monthlyEq)}
                       </span>
                       <span className="text-gray-400 text-sm font-bold">/mes</span>
@@ -204,7 +204,7 @@ export default function PlanosPage() {
                   </div>
 
                   {/* Perks */}
-                  <ul className="space-y-3.5 mb-8 flex-1">
+                  <ul className="space-y-2.5 mb-6 flex-1">
                     {PERKS.map((perk, j) => (
                       <li key={j} className="flex items-center gap-3 text-[13px] font-medium text-gray-600">
                         <CheckCircle2 size={16} strokeWidth={2.5} className={selected ? "text-emerald-500" : "text-gray-300"} />
