@@ -33,6 +33,8 @@ BEGIN
       COALESCE(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'),
       COALESCE(
         new.phone,
+        new.raw_user_meta_data->>'whatsapp',
+        new.raw_user_meta_data->>'telefone',
         new.raw_user_meta_data->>'phone',
         new.raw_user_meta_data->>'phone_number'
       ),
