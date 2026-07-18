@@ -63,17 +63,7 @@ export async function signUpAction(payload: {
     return { error: error.message, data: null };
   }
 
-  // Se registrou com sucesso e é usuário comum/parceiro, insere o consentimento
-  if (data?.user) {
-    const { error: consentError } = await supabase.from("consentimentos").insert({
-      user_id: data.user.id,
-      aceitou_em: new Date().toISOString(),
-      versao_politica: "1.0",
-    });
-    if (consentError) {
-      console.error("Erro ao salvar consentimento:", consentError);
-    }
-  }
+
 
   return { error: null, data };
 }

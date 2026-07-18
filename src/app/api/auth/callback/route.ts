@@ -77,18 +77,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Garante que o consentimento exista (aceitação automática de políticas no login social)
-        try {
-          await supabase
-            .from("consentimentos")
-            .insert({
-              user_id: user.id,
-              aceitou_em: new Date().toISOString(),
-              versao_politica: "1.0",
-            });
-        } catch (cErr) {
-          // Ignora se já existir
-        }
+
       } catch (dbErr) {
         console.error("Erro inesperado ao sincronizar perfil do usuário:", dbErr);
       }

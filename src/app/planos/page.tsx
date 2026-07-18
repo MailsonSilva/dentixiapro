@@ -136,7 +136,7 @@ export default function PlanosPage() {
 
 
       {/* Grid de Planos */}
-      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-12 items-stretch">
+      <div className="w-full max-w-xl grid grid-cols-1 md:grid-cols-2 gap-12 items-stretch">
         {plans.map((plan, i) => {
           const annual = isAnnual(plan);
           const monthlyEq = annual ? plan.unit_amount / 12 : plan.unit_amount;
