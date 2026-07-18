@@ -159,7 +159,7 @@ export async function getClientLayoutDataAction() {
 
     const role = ucData?.role as 'admin' | 'manager' | 'user' | 'super_admin' | null;
 
-    if (role === 'admin') {
+    if (role === 'super_admin') {
       return {
         error: null,
         data: {

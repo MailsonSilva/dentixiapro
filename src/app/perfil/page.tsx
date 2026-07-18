@@ -56,9 +56,11 @@ const PROSPECTA_URL =
 function TrialBanner({
   statusCode,
   diasRestantes,
+  temAssinatura,
 }: {
   statusCode: number | null;
   diasRestantes: number | null;
+  temAssinatura: boolean;
 }) {
   const router = useRouter();
 
@@ -89,18 +91,20 @@ function TrialBanner({
             {`Seu teste acaba em: ${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}.`}
           </span>
         </div>
-        <button
-          onClick={() => router.push("/planos")}
-          className={cn(
-            "px-4 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] self-start sm:self-auto",
-            urgent
-              ? "bg-amber-600 hover:bg-amber-700 text-white"
-              : "bg-emerald-600 hover:bg-emerald-700 text-white"
-          )}
-        >
-          Assinar Agora
-          <ArrowRight size={14} />
-        </button>
+        {!temAssinatura && (
+          <button
+            onClick={() => router.push("/planos")}
+            className={cn(
+              "px-4 py-2 rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] self-start sm:self-auto",
+              urgent
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+            )}
+          >
+            Assinar Agora
+            <ArrowRight size={14} />
+          </button>
+        )}
       </motion.div>
     );
   }
@@ -231,6 +235,7 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [statusCode, setStatusCode] = useState<number | null>(null);
   const [diasRestantes, setDiasRestantes] = useState<number | null>(null);
+  const [temAssinatura, setTemAssinatura] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   // modal states
@@ -276,6 +281,7 @@ export default function PerfilPage() {
         setUserFallbackName(rawFallback);
         setStatusCode(status?.status_code ?? null);
         setDiasRestantes(status?.dias_restantes ?? null);
+        setTemAssinatura(status?.tem_assinatura ?? false);
         setCompanyId(companyIdVal ?? null);
         setEditNome(profile?.nome_completo || "");
         setEditEmail(profile?.email || "");
@@ -468,7 +474,7 @@ export default function PerfilPage() {
         </motion.div>
 
         {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
-        {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} />}
+        {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} temAssinatura={temAssinatura} />}
 
         <p className="text-sm font-bold text-gray-400 capitalize tracking-widest mb-3 px-1">
           Abaixo estão suas configurações
@@ -483,11 +489,11 @@ export default function PerfilPage() {
               label="Editar Perfil"
               onClick={() => setShowEdit(true)}
             />
-            {/* Assinatura — se ativa e paga (statusCode===3 e diasRestantes===999), mostra campo "Assinatura" para ir ao portal, senão mostra "Assinar Agora" */}
-            {isComum && statusCode === 3 && diasRestantes === 999 ? (
+            {/* Assinatura — se já tem assinatura (ativa, pendente ou trialing), mostra "Ver sua conta" para ir ao portal, senão mostra "Assinar Agora" */}
+            {isComum && temAssinatura ? (
               <SettingsRow
                 icon={CreditCard}
-                label="Assinatura"
+                label="Ver sua conta"
                 onClick={handleOpenPortal}
               />
             ) : isComum ? (
