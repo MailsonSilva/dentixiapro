@@ -66,6 +66,24 @@ export async function getUserProfileAction() {
     .select("status_code, dias_restantes")
     .maybeSingle();
 
+  // Busca se há assinatura ativa/pendente (status diferente de canceled)
+  const { data: ucData } = await supabase
+    .from("user_company")
+    .select("company_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const userCompanyId = ucData?.company_id ?? user.id;
+
+  const { data: subData } = await supabase
+    .from("subscriptions")
+    .select("status")
+    .eq("company_id", userCompanyId)
+    .neq("status", "canceled")
+    .maybeSingle();
+
+  const temAssinatura = !!subData;
+
   // Converter logo_url para URL Pública se necessário
   let logoUrl = profile?.logo_url || null;
   if (logoUrl && !logoUrl.startsWith("http")) {
@@ -93,6 +111,7 @@ export async function getUserProfileAction() {
       status: {
         status_code: statusData?.status_code ?? null,
         dias_restantes: statusData?.dias_restantes ?? null,
+        tem_assinatura: temAssinatura,
       }
     }
   };
