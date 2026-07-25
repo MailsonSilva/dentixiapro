@@ -189,9 +189,12 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
         // 1. Validação de WhatsApp obrigatório (Social Login ou cadastro sem fone)
         if (!telefone || telefone.trim().length < 10) {
           setShowPhoneModal(true);
-        } else if (!checkVideo) {
-          // 2. Se o fone está ok e checkVideo for false, exibe o pop-up de boas-vindas
-          setShowWelcomeVideo(true);
+        } else {
+          setShowPhoneModal(false);
+          if (!checkVideo) {
+            // 2. Se o fone está ok e checkVideo for false, exibe o pop-up de boas-vindas
+            setShowWelcomeVideo(true);
+          }
         }
 
         if (type === 'parceiro') {
@@ -243,6 +246,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
       notify("Cadastro concluído!", "Seu número de WhatsApp foi salvo.", "success");
       setShowPhoneModal(false);
       setShowWelcomeVideo(true);
+      router.refresh();
     }
   };
 

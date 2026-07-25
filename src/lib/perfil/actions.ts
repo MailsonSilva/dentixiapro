@@ -48,6 +48,7 @@ export async function getUserProfileAction() {
   const authMeta = user.user_metadata ?? {};
   const authName = authMeta.full_name || authMeta.name || null;
   const authAvatar = authMeta.avatar_url || authMeta.picture || null;
+  const authPhone = authMeta.whatsapp || authMeta.telefone || authMeta.phone || null;
 
   // Executar todas as consultas independentes no Supabase simultaneamente via Promise.all
   const [profileRes, statusRes, ucRes] = await Promise.all([
@@ -85,17 +86,30 @@ export async function getUserProfileAction() {
 
   const temAssinatura = !!subData;
 
-  // Converter logo_url para URL Pública se necessário
-  let logoUrl = profile?.logo_url || null;
-  if (logoUrl && !logoUrl.startsWith("http")) {
-    const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(logoUrl);
-    logoUrl = data.publicUrl;
+  // Resolver foto de perfil / logo
+  let finalLogoUrl = profile?.logo_url && profile.logo_url.trim() !== "" ? profile.logo_url : null;
+  if (finalLogoUrl && !finalLogoUrl.startsWith("http")) {
+    const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(finalLogoUrl);
+    finalLogoUrl = data.publicUrl;
   }
-  if (!logoUrl && authAvatar) {
-    logoUrl = authAvatar;
+  if (!finalLogoUrl && authAvatar) {
+    finalLogoUrl = authAvatar;
   }
 
-  const nomeCompleto = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
+  const finalNome = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
+  const finalEmail = profile?.email || user.email || "";
+  const finalTelefone = profile?.telefone || authPhone || "";
+
+  // Auto-sync no banco se dados do OAuth/Auth ainda não constarem em public.usuarios
+  if (!profile || !profile.nome_completo || !profile.telefone || !profile.logo_url) {
+    await supabase.from("usuarios").upsert({
+      id: user.id,
+      email: finalEmail,
+      nome_completo: finalNome,
+      telefone: finalTelefone || null,
+      logo_url: finalLogoUrl || null,
+    }, { onConflict: "id" });
+  }
 
   return {
     error: null,
@@ -103,9 +117,10 @@ export async function getUserProfileAction() {
       profile: {
         ...(profile ?? {}),
         id: user.id,
-        email: profile?.email || user.email || "",
-        nome_completo: nomeCompleto,
-        logo_url: logoUrl,
+        email: finalEmail,
+        nome_completo: finalNome,
+        telefone: finalTelefone,
+        logo_url: finalLogoUrl,
       },
       status: {
         status_code: statusData?.status_code ?? null,
@@ -130,16 +145,27 @@ export async function updateUserProfileAction(payload: {
     return { error: "Não autenticado" };
   }
 
+  // Atualiza metadata no Auth
+  await supabase.auth.updateUser({
+    data: {
+      full_name: payload.nome_completo,
+      whatsapp: payload.telefone,
+      telefone: payload.telefone,
+      phone: payload.telefone,
+    }
+  });
+
   const { error } = await supabase
     .from("usuarios")
-    .update({
+    .upsert({
+      id: user.id,
+      email: user.email || "",
       nome_completo: payload.nome_completo,
       telefone: payload.telefone,
       empresa: payload.empresa,
       cpf: payload.cpf,
       PIX: payload.PIX,
-    })
-    .eq("id", user.id);
+    }, { onConflict: "id" });
 
   if (error) {
     return { error: error.message };
