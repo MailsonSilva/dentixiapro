@@ -44,37 +44,38 @@ export async function getUserProfileAction() {
     return { error: "Não autenticado", data: null };
   }
 
-  // Metadados do auth (fallback para usuários OAuth - Google retorna full_name, picture, etc.)
+  // Metadados do auth (fallback para usuários OAuth)
   const authMeta = user.user_metadata ?? {};
   const authName = authMeta.full_name || authMeta.name || null;
   const authAvatar = authMeta.avatar_url || authMeta.picture || null;
 
-  // Busca dados de perfil do usuário (maybeSingle evita crash se perfil ainda não existe)
-  const { data: profile, error: dbError } = await supabase
-    .from("usuarios")
-    .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Executar todas as consultas independentes no Supabase simultaneamente via Promise.all
+  const [profileRes, statusRes, ucRes] = await Promise.all([
+    supabase
+      .from("usuarios")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("verificar_status_usuario")
+      .select("status_code, dias_restantes")
+      .maybeSingle(),
+    supabase
+      .from("user_company")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
-  if (dbError) {
-    return { error: dbError.message, data: null };
+  if (profileRes.error) {
+    return { error: profileRes.error.message, data: null };
   }
 
-  // Busca status de assinatura da view verificar_status_usuario (maybeSingle evita crash se não há rows)
-  const { data: statusData } = await supabase
-    .from("verificar_status_usuario")
-    .select("status_code, dias_restantes")
-    .maybeSingle();
+  const profile = profileRes.data;
+  const statusData = statusRes.data;
+  const userCompanyId = ucRes.data?.company_id ?? user.id;
 
-  // Busca se há assinatura ativa/pendente (status diferente de canceled)
-  const { data: ucData } = await supabase
-    .from("user_company")
-    .select("company_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const userCompanyId = ucData?.company_id ?? user.id;
-
+  // Busca se há assinatura ativa/pendente
   const { data: subData } = await supabase
     .from("subscriptions")
     .select("status")
@@ -90,12 +91,10 @@ export async function getUserProfileAction() {
     const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(logoUrl);
     logoUrl = data.publicUrl;
   }
-  // Fallback: usa avatar do Google/OAuth se não tiver logo no banco
   if (!logoUrl && authAvatar) {
     logoUrl = authAvatar;
   }
 
-  // Fallback de nome: usa metadados do auth se nome do banco estiver vazio
   const nomeCompleto = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
 
   return {

@@ -8,12 +8,14 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { SidebarProvider } from "../lib/SidebarContext";
 import { DrawerProvider, useDrawer } from "../lib/DrawerContext";
 import { NotificationProvider } from "../lib/NotificationContext";
-import { getClientLayoutDataAction, signOutAction } from "@/lib/auth/actions";
+import { getClientLayoutDataAction, signOutAction, saveUserPhoneAction, setCheckVideoAction } from "@/lib/auth/actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut, Phone, Play, CheckSquare, Square } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/Input";
+import { useNotification } from "../lib/NotificationContext";
 
 
 type UserRole = 'admin' | 'manager' | 'user' | 'super_admin' | null;
@@ -133,12 +135,21 @@ function MobileDrawer({
 function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { notify } = useNotification();
   const [loading, setLoading] = useState(true);
   const [trialExpired, setTrialExpired] = useState(false);
   const [userType, setUserType] = useState<'comum' | 'parceiro'>('comum');
   const [userRole, setUserRole] = useState<'admin' | 'manager' | 'user' | 'super_admin' | null>(null);
   const { closeDrawer } = useDrawer();
   const [isMobile, setIsMobile] = useState(false);
+
+  // States para modal de completar cadastro (WhatsApp) e vídeo de boas-vindas
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
+
+  const [showWelcomeVideo, setShowWelcomeVideo] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const path = pathname ?? "";
   const isAuthPage = path.includes("/login") || path.includes("/register") || path.includes("/forgot") || path.includes("/redefinir-senha");
@@ -156,11 +167,8 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-
-
   useEffect(() => {
     async function loadUserData() {
-      // Auth/fullscreen pages: sem layout, sem loading
       if (isAuthPage || isFullscreenPage) {
         setLoading(false);
         return;
@@ -173,10 +181,18 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const { userType: type, userRole: role, trialExpired: expired } = res.data;
+        const { userType: type, userRole: role, trialExpired: expired, telefone, checkVideo } = res.data;
         setUserType(type);
         setUserRole(role);
         setTrialExpired(expired);
+
+        // 1. Validação de WhatsApp obrigatório (Social Login ou cadastro sem fone)
+        if (!telefone || telefone.trim().length < 10) {
+          setShowPhoneModal(true);
+        } else if (!checkVideo) {
+          // 2. Se o fone está ok e checkVideo for false, exibe o pop-up de boas-vindas
+          setShowWelcomeVideo(true);
+        }
 
         if (type === 'parceiro') {
           const parceiroRoutes = ['/parceiros', '/perfil', '/redefinir-senha', '/indique-e-ganhe'];
@@ -198,8 +214,108 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     closeDrawer();
   }, [pathname, closeDrawer]);
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+    let masked = digits;
+    if (digits.length > 2) masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length > 7) {
+      const body = digits.length === 11
+        ? `${digits.slice(2, 7)}-${digits.slice(7)}`
+        : `${digits.slice(2, 6)}-${digits.slice(6)}`;
+      masked = `(${digits.slice(0, 2)}) ${body}`;
+    }
+    setPhoneInput(masked);
+  };
+
+  const handleSavePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneInput.trim() || phoneInput.length < 14) {
+      notify("Telefone inválido", "Preencha um número de WhatsApp válido com DDD.", "warning");
+      return;
+    }
+    setSavingPhone(true);
+    const { error } = await saveUserPhoneAction(phoneInput);
+    setSavingPhone(false);
+    if (error) {
+      notify("Erro ao salvar", error, "error");
+    } else {
+      notify("Cadastro concluído!", "Seu número de WhatsApp foi salvo.", "success");
+      setShowPhoneModal(false);
+      // Após salvar fone, verifica se abre vídeo de boas-vindas
+      setShowWelcomeVideo(true);
+    }
+  };
+
+  const handleCloseWelcomeVideo = async () => {
+    if (dontShowAgain) {
+      await setCheckVideoAction(true);
+    }
+    setShowWelcomeVideo(false);
+  };
+
+  // Estado offline
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    setIsOffline(!navigator.onLine);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const handleRetryConnection = () => {
+    if (navigator.onLine) {
+      setIsOffline(false);
+      window.location.reload();
+    } else {
+      notify("Sem conexão", "Ainda não detectamos conexão com a internet.", "warning");
+    }
+  };
+
   if (isAuthPage || isFullscreenPage) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        {/* Banner/Modal Offline para Auth/Fullscreen */}
+        <AnimatePresence>
+          {isOffline && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[999999] bg-gray-900/85 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center border border-gray-100"
+              >
+                <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600">
+                  <AlertCircle size={30} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Sem Conexão</h2>
+                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                  Você está offline. Verifique sua conexão com o Wi-Fi ou dados móveis para continuar.
+                </p>
+                <button
+                  onClick={handleRetryConnection}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md active:scale-[0.98]"
+                >
+                  Tentar Novamente
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
   }
 
   const showBlocker = trialExpired;
@@ -227,9 +343,153 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
+      {/* Modal Modo Offline */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999999] bg-gray-900/85 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center border border-gray-100"
+            >
+              <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600">
+                <AlertCircle size={30} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Sem Conexão</h2>
+              <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                Você está offline. Verifique sua conexão com a internet para acessar as ferramentas.
+              </p>
+              <button
+                onClick={handleRetryConnection}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md active:scale-[0.98]"
+              >
+                Tentar Novamente
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Obrigatório: Completar Cadastro (WhatsApp) */}
+      <AnimatePresence>
+        {showPhoneModal && !isOffline && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[99999] bg-gray-900/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100"
+            >
+              <div className="flex flex-col items-center text-center mb-6">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-3">
+                  <Phone size={28} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Completar Cadastro</h2>
+                <p className="text-gray-500 text-sm mt-1 leading-relaxed">
+                  Para acessar a plataforma, por favor informe seu número de WhatsApp com DDD.
+                </p>
+              </div>
+
+              <form onSubmit={handleSavePhone} className="space-y-4">
+                <Input
+                  label="WhatsApp"
+                  required
+                  value={phoneInput}
+                  onChange={handlePhoneChange}
+                  placeholder="(00) 00000-0000"
+                  icon={<Phone size={20} />}
+                />
+
+                <button
+                  type="submit"
+                  disabled={savingPhone}
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
+                >
+                  {savingPhone ? <Loader2 className="animate-spin" size={20} /> : "Salvar e Continuar"}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Pop-up de Boas-Vindas com Vídeo */}
+      <AnimatePresence>
+        {showWelcomeVideo && !showPhoneModal && !isOffline && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9998] bg-gray-900/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl p-6 max-w-xl w-full shadow-2xl border border-gray-100 flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-primary font-bold text-base">
+                  <Sparkles size={20} />
+                  <span>Seja bem-vindo ao DentixIA Pro!</span>
+                </div>
+                <button
+                  onClick={handleCloseWelcomeVideo}
+                  className="p-1 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Embed do Vídeo do YouTube */}
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black mb-4 shadow-md">
+                <iframe
+                  className="w-full h-full"
+                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0"
+                  title="Vídeo de Introdução DentixIA Pro"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+
+              {/* Checkbox Não Mostrar Novamente */}
+              <div className="flex items-center justify-between gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDontShowAgain(!dontShowAgain)}
+                  className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-gray-900 cursor-pointer select-none"
+                >
+                  {dontShowAgain ? (
+                    <CheckSquare size={18} className="text-primary" />
+                  ) : (
+                    <Square size={18} className="text-gray-400" />
+                  )}
+                  <span>Não mostrar novamente</span>
+                </button>
+
+                <button
+                  onClick={handleCloseWelcomeVideo}
+                  className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-[0.98]"
+                >
+                  Começar a usar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bloqueio Global (Paywall) */}
       <AnimatePresence>
-        {showBlocker && (
+        {showBlocker && !showPhoneModal && !isOffline && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

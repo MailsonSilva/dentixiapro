@@ -109,10 +109,10 @@ export async function getClientLayoutDataAction() {
   }
 
   try {
-    // 1. Tipo do usuário
+    // 1. Tipo, telefone e check_video do usuário
     const { data: usuarioData } = await supabase
       .from('usuarios')
-      .select('tipo')
+      .select('tipo, telefone, check_video')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -124,6 +124,9 @@ export async function getClientLayoutDataAction() {
       finalTipo = 'parceiro';
     }
 
+    const userTelefone = usuarioData?.telefone || null;
+    const checkVideo = usuarioData?.check_video ?? false;
+
     // 2. Se for parceiro, não tem role nem expirou trial
     if (finalTipo === 'parceiro') {
       return {
@@ -132,7 +135,9 @@ export async function getClientLayoutDataAction() {
           user,
           userType: 'parceiro' as const,
           userRole: null as any,
-          trialExpired: false
+          trialExpired: false,
+          telefone: userTelefone,
+          checkVideo
         }
       };
     }
@@ -156,7 +161,9 @@ export async function getClientLayoutDataAction() {
           user,
           userType: 'comum' as const,
           userRole: role,
-          trialExpired: false
+          trialExpired: false,
+          telefone: userTelefone,
+          checkVideo
         }
       };
     }
@@ -175,7 +182,9 @@ export async function getClientLayoutDataAction() {
         user,
         userType: 'comum' as const,
         userRole: role,
-        trialExpired
+        trialExpired,
+        telefone: userTelefone,
+        checkVideo
       }
     };
   } catch (err: any) {
@@ -185,5 +194,33 @@ export async function getClientLayoutDataAction() {
       data: null
     };
   }
+}
+
+export async function saveUserPhoneAction(phone: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ telefone: phone })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function setCheckVideoAction(checkVideo: boolean) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: "Não autenticado" };
+
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ check_video: checkVideo })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+  return { error: null };
 }
 

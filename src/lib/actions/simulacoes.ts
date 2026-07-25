@@ -177,6 +177,7 @@ export async function gerarSimulacaoNativa(
 
     if (!geminiResponse.ok) {
       const errBody = await geminiResponse.text();
+      await trackSimulacaoAction("erro", { tipoTratamento, error: errBody });
       return {
         success: false,
         error: `Falha na API Gemini Interactions (${geminiResponse.status}): ${errBody}`,
@@ -195,6 +196,7 @@ export async function gerarSimulacaoNativa(
 
     if (!imagemSimuladaBase64) {
       console.log("JSON COMPLETO (sem cortes):", JSON.stringify(geminiData));
+      await trackSimulacaoAction("erro", { tipoTratamento, error: "Formato de retorno da API não reconhecido" });
       return {
         success: false,
         error: "A imagem foi gerada, mas o formato de retorno da API não foi reconhecido. Verifique os logs do servidor.",
@@ -210,6 +212,7 @@ export async function gerarSimulacaoNativa(
       .upload(simFileName, simBuffer, { contentType: "image/png", upsert: false });
 
     if (simUploadError) {
+      await trackSimulacaoAction("erro", { tipoTratamento, error: simUploadError.message });
       return {
         success: false,
         error: `Erro no upload da simulação: ${simUploadError.message}`,
@@ -220,10 +223,40 @@ export async function gerarSimulacaoNativa(
       .from(STORAGE_BUCKET)
       .getPublicUrl(simFileName).data.publicUrl;
 
+    await trackSimulacaoAction("acerto", { tipoTratamento });
     return { success: true, urlSimulada, urlOriginal };
   } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Erro desconhecido no servidor.";
+    await trackSimulacaoAction("erro", { error: msg });
+    return { success: false, error: msg };
+  }
+}
+
+// ─── Tracking de Simulações ──────────────────────────────────────────────────
+export async function trackSimulacaoAction(
+  status: "acerto" | "erro" | "refeita" | "salva",
+  metadata: Record<string, unknown> = {}
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Não autenticado" };
+
+    const { error } = await supabase.from("simulacao_tracking").insert({
+      user_id: user.id,
+      status,
+      metadata,
+    });
+
+    if (error) {
+      console.error("Erro ao registrar tracking de simulação:", error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro no tracking";
+    console.error("Exceção no tracking de simulação:", msg);
     return { success: false, error: msg };
   }
 }
@@ -259,6 +292,9 @@ export async function salvarSimulacaoConfirmada(
     if (dbError) {
       return { success: false, error: `Erro ao salvar simulação no banco: ${dbError.message}` };
     }
+
+    // Registrar tracking de 'salva'
+    await trackSimulacaoAction("salva", { procedimento, nomePaciente: nomePaciente.trim(), corUtilizada });
 
     revalidatePath("/simulacoes/resultados");
     return { success: true };

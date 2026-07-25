@@ -13,7 +13,7 @@ import { useNotification } from "@/lib/NotificationContext";
 
 // SSD Layers
 import { procedures } from "@/lib/simulacoes/utils";
-import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
+import { gerarSimulacaoNativa, salvarSimulacaoConfirmada, trackSimulacaoAction } from "@/lib/actions/simulacoes";
 
 // UI Components
 import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
@@ -139,10 +139,42 @@ export default function SimulationPage() {
     }
   };
 
+  const [permissionErrorModal, setPermissionErrorModal] = useState(false);
+  const [permissionErrorMessage, setPermissionErrorMessage] = useState("");
+
+  const handleCameraCapture = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Tenta solicitar a permissão de câmera explicitamente para validar permissões do navegador
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      camRef.current?.click();
+    } catch (err: unknown) {
+      console.error("Erro de permissão de câmera:", err);
+      setPermissionErrorMessage(
+        "A permissão de acesso à câmera foi negada. O DentixIA Pro necessita da câmera para capturar a foto do paciente para a simulação."
+      );
+      setPermissionErrorModal(true);
+    }
+  };
+
+  const handleGallerySelect = () => {
+    fileRef.current?.click();
+  };
+
   const handleFile = async (file: File) => {
-    setImageFile(file);
-    const b64 = await fileToBase64(file);
-    setImageBase64(b64);
+    try {
+      setImageFile(file);
+      const b64 = await fileToBase64(file);
+      setImageBase64(b64);
+    } catch (err: unknown) {
+      console.error("Erro ao ler imagem:", err);
+      setPermissionErrorMessage(
+        "Não foi possível ler o arquivo da galeria. Verifique as permissões de armazenamento do seu dispositivo."
+      );
+      setPermissionErrorModal(true);
+    }
   };
 
   // ── gerarSimulacaoNativa: pipeline completo em single-step ──────────────
@@ -184,6 +216,7 @@ export default function SimulationPage() {
     setUrlSimulada(null);
     setUrlOriginal(null);
     setStep("upload");
+    trackSimulacaoAction("refeita", { procedimento });
     await handleGenerate();
   };
 
@@ -333,13 +366,7 @@ export default function SimulationPage() {
                   <p className="font-semibold text-gray-800 text-xs capitalize">{procedure}</p>
                 </div>
 
-                {/* Desired Color (ColorPicker) */}
-                <div className="my-6 py-2">
-                  <h3 className="text-sm font-medium text-slate-500 leading-tight mb-3 text-center">Escolha o tom desejado:</h3>
-                  <ColorPicker selectedId={selectedColor} onSelect={setSelectedColor} />
-                </div>
-
-                {/* Image Upload / Preview */}
+                {/* Image Upload / Preview (No Topo) */}
                 <div className="bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 min-h-[240px] flex flex-col items-center justify-center relative overflow-hidden">
                   {/* Loading overlay while processing */}
                   <AnimatePresence>
@@ -362,10 +389,10 @@ export default function SimulationPage() {
                         <Upload size={20} />
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 bg-primary text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer">
+                        <button onClick={handleGallerySelect} className="px-3 py-1.5 bg-primary text-white rounded-lg font-bold text-[11px] shadow-sm flex items-center gap-1 cursor-pointer">
                           <ImageIcon size={14} /> Galeria
                         </button>
-                        <button onClick={() => camRef.current?.click()} className="px-3 py-1.5 border border-primary/20 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer">
+                        <button onClick={handleCameraCapture} className="px-3 py-1.5 border border-primary/20 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer">
                           <Camera size={14} /> Câmera
                         </button>
                       </div>
@@ -381,6 +408,12 @@ export default function SimulationPage() {
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* Desired Color (ColorPicker - Logo Abaixo) */}
+                <div className="my-4 py-2">
+                  <h3 className="text-sm font-medium text-slate-500 leading-tight mb-3 text-center">Escolha o tom desejado:</h3>
+                  <ColorPicker selectedId={selectedColor} onSelect={setSelectedColor} />
                 </div>
 
                 {/* Submit button */}
@@ -506,6 +539,52 @@ export default function SimulationPage() {
                   </div>
                 </CardContent>
               </Card>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Erro de Permissão de Câmera/Galeria */}
+      <AnimatePresence>
+        {permissionErrorModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPermissionErrorModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="relative bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl border border-gray-100 text-center"
+            >
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 text-amber-600">
+                <Camera size={24} />
+              </div>
+              <h3 className="font-bold text-gray-800 text-base mb-2">Permissão Necessária</h3>
+              <p className="text-gray-500 text-xs leading-relaxed mb-6">
+                {permissionErrorMessage}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPermissionErrorModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors"
+                >
+                  Entendi
+                </button>
+                <button
+                  onClick={() => {
+                    setPermissionErrorModal(false);
+                    handleCameraCapture();
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all shadow-md"
+                >
+                  Tentar Novamente
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
