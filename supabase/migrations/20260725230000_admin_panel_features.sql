@@ -22,7 +22,7 @@ BEGIN
             auth.uid() = id OR 
             EXISTS (
                 SELECT 1 FROM public.usuarios 
-                WHERE id = auth.uid() AND tipo IN ('admin', 'super_admin')
+                WHERE id = auth.uid() AND tipo::text IN ('admin', 'super_admin')
             )
         );
     END IF;
@@ -36,7 +36,7 @@ BEGIN
         USING (
             EXISTS (
                 SELECT 1 FROM public.usuarios 
-                WHERE id = auth.uid() AND tipo IN ('admin', 'super_admin')
+                WHERE id = auth.uid() AND tipo::text IN ('admin', 'super_admin')
             )
         );
     END IF;

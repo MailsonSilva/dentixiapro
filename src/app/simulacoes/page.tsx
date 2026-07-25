@@ -216,7 +216,7 @@ export default function SimulationPage() {
     setUrlSimulada(null);
     setUrlOriginal(null);
     setStep("upload");
-    trackSimulacaoAction("refeita", { procedimento });
+    trackSimulacaoAction("refeita", { procedimento: procedure });
     await handleGenerate();
   };
 
