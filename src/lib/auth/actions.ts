@@ -124,8 +124,8 @@ export async function getClientLayoutDataAction() {
       finalTipo = 'parceiro';
     }
 
-    const userTelefone = usuarioData?.telefone || null;
-    const checkVideo = usuarioData?.check_video ?? false;
+    const userTelefone = usuarioData?.telefone || user.user_metadata?.whatsapp || user.user_metadata?.telefone || user.user_metadata?.phone || null;
+    const checkVideo = usuarioData?.check_video ?? user.user_metadata?.check_video ?? false;
 
     // 2. Se for parceiro, não tem role nem expirou trial
     if (finalTipo === 'parceiro') {
@@ -201,12 +201,36 @@ export async function saveUserPhoneAction(phone: string) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { error: "Não autenticado" };
 
-  const { error } = await supabase
+  // 1. Atualiza metadata no Supabase Auth
+  await supabase.auth.updateUser({
+    data: { whatsapp: phone, telefone: phone, phone }
+  });
+
+  // 2. Tenta update no banco public.usuarios
+  const { data: updateData, error: updateError } = await supabase
     .from("usuarios")
     .update({ telefone: phone })
-    .eq("id", user.id);
+    .eq("id", user.id)
+    .select();
 
-  if (error) return { error: error.message };
+  if (updateError) return { error: updateError.message };
+
+  // 3. Se nenhuma linha foi afetada, faz upsert garantindo criação
+  if (!updateData || updateData.length === 0) {
+    const { error: upsertError } = await supabase
+      .from("usuarios")
+      .upsert({
+        id: user.id,
+        email: user.email || "",
+        telefone: phone,
+        nome_completo: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Usuário",
+        tipo: "comum",
+        trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "id" });
+
+    if (upsertError) return { error: upsertError.message };
+  }
+
   return { error: null };
 }
 
@@ -214,6 +238,10 @@ export async function setCheckVideoAction(checkVideo: boolean) {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { error: "Não autenticado" };
+
+  await supabase.auth.updateUser({
+    data: { check_video: checkVideo }
+  });
 
   const { error } = await supabase
     .from("usuarios")

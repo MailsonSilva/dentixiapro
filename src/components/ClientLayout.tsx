@@ -229,7 +229,8 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleSavePhone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneInput.trim() || phoneInput.length < 14) {
+    const cleanDigits = phoneInput.replace(/\D/g, "");
+    if (!cleanDigits || cleanDigits.length < 10) {
       notify("Telefone inválido", "Preencha um número de WhatsApp válido com DDD.", "warning");
       return;
     }
@@ -241,7 +242,6 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     } else {
       notify("Cadastro concluído!", "Seu número de WhatsApp foi salvo.", "success");
       setShowPhoneModal(false);
-      // Após salvar fone, verifica se abre vídeo de boas-vindas
       setShowWelcomeVideo(true);
     }
   };
