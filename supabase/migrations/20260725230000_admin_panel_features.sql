@@ -9,35 +9,32 @@ ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE DEFAULT timezone('u
 CREATE INDEX IF NOT EXISTS idx_usuarios_search ON public.usuarios (email, nome_completo, telefone, referral_code);
 CREATE INDEX IF NOT EXISTS idx_usuarios_created_at ON public.usuarios (created_at);
 
--- 3. Atualizar política de segurança para permitir que admins visualizem e atualizem todos os usuários
-DO $$ 
+-- 3. Criar função SECURITY DEFINER para checar permissão de admin sem recursão em RLS
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean AS $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies WHERE policyname = 'Admins can read all users' AND tablename = 'usuarios'
-    ) THEN
-        CREATE POLICY "Admins can read all users" 
-        ON public.usuarios FOR SELECT 
-        TO authenticated 
-        USING (
-            auth.uid() = id OR 
-            EXISTS (
-                SELECT 1 FROM public.usuarios 
-                WHERE id = auth.uid() AND tipo::text IN ('admin', 'super_admin')
-            )
-        );
-    END IF;
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.usuarios 
+    WHERE id = user_id AND tipo::text IN ('admin', 'super_admin')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies WHERE policyname = 'Admins can update all users' AND tablename = 'usuarios'
-    ) THEN
-        CREATE POLICY "Admins can update all users" 
-        ON public.usuarios FOR UPDATE 
-        TO authenticated 
-        USING (
-            EXISTS (
-                SELECT 1 FROM public.usuarios 
-                WHERE id = auth.uid() AND tipo::text IN ('admin', 'super_admin')
-            )
-        );
-    END IF;
-END $$;
+-- 4. Atualizar políticas RLS da tabela usuarios sem recursão
+DROP POLICY IF EXISTS "Admins can read all users" ON public.usuarios;
+DROP POLICY IF EXISTS "Admins can update all users" ON public.usuarios;
+
+CREATE POLICY "Admins can read all users" 
+ON public.usuarios FOR SELECT 
+TO authenticated 
+USING (
+  auth.uid() = id OR public.is_admin(auth.uid())
+);
+
+CREATE POLICY "Admins can update all users" 
+ON public.usuarios FOR UPDATE 
+TO authenticated 
+USING (
+  auth.uid() = id OR public.is_admin(auth.uid())
+);
