@@ -6,6 +6,7 @@ import { signInWithPasswordAction, signInWithGoogleAction } from "@/lib/auth/act
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -97,7 +98,7 @@ export default function LoginPage() {
       >
         <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
           <CardHeader className="flex flex-col items-center mb-6 space-y-2">
-            <Image src="/logo.png" alt="DentixIA" width={300} height={120} className="h-14 w-auto mb-6" priority />
+            <Image src={IMAGES.logo} alt="DentixIA" width={300} height={120} className="h-14 w-auto mb-6" priority />
             <h1 className="text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Bem-vindo!</h1>
             <p className="text-gray-500 text-sm text-center">Acesse sua plataforma inteligente</p>
           </CardHeader>

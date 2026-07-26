@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut, Phone, Play, CheckSquare, Square, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/Input";
 import { useNotification } from "../lib/NotificationContext";
@@ -77,7 +78,7 @@ function MobileDrawer({
           {/* Logo header */}
           <div className="p-6 pt-12 border-b border-gray-100">
             <div className="flex items-center justify-between mb-3">
-              <Image src="/logo.png" alt="DentixIA" width={130} height={32} className="h-8 w-auto object-contain" priority />
+              <Image src={IMAGES.logo} alt="DentixIA" width={130} height={32} className="h-8 w-auto object-contain" priority />
               <button onClick={closeDrawer} className="p-3 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
                 <X size={22} />
               </button>

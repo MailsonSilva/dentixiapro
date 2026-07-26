@@ -7,6 +7,7 @@ import { useNotification } from "@/lib/NotificationContext";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Sparkles, ShieldCheck, Star, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 
 interface Plan {
   id: string;
@@ -132,7 +133,7 @@ export default function PlanosPage() {
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-5 text-center">
         <div className="flex justify-center mb-2.5">
           <Image
-            src="/logo.png"
+            src={IMAGES.logo}
             alt="DentixIA"
             width={130}
             height={34}

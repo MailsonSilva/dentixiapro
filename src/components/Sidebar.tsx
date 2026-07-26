@@ -13,10 +13,12 @@ import {
   ChevronLeft,
   BookOpen,
   ShieldCheck,
+  Lock,
   LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { IMAGES } from "@/lib/images";
 import { signOutAction } from "@/lib/auth/actions";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -34,6 +36,7 @@ type MenuItemShape = {
   name: string;
   href: string;
   icon: LucideIcon;
+  locked?: boolean;
 };
 
 export function Sidebar({ type, userRole }: SidebarProps) {
@@ -58,7 +61,7 @@ export function Sidebar({ type, userRole }: SidebarProps) {
       : [
           { name: "Início", href: "/", icon: Home },
           { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles },
-          { name: "Aulas", href: "/aulas", icon: BookOpen },
+          { name: "Aulas", href: "/aulas", icon: BookOpen, locked: true },
           { name: "Perfil", href: "/perfil", icon: User },
         ];
 
@@ -88,7 +91,7 @@ export function Sidebar({ type, userRole }: SidebarProps) {
             className="flex-1"
           >
             <Image
-              src="/logo.png"
+              src={IMAGES.logo}
               alt="DentixIA"
               width={140}
               height={32}
@@ -103,7 +106,7 @@ export function Sidebar({ type, userRole }: SidebarProps) {
             className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center p-1.5"
           >
             <Image
-              src="/logo-icon.png"
+              src={IMAGES.logoIcon}
               alt="DentixIA"
               width={40}
               height={40}
@@ -127,19 +130,10 @@ export function Sidebar({ type, userRole }: SidebarProps) {
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = path === item.href;
+          const isLocked = item.locked;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300",
-                isActive
-                  ? "bg-primary text-white shadow-lg shadow-primary/20"
-                  : "text-gray-400 hover:bg-primary/5 hover:text-primary",
-                isOpen ? "justify-between" : "justify-center"
-              )}
-            >
+          const itemContent = (
+            <>
               <div className="flex items-center gap-3">
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 {isOpen && (
@@ -152,7 +146,22 @@ export function Sidebar({ type, userRole }: SidebarProps) {
                 )}
               </div>
 
-              {isOpen && (
+              {/* Lock badge */}
+              {isLocked && (
+                <div className={cn(
+                  "flex items-center justify-center rounded-full",
+                  isOpen ? "" : "absolute -top-1 -right-1"
+                )}>
+                  <Lock
+                    size={isOpen ? 13 : 11}
+                    className="text-red-500"
+                    strokeWidth={2.5}
+                  />
+                </div>
+              )}
+
+              {/* Chevron for non-locked items */}
+              {isOpen && !isLocked && (
                 <ChevronRight
                   size={16}
                   className={cn(
@@ -177,9 +186,42 @@ export function Sidebar({ type, userRole }: SidebarProps) {
               {!isOpen && (
                 <div className="absolute left-full ml-4 px-3 py-2 bg-gray-900 text-white text-[11px] font-semibold capitalize tracking-wider rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl whitespace-nowrap translate-x-2 group-hover:translate-x-0">
                   {item.name}
+                  {isLocked && <span className="ml-1 text-red-400">🔒</span>}
                   <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-gray-900" />
                 </div>
               )}
+            </>
+          );
+
+          if (isLocked) {
+            return (
+              <div
+                key={item.href}
+                title="Conteúdo bloqueado"
+                className={cn(
+                  "group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-not-allowed select-none",
+                  "text-gray-300",
+                  isOpen ? "justify-between" : "justify-center"
+                )}
+              >
+                {itemContent}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300",
+                isActive
+                  ? "bg-primary text-white shadow-lg shadow-primary/20"
+                  : "text-gray-400 hover:bg-primary/5 hover:text-primary",
+                isOpen ? "justify-between" : "justify-center"
+              )}
+            >
+              {itemContent}
             </Link>
           );
         })}

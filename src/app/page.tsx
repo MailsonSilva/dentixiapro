@@ -8,6 +8,7 @@ import { getPublicWelcomeVideoUrlAction } from "@/lib/admin/actions";
 import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 
 export default function Home() {
@@ -66,7 +67,7 @@ export default function Home() {
           className="mb-6 w-full flex justify-center"
         >
           <Image
-            src="/logo.png"
+            src={IMAGES.logo}
             alt="DentixIA"
             width={240}
             height={60}

@@ -7,6 +7,7 @@ import {
   Upload, ImageIcon, Camera, History, Check, Save
 } from "lucide-react";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotification } from "@/lib/NotificationContext";
@@ -261,13 +262,13 @@ export default function SimulationPage() {
                   <div className="absolute -top-1 -left-1 z-10 bg-[#EF4444] rounded-full p-0.5 border border-white m-1">
                     <X className="text-white w-2.5 h-2.5" strokeWidth={3} />
                   </div>
-                  <Image src="/wrong_tip.png" alt="Exemplo Incorreto" fill className="object-cover" />
+                  <Image src={IMAGES.wrongTip} alt="Exemplo Incorreto" fill className="object-cover" />
                 </div>
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-sm">
                   <div className="absolute -top-1 -left-1 z-10 bg-[#10B981] rounded-full p-0.5 border border-white m-1">
                     <Check className="text-white w-2.5 h-2.5" strokeWidth={3} />
                   </div>
-                  <Image src="/correct_tip.png" alt="Exemplo Correta" fill className="object-cover" />
+                  <Image src={IMAGES.correctTip} alt="Exemplo Correta" fill className="object-cover" />
                 </div>
               </div>
 

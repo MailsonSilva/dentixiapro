@@ -27,10 +27,14 @@ export default function AdminPage() {
   const [dashboardMetrics, setDashboardMetrics] = useState<AdminMetrics | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
 
+  // Clientes + Filtros
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [totalClients, setTotalClients] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "trial" | "subscribers" | "blocked">("all");
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
   const [clientsLoading, setClientsLoading] = useState(true);
 
   const [saasMetrics, setSaasMetrics] = useState<SaaSFinancialMetrics | null>(null);
@@ -64,7 +68,14 @@ export default function AdminPage() {
 
   const loadClientsData = useCallback(async () => {
     setClientsLoading(true);
-    const res = await getAdminClientsAction(searchQuery, currentPage, 10);
+    const res = await getAdminClientsAction(
+      searchQuery,
+      statusFilter,
+      startDate,
+      endDate,
+      currentPage,
+      10
+    );
     if (res.error) {
       toast.error(`Erro ao carregar clientes: ${res.error}`);
     } else {
@@ -72,7 +83,7 @@ export default function AdminPage() {
       setTotalClients(res.total);
     }
     setClientsLoading(false);
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, statusFilter, startDate, endDate, currentPage]);
 
   const loadSaaSData = useCallback(async () => {
     setSaasLoading(true);
@@ -191,8 +202,20 @@ export default function AdminPage() {
             totalClients={totalClients}
             currentPage={currentPage}
             searchQuery={searchQuery}
+            statusFilter={statusFilter}
+            startDate={startDate}
+            endDate={endDate}
             onSearchChange={(q) => {
               setSearchQuery(q);
+              setCurrentPage(1);
+            }}
+            onStatusFilterChange={(s) => {
+              setStatusFilter(s);
+              setCurrentPage(1);
+            }}
+            onDateRangeChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
               setCurrentPage(1);
             }}
             onPageChange={(p) => setCurrentPage(p)}

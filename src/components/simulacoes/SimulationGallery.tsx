@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { deleteSimulationAction } from "@/lib/simulacoes/actions";
 import { type Simulacao } from "@/lib/simulacoes/queries";
+import { IMAGES } from "@/lib/images";
 
 interface SimulationGalleryProps {
   initialSimulations: Simulacao[];
@@ -239,7 +240,7 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                       <div className="h-full flex flex-col items-center justify-center relative select-none pointer-events-none">
                         <div className="w-0.5 h-full bg-white shadow-xl"></div>
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary overflow-hidden p-1.5 cursor-col-resize pointer-events-auto">
-                          <img src="/logo-icon.png" alt="Dentixia" className="w-5 h-5 object-contain" />
+                          <img src={IMAGES.logoIcon} alt="Dentixia" className="w-5 h-5 object-contain" />
                         </div>
                       </div>
                     }
