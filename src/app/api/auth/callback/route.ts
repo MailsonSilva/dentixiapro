@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       try {
         const { data: profile, error: profileError } = await supabase
           .from("usuarios")
-          .select("id, logo_url, nome_completo")
+          .select("id, logo_url, nome_completo, telefone")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -60,16 +60,21 @@ export async function GET(request: NextRequest) {
             console.error("Erro ao criar perfil de usuário pós-OAuth:", insertError.message);
           }
         } else if (profile) {
-          // Usuário já existe — sincroniza dados sociais que podem estar faltando (ex: foto do Google)
+          // Usuário já existe — sincroniza dados sociais que podem estar faltando (ex: foto ou fone do Google)
           const avatarFromOAuth = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
           const nameFromOAuth = user.user_metadata?.full_name || user.user_metadata?.name || null;
-          if (avatarFromOAuth || nameFromOAuth) {
+          const phoneFromOAuth = user.phone || user.user_metadata?.whatsapp || user.user_metadata?.telefone || user.user_metadata?.phone || null;
+
+          if (avatarFromOAuth || nameFromOAuth || phoneFromOAuth) {
             const updatePayload: Record<string, string> = {};
-            // Só atualiza logo_url se ainda não tiver uma foto personalizada
-            if (avatarFromOAuth && !profile.logo_url) updatePayload.logo_url = avatarFromOAuth;
-            // Só atualiza nome se ainda estiver vazio ou igual ao fallback de email
+            if (avatarFromOAuth && (!profile.logo_url || profile.logo_url.trim() === "")) {
+              updatePayload.logo_url = avatarFromOAuth;
+            }
             if (nameFromOAuth && (!profile.nome_completo || profile.nome_completo === user.email?.split("@")[0])) {
               updatePayload.nome_completo = nameFromOAuth;
+            }
+            if (phoneFromOAuth && (!profile.telefone || profile.telefone.trim() === "")) {
+              updatePayload.telefone = phoneFromOAuth;
             }
             if (Object.keys(updatePayload).length > 0) {
               await supabase.from("usuarios").update(updatePayload).eq("id", user.id);
@@ -77,18 +82,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Garante que o consentimento exista (aceitação automática de políticas no login social)
-        try {
-          await supabase
-            .from("consentimentos")
-            .insert({
-              user_id: user.id,
-              aceitou_em: new Date().toISOString(),
-              versao_politica: "1.0",
-            });
-        } catch (cErr) {
-          // Ignora se já existir
-        }
+
       } catch (dbErr) {
         console.error("Erro inesperado ao sincronizar perfil do usuário:", dbErr);
       }

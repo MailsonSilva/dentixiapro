@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import { getPlansAction, getPlanosUserDataAction, createCheckoutSessionAction } from "@/lib/planos/actions";
 import { useNotification } from "@/lib/NotificationContext";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Sparkles, ShieldCheck, Star } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, ShieldCheck, Star, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 
 interface Plan {
   id: string;
@@ -19,8 +20,7 @@ interface Plan {
 }
 
 const PERKS = [
-  "7 dias gratuitos para testar",
-  "Simulacoes ilimitadas com IA",
+  "Simulações ilimitadas com IA",
   "Cancele quando quiser",
   "Suporte via WhatsApp",
 ];
@@ -52,7 +52,9 @@ export default function PlanosPage() {
       const plansRes = await getPlansAction();
       if (plansRes.plans && plansRes.plans.length > 0) {
         setPlans(plansRes.plans);
-        setSelectedId(plansRes.plans[0].id);
+        // Selecionar por padrão o plano Anual se existir, senão o primeiro
+        const annualPlan = plansRes.plans.find((p: Plan) => p.interval === "year");
+        setSelectedId(annualPlan ? annualPlan.id : plansRes.plans[0].id);
       }
       setLoadingPlans(false);
     }
@@ -62,7 +64,7 @@ export default function PlanosPage() {
   const isAnnual = (p: Plan) => p.interval === "year";
 
   const formatCurrency = (amount: number) =>
-    (amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    (Math.floor(amount) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   const handleCheckout = async (planId: string) => {
     if (!userData) return;
@@ -110,130 +112,148 @@ export default function PlanosPage() {
     );
   }
 
+  // Encontrar o valor mensal base para calcular desconto real
+  const monthlyPlan = plans.find(p => p.interval === "month");
+  const baseMonthlyAmount = monthlyPlan ? monthlyPlan.unit_amount : 19700; // fallback R$197
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#dce8f8] to-[#eef2f7] flex flex-col items-center pt-8 pb-16 px-4 font-sans">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-8">
-        <div className="flex justify-center mb-4">
+    <div className="min-h-screen bg-gradient-to-b from-[#dce8f8] to-[#eef2f7] flex flex-col items-center pt-6 pb-12 px-4 font-sans relative">
+      {/* Botão de Navegação de Saída: Voltar ao Início */}
+      <div className="w-full max-w-md flex items-center justify-between mb-4">
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/80 hover:bg-white text-gray-700 font-bold text-xs shadow-sm border border-gray-200/60 transition-all active:scale-[0.98]"
+        >
+          <ArrowLeft size={15} />
+          <span>Voltar ao Início</span>
+        </button>
+      </div>
+
+      {/* Header Compacto */}
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-5 text-center">
+        <div className="flex justify-center mb-2.5">
           <Image
-            src="/logo.png"
+            src={IMAGES.logo}
             alt="DentixIA"
-            width={150}
-            height={38}
-            className="h-9 w-auto object-contain"
+            width={130}
+            height={34}
+            className="h-7 w-auto object-contain"
             priority
           />
         </div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-[#1a2a4a] text-center mb-2">
+        <h1 className="text-lg md:text-xl font-bold text-[#1a2a4a] mb-0.5">
           Escolha o plano ideal
         </h1>
-        <p className="text-gray-500 text-center text-sm max-w-xs">
+        <p className="text-gray-500 text-[11px] max-w-xs">
           Assinatura segura via Stripe. Cancele quando quiser.
         </p>
       </motion.div>
 
-
-
-
-      {/* Grid de Planos */}
-      <div className="w-full max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-12 items-stretch">
+      {/* Grid de Planos Compactos com espaçamento aumentado */}
+      <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-2 gap-7 items-stretch">
         {plans.map((plan, i) => {
           const annual = isAnnual(plan);
           const monthlyEq = annual ? plan.unit_amount / 12 : plan.unit_amount;
           const selected = selectedId === plan.id;
           const isLoadingThis = checkoutLoading && selected;
 
+          // Cálculo exato de desconto percentual em relação ao plano mensal anualizado
+          const annualCostIfMonthly = baseMonthlyAmount * 12;
+          const realDiscountPercent = annualCostIfMonthly > 0 
+            ? Math.round(((annualCostIfMonthly - plan.unit_amount) / annualCostIfMonthly) * 100)
+            : 17;
+
           return (
             <motion.div
               key={plan.id}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0, transition: { delay: 0.15 + i * 0.1 } }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 0.1 + i * 0.08 } }}
               className="relative flex flex-col h-full"
             >
-              {/* Badge 2 meses gratis - SOMENTE plano anual */}
+              {/* Destaque Visual "Mais vendido" VERDE no plano principal (Anual) */}
               {annual && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[#1a2a4a] text-white text-[10px] sm:text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-xl whitespace-nowrap tracking-widest ring-4 ring-[#dce8f8]">
-                  <Sparkles size={12} className="text-yellow-400" />
-                  2 MESES GRATIS
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-emerald-600 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md whitespace-nowrap uppercase tracking-wider ring-2 ring-[#dce8f8]">
+                  <Sparkles size={10} className="text-yellow-300" />
+                  Mais vendido
                 </div>
               )}
 
               <div
                 onClick={() => setSelectedId(plan.id)}
-                className={`group flex flex-col h-full bg-white rounded-2xl transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
+                className={`group flex flex-col h-full bg-white rounded-xl transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
                   selected
-                    ? "ring-4 ring-[#1a5fb4] shadow-2xl scale-[1.02] z-10"
-                    : "hover:scale-[1.01] hover:shadow-lg border border-gray-100"
+                    ? "ring-2 ring-emerald-600 shadow-lg scale-[1.01] z-10 border-transparent"
+                    : "hover:scale-[1.005] hover:shadow-md border border-gray-200"
                 }`}
               >
-                <div className="flex flex-col h-full p-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-5">
+                <div className="flex flex-col h-full p-3.5">
+                  {/* Header do Card */}
+                  <div className="flex items-start justify-between mb-2 pt-0.5">
                     <div className="flex-1">
-                      <p className={`font-semibold text-base mb-1 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
+                      <p className={`font-bold text-xs mb-0.5 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
                         {plan.product_name}
                       </p>
                       {annual && (
-                        <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full capitalize">
-                          POPULAR
-                        </div>
+                        <span className="inline-block text-[8px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          ECONOMIZE {realDiscountPercent}% (2 MESES GRÁTIS)
+                        </span>
                       )}
                     </div>
-                    <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                      selected ? "border-[#1a5fb4] bg-white shadow-inner" : "border-gray-200 bg-gray-50"
+                    <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                      selected ? "border-emerald-600 bg-white shadow-inner" : "border-gray-300 bg-gray-50"
                     }`}>
-                      <div className={`w-3.5 h-3.5 rounded-full transition-all duration-300 ${
-                        selected ? "bg-[#1a5fb4] scale-100" : "bg-transparent scale-0"
+                      <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        selected ? "bg-emerald-600 scale-100" : "bg-transparent scale-0"
                       }`} />
                     </div>
                   </div>
 
-                  {/* Preco */}
-                  <div className="mb-6 flex flex-col justify-center min-h-[60px]">
+                  {/* Preço */}
+                  <div className="mb-3 flex flex-col justify-center">
                     <div className="flex items-baseline gap-1">
-                      <span className={`text-3xl font-semibold tracking-tighter transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-400"}`}>
+                      <span className={`text-xl font-black tracking-tight transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-800"}`}>
                         {formatCurrency(monthlyEq)}
                       </span>
-                      <span className="text-gray-400 text-sm font-bold">/mes</span>
+                      <span className="text-gray-400 text-[10px] font-bold">/mês</span>
                     </div>
                     {annual && (
-                      <p className="text-gray-400 text-[13px] font-semibold mt-1">
-                        Pago anualmente: <span className="text-[#1a5fb4]">{formatCurrency(plan.unit_amount)}</span>
+                      <p className="text-gray-400 text-[10px] font-medium mt-0.5">
+                        Cobrado anualmente: <span className="text-emerald-700 font-bold">{formatCurrency(plan.unit_amount)}</span>
                       </p>
                     )}
                   </div>
 
-                  {/* Perks */}
-                  <ul className="space-y-2.5 mb-6 flex-1">
+                  {/* Benefícios (Perks) */}
+                  <ul className="space-y-1.5 mb-4 flex-1">
                     {PERKS.map((perk, j) => (
-                      <li key={j} className="flex items-center gap-3 text-[13px] font-medium text-gray-600">
-                        <CheckCircle2 size={16} strokeWidth={2.5} className={selected ? "text-emerald-500" : "text-gray-300"} />
-                        {perk}
+                      <li key={j} className="flex items-center gap-1.5 text-[10px] font-medium text-gray-600">
+                        <CheckCircle2 size={13} strokeWidth={2.5} className={annual ? "text-emerald-500" : "text-gray-400"} />
+                        <span>{perk}</span>
                       </li>
                     ))}
                     {annual && (
-                      <li className="flex items-center gap-3 text-[13px] font-bold text-[#1a5fb4]">
-                        <Star size={16} fill="currentColor" className="text-[#1a5fb4]" />
-                        Economia real de 16%
+                      <li className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700">
+                        <Star size={13} fill="currentColor" className="text-emerald-500" />
+                        <span>Economia de {realDiscountPercent}% no ano (2 meses grátis)</span>
                       </li>
                     )}
                   </ul>
 
-                  {/* CTA Button */}
+                  {/* Botão de Ação CTA */}
                   <motion.button
                     onClick={(e) => { e.stopPropagation(); handleCheckout(plan.id); }}
                     disabled={checkoutLoading}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full py-3.5 rounded-2xl font-bold text-base shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${
-                      selected
-                        ? "bg-[#1a5fb4] text-white hover:bg-[#174fa0] shadow-blue-200"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 border border-gray-200 shadow-none"
+                    className={`w-full py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                      annual
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200"
+                        : "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20"
                     } disabled:opacity-70 disabled:cursor-wait`}
                   >
                     {isLoadingThis ? (
-                      <><Loader2 size={20} className="animate-spin" /><span>PREPARANDO...</span></>
+                      <><Loader2 size={14} className="animate-spin" /><span>Processando...</span></>
                     ) : (
-                      <span>CONCLUIR ASSINATURA</span>
+                      <span>Assinar Agora</span>
                     )}
                   </motion.button>
                 </div>
@@ -244,14 +264,14 @@ export default function PlanosPage() {
       </div>
 
       {/* Footer */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.5 } }}
-        className="mt-12 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 text-gray-400 font-bold text-xs sm:text-sm capitalize tracking-widest">
-          <ShieldCheck size={18} className="text-emerald-500" />
-          <span>Checkout Protegido por Stripe</span>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}
+        className="mt-6 flex flex-col items-center gap-1 text-center">
+        <div className="flex items-center gap-1.5 text-gray-400 font-bold text-[11px] tracking-wider">
+          <ShieldCheck size={15} className="text-emerald-500" />
+          <span>Pagamento Seguro via Stripe</span>
         </div>
-        <p className="text-center text-gray-400 text-[11px] max-w-[280px] leading-relaxed">
-          *Cancele antes do termino do periodo gratuito sem qualquer cobranca.
+        <p className="text-gray-400 text-[10px] max-w-[260px] leading-relaxed">
+          Cancele a qualquer momento.
         </p>
       </motion.div>
     </div>

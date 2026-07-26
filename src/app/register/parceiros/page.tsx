@@ -8,6 +8,7 @@ import { User, Mail, Lock, ArrowRight, Phone, ShieldCheck, X } from "lucide-reac
 import { AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/Card";
@@ -92,7 +93,7 @@ function RegisterParceiroContent() {
       >
         <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
           <CardHeader className="flex flex-col items-center mb-6 space-y-2">
-            <Image src="/logo.png" alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-2" priority />
+            <Image src={IMAGES.logo} alt="DentixIA" width={180} height={48} className="h-10 w-auto mb-2" priority />
             <h1 className="text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Seja um Parceiro</h1>
             <p className="text-gray-500 text-sm text-center font-medium leading-tight max-w-xs">Indique o DentixIA e ganhe comissões recorrentes</p>
           </CardHeader>

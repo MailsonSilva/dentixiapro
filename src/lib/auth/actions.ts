@@ -63,17 +63,7 @@ export async function signUpAction(payload: {
     return { error: error.message, data: null };
   }
 
-  // Se registrou com sucesso e é usuário comum/parceiro, insere o consentimento
-  if (data?.user) {
-    const { error: consentError } = await supabase.from("consentimentos").insert({
-      user_id: data.user.id,
-      aceitou_em: new Date().toISOString(),
-      versao_politica: "1.0",
-    });
-    if (consentError) {
-      console.error("Erro ao salvar consentimento:", consentError);
-    }
-  }
+
 
   return { error: null, data };
 }
@@ -119,12 +109,24 @@ export async function getClientLayoutDataAction() {
   }
 
   try {
-    // 1. Tipo do usuário
-    const { data: usuarioData } = await supabase
+    // 1. Tipo, telefone e check_video do usuário (com fallback resiliente se a coluna check_video não existir)
+    let usuarioData: any = null;
+    const { data: uData, error: uError } = await supabase
       .from('usuarios')
-      .select('tipo')
+      .select('tipo, telefone, check_video')
       .eq('id', user.id)
       .maybeSingle();
+
+    if (uError) {
+      const { data: uFallback } = await supabase
+        .from('usuarios')
+        .select('tipo, telefone')
+        .eq('id', user.id)
+        .maybeSingle();
+      usuarioData = uFallback;
+    } else {
+      usuarioData = uData;
+    }
 
     let finalTipo: 'comum' | 'parceiro' = (usuarioData?.tipo as 'comum' | 'parceiro') || 'comum';
 
@@ -134,6 +136,9 @@ export async function getClientLayoutDataAction() {
       finalTipo = 'parceiro';
     }
 
+    const userTelefone = usuarioData?.telefone || user.user_metadata?.whatsapp || user.user_metadata?.telefone || user.user_metadata?.phone || null;
+    const checkVideo = usuarioData?.check_video ?? user.user_metadata?.check_video ?? false;
+
     // 2. Se for parceiro, não tem role nem expirou trial
     if (finalTipo === 'parceiro') {
       return {
@@ -142,12 +147,14 @@ export async function getClientLayoutDataAction() {
           user,
           userType: 'parceiro' as const,
           userRole: null as any,
-          trialExpired: false
+          trialExpired: false,
+          telefone: userTelefone,
+          checkVideo
         }
       };
     }
 
-    // 3. Se for comum, busca role
+    // 3. Se for comum, busca role em user_company
     const { data: ucData } = await supabase
       .from('user_company')
       .select('role')
@@ -157,21 +164,32 @@ export async function getClientLayoutDataAction() {
       .limit(1)
       .maybeSingle();
 
-    const role = ucData?.role as 'admin' | 'manager' | 'user' | 'super_admin' | null;
+    const uTipo = (usuarioData?.tipo || "").toLowerCase();
+    const ucRole = (ucData?.role || "").toLowerCase();
+    
+    // Define se o usuário é admin/super_admin por qualquer uma das duas fontes
+    const isSuperAdmin = uTipo === 'super_admin' || ucRole === 'super_admin';
+    const isAdmin = isSuperAdmin || uTipo === 'admin' || ucRole === 'admin';
+    
+    const role: 'admin' | 'manager' | 'user' | 'super_admin' | null = 
+      isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : (ucData?.role as any || null));
 
-    if (role === 'super_admin') {
+    // Admin e super_admin NUNCA são bloqueados pelo trial
+    if (isAdmin) {
       return {
         error: null,
         data: {
           user,
           userType: 'comum' as const,
           userRole: role,
-          trialExpired: false
+          trialExpired: false,
+          telefone: userTelefone,
+          checkVideo
         }
       };
     }
 
-    // Verifica status do trial
+    // Verifica status do trial para usuários normais
     const { data: statusData } = await supabase
       .from('verificar_status_usuario')
       .select('status_code')
@@ -185,7 +203,9 @@ export async function getClientLayoutDataAction() {
         user,
         userType: 'comum' as const,
         userRole: role,
-        trialExpired
+        trialExpired,
+        telefone: userTelefone,
+        checkVideo
       }
     };
   } catch (err: any) {
@@ -195,5 +215,64 @@ export async function getClientLayoutDataAction() {
       data: null
     };
   }
+}
+
+export async function saveUserPhoneAction(phone: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: "Não autenticado" };
+
+  // 1. Atualiza metadata no Supabase Auth
+  await supabase.auth.updateUser({
+    data: { whatsapp: phone, telefone: phone, phone }
+  });
+
+  // 2. Tenta update no banco public.usuarios
+  const { data: updateData, error: updateError } = await supabase
+    .from("usuarios")
+    .update({ telefone: phone })
+    .eq("id", user.id)
+    .select();
+
+  if (updateError) return { error: updateError.message };
+
+  // 3. Se nenhuma linha foi afetada, faz upsert garantindo criação
+  if (!updateData || updateData.length === 0) {
+    const { error: upsertError } = await supabase
+      .from("usuarios")
+      .upsert({
+        id: user.id,
+        email: user.email || "",
+        telefone: phone,
+        nome_completo: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Usuário",
+        tipo: "comum",
+        trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "id" });
+
+    if (upsertError) return { error: upsertError.message };
+  }
+
+  return { error: null };
+}
+
+export async function setCheckVideoAction(checkVideo: boolean) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: "Não autenticado" };
+
+  await supabase.auth.updateUser({
+    data: { check_video: checkVideo }
+  });
+
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ check_video: checkVideo })
+    .eq("id", user.id);
+
+  if (error) {
+    console.warn("Aviso ao atualizar check_video no banco:", error.message);
+  }
+
+  return { error: null };
 }
 

@@ -2,33 +2,58 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera } from "lucide-react";
+import { Camera, PlayCircle } from "lucide-react";
 import { getUserProfileAction } from "@/lib/perfil/actions";
+import { getPublicWelcomeVideoUrlAction } from "@/lib/admin/actions";
+import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 
 export default function Home() {
   const [userName, setUserName] = useState("Dentista");
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState("");
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   useEffect(() => {
-    async function loadUser() {
+    async function loadData() {
+      // 1. Carregar perfil do usuário e verificar o campo check_video no banco de dados
       const res = await getUserProfileAction();
-      if (res.error || !res.data) return;
-      const profile = res.data.profile;
+      let hasWatchedVideo = false;
 
-      const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
-      const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
-      const firstName = cleanName.split(' ')[0];
-      const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-      
-      setUserName(formattedName);
+      if (res.data?.profile) {
+        const profile = res.data.profile;
+        hasWatchedVideo = !!profile.check_video;
+
+        const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
+        const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
+        const firstName = cleanName.split(' ')[0];
+        const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+        setUserName(formattedName);
+      }
+
+      // 2. O vídeo só deve aparecer se o usuário AINDA NÃO marcou no banco (check_video = false)
+      if (!hasWatchedVideo) {
+        const videoRes = await getPublicWelcomeVideoUrlAction();
+        if (videoRes.url && videoRes.url.trim()) {
+          setWelcomeVideoUrl(videoRes.url.trim());
+          setIsVideoModalOpen(true);
+        }
+      }
     }
-    loadUser();
+    loadData();
   }, []);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center h-full px-4 relative overflow-hidden">
+      {/* Modal do Vídeo de Boas-Vindas Vertical (1080x1920 / ~80% da tela) */}
+      <WelcomeVideoModal
+        isOpen={isVideoModalOpen}
+        videoUrl={welcomeVideoUrl}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
+
       {/* Decorative Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-glow/5 blur-[120px] rounded-full animate-float"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary-cyan/5 blur-[100px] rounded-full animate-float" style={{ animationDelay: '-3s' }}></div>
@@ -42,7 +67,7 @@ export default function Home() {
           className="mb-6 w-full flex justify-center"
         >
           <Image
-            src="/logo.png"
+            src={IMAGES.logo}
             alt="DentixIA"
             width={240}
             height={60}

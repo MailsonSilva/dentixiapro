@@ -41,6 +41,7 @@ The system uses a robust **RBAC (Role-Based Access Control) Multi-Tenant Archite
 1.  **Hybrid Chat AI (Mensagens):** Integrates with Evolution API and n8n to provide a seamless chatbot experience where human agents can take over, pausing the AI automatically. It differentiates between AI messages and human agent messages dynamically in real-time.
 2.  **Scheduling via n8n:** N8n automation handles complex scheduling scenarios by factoring in clinic business hours and checking existing slots directly.
 3.  **Simulation & Autocomplete:** Implements an advanced UI for client search predicting results from the `contacts` table, ensuring proper patient logging.
+4.  **Vídeo de Boas-Vindas Vertical (Admin & Todos os Usuários Comuns):** O vídeo do YouTube cadastrado pelo Admin (`system_settings.welcome_video_url`) é distribuído publicamente para todos os usuários comuns ao entrarem no sistema. Exibido em modal de proporção vertical 1080x1920 (9:16) ocupando ~80% da altura da tela (`h-[80vh]`), contendo botões estilizados de confirmação "Já assisti a este vídeo" que persistem em `usuarios.check_video`.
 
 ## Clean Up Notes
 Unnecessary debug scripts (`check_supabase*.mjs`, `query.mjs`, `query.ts`, `eslint_report.json`) have been removed from the root to maintain a clean workspace. Database migrations have been properly organized into `supabase/migrations/`.

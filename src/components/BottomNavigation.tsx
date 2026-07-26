@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Sparkles, User, BookOpen } from "lucide-react";
+import { Home, Sparkles, User, BookOpen, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -16,10 +16,10 @@ export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
   const path = pathname ?? "";
 
   const navItems = [
-    { name: "Início",     href: "/",           icon: Home,     isActive: path === "/" },
-    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: path.startsWith("/simulacoes") },
-    { name: "Aulas",      href: "/aulas",      icon: BookOpen, isActive: path.startsWith("/aulas") },
-    { name: "Perfil",     href: "/perfil",     icon: User,     isActive: path.startsWith("/perfil") },
+    { name: "Início",     href: "/",           icon: Home,     isActive: path === "/",                      locked: false },
+    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: path.startsWith("/simulacoes"), locked: false },
+    { name: "Aulas",      href: "/aulas",      icon: BookOpen, isActive: path.startsWith("/aulas"),          locked: true },
+    { name: "Perfil",     href: "/perfil",     icon: User,     isActive: path.startsWith("/perfil"),         locked: false },
   ];
 
   return (
@@ -27,29 +27,57 @@ export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
       <nav className="flex items-center justify-between gap-1 bg-white/85 backdrop-blur-xl border border-slate-100/80 px-2.5 py-1.5 rounded-[28px] shadow-[0_8px_32px_rgba(15,80,166,0.1)] max-w-sm w-full pointer-events-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
+
+          const itemInner = (
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 transition-all duration-200 z-10 relative",
+                item.locked
+                  ? "text-slate-300"
+                  : item.isActive
+                    ? "text-primary scale-105"
+                    : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <div className="relative">
+                <Icon
+                  size={18}
+                  strokeWidth={item.isActive ? 2.5 : 2}
+                  className="transition-transform duration-200"
+                />
+                {item.locked && (
+                  <Lock
+                    size={10}
+                    strokeWidth={2.5}
+                    className="absolute -top-1 -right-1.5 text-red-500"
+                  />
+                )}
+              </div>
+              <span className="text-xs font-semibold tracking-tight leading-none">
+                {item.name}
+              </span>
+            </div>
+          );
+
+          if (item.locked) {
+            return (
+              <div
+                key={item.href}
+                title="Conteúdo bloqueado"
+                className="flex-1 flex flex-col items-center justify-center py-1.5 relative min-h-[44px] rounded-2xl cursor-not-allowed select-none touch-manipulation"
+              >
+                {itemInner}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className="flex-1 flex flex-col items-center justify-center py-1.5 relative min-h-[44px] rounded-2xl cursor-pointer select-none transition-transform duration-200 active:scale-95 touch-manipulation"
             >
-              <div
-                className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 transition-all duration-200 z-10",
-                  item.isActive
-                    ? "text-primary scale-105"
-                    : "text-slate-400 hover:text-slate-600"
-                )}
-              >
-                <Icon
-                  size={18}
-                  strokeWidth={item.isActive ? 2.5 : 2}
-                  className="transition-transform duration-200"
-                />
-                <span className="text-xs font-semibold tracking-tight leading-none">
-                  {item.name}
-                </span>
-              </div>
+              {itemInner}
 
               {item.isActive && (
                 <motion.div

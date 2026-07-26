@@ -6,6 +6,7 @@ import { signInWithPasswordAction, signInWithGoogleAction } from "@/lib/auth/act
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -44,6 +45,12 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (password.length < 6) {
+      notify("Senha inválida", "A senha deve ter no mínimo 6 caracteres.", "warning");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -78,7 +85,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-secondary-bg flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-secondary-bg flex items-center justify-center p-4 sm:p-6 relative overflow-y-auto py-8">
       {/* Orbes de fundo para profundidade visual */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -ml-24 -mt-24 animate-pulse"></div>
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-accent/10 rounded-full blur-3xl -mr-20 -mb-20"></div>
@@ -91,7 +98,7 @@ export default function LoginPage() {
       >
         <Card className="p-6 sm:p-8 border-white/40 shadow-2xl rounded-3xl bg-white/90 backdrop-blur-md">
           <CardHeader className="flex flex-col items-center mb-6 space-y-2">
-            <Image src="/logo.png" alt="DentixIA" width={300} height={120} className="h-14 w-auto mb-6" priority />
+            <Image src={IMAGES.logo} alt="DentixIA" width={300} height={120} className="h-14 w-auto mb-6" priority />
             <h1 className="text-2xl font-semibold font-poppins text-gray-800 tracking-tight text-center">Bem-vindo!</h1>
             <p className="text-gray-500 text-sm text-center">Acesse sua plataforma inteligente</p>
           </CardHeader>

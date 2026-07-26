@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { IMAGES } from "@/lib/images";
 
 export function BeforeAfterSlider({ before, after }: { before: string; after: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,7 +94,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary overflow-hidden p-1.5 pointer-events-none">
           <Image
-            src="/logo-icon.png"
+            src={IMAGES.logoIcon}
             alt="Drag"
             width={24}
             height={24}

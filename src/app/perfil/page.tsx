@@ -6,6 +6,7 @@ import {
   User,
   MessageCircle,
   Shield,
+  ShieldCheck,
   Handshake,
   LogOut,
   ChevronRight,
@@ -254,27 +255,31 @@ export default function PerfilPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadProfile() {
       try {
-        const { user, error: userError } = await getCurrentUserAction();
-        if (userError || !user) { router.push("/login"); return; }
-
-        // Busca dados de perfil no servidor e companyId em paralelo
-        const [profileResult, companyIdVal] = await Promise.all([
+        // Busca dados de perfil e company em paralelo (auth é validada dentro da action)
+        const [profileResult, userResult] = await Promise.all([
           getUserProfileAction(),
-          getProfileCompanyAction(user.id),
+          getCurrentUserAction(),
         ]);
 
         if (profileResult.error || !profileResult.data) {
           console.error("Erro ao carregar perfil:", profileResult.error);
+          if (!userResult.user) { router.push("/login"); return; }
           notify("Erro de conexão", "Verifique as configurações.", "error");
           return;
         }
 
-        const { profile, status } = profileResult.data;
+        const { profile, status, userRole: role } = profileResult.data;
+        const user = userResult.user;
+        if (!user) { router.push("/login"); return; }
+
+        // Busca companyId em paralelo (fire-and-forget style)
+        getProfileCompanyAction(user.id).then(val => setCompanyId(val ?? null));
 
         setUserData(profile);
         const rawFallback = user.user_metadata?.nome_completo || user.email?.split('@')[0] || "Dentista";
@@ -282,7 +287,7 @@ export default function PerfilPage() {
         setStatusCode(status?.status_code ?? null);
         setDiasRestantes(status?.dias_restantes ?? null);
         setTemAssinatura(status?.tem_assinatura ?? false);
-        setCompanyId(companyIdVal ?? null);
+        setUserRole(role ?? null);
         setEditNome(profile?.nome_completo || "");
         setEditEmail(profile?.email || "");
         setEditTelefone(profile?.telefone || "");
@@ -435,6 +440,7 @@ export default function PerfilPage() {
   }
 
   const isComum = userData?.tipo === "comum" || !userData?.tipo;
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   return (
     <div className="flex flex-col min-h-full flex-1 pb-24 md:pb-8 bg-secondary-bg">
@@ -473,8 +479,8 @@ export default function PerfilPage() {
           <p className="text-sm text-gray-400">{userData?.email}</p>
         </motion.div>
 
-        {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
-        {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} temAssinatura={temAssinatura} />}
+        {/* Trial Banner — apenas para usuário comum que NÃO é admin */}
+        {isComum && !isAdmin && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} temAssinatura={temAssinatura} />}
 
         <p className="text-sm font-bold text-gray-400 capitalize tracking-widest mb-3 px-1">
           Abaixo estão suas configurações
@@ -503,6 +509,14 @@ export default function PerfilPage() {
                 onClick={() => router.push("/planos")}
               />
             ) : null}
+            {/* Menu Admin — visível apenas para admin/super_admin */}
+            {(userRole === 'admin' || userRole === 'super_admin') && (
+              <SettingsRow
+                icon={ShieldCheck}
+                label="Painel Administrativo"
+                onClick={() => router.push("/admin")}
+              />
+            )}
           </div>
         </div>
 

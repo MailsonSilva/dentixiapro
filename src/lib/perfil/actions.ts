@@ -44,37 +44,57 @@ export async function getUserProfileAction() {
     return { error: "Não autenticado", data: null };
   }
 
-  // Metadados do auth (fallback para usuários OAuth - Google retorna full_name, picture, etc.)
+  // Metadados do auth (fallback para usuários OAuth)
   const authMeta = user.user_metadata ?? {};
   const authName = authMeta.full_name || authMeta.name || null;
   const authAvatar = authMeta.avatar_url || authMeta.picture || null;
+  const authPhone = authMeta.whatsapp || authMeta.telefone || authMeta.phone || null;
 
-  // Busca dados de perfil do usuário (maybeSingle evita crash se perfil ainda não existe)
-  const { data: profile, error: dbError } = await supabase
-    .from("usuarios")
-    .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Executar consultas simultaneamente
+  const [profileRes, statusRes, ucRes] = await Promise.all([
+    supabase
+      .from("usuarios")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("verificar_status_usuario")
+      .select("status_code, dias_restantes")
+      .maybeSingle(),
+    supabase
+      .from("user_company")
+      .select("company_id, role")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
-  if (dbError) {
-    return { error: dbError.message, data: null };
+  let profile: any = profileRes.data;
+
+  // Fallback se a coluna check_video não existir na tabela usuarios
+  if (profileRes.error) {
+    const { data: fallbackProfile, error: fallbackError } = await supabase
+      .from("usuarios")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (fallbackError) {
+      return { error: fallbackError.message, data: null };
+    }
+    profile = fallbackProfile;
   }
 
-  // Busca status de assinatura da view verificar_status_usuario (maybeSingle evita crash se não há rows)
-  const { data: statusData } = await supabase
-    .from("verificar_status_usuario")
-    .select("status_code, dias_restantes")
-    .maybeSingle();
+  const statusData = statusRes.data;
+  const userCompanyId = ucRes.data?.company_id ?? user.id;
 
-  // Busca se há assinatura ativa/pendente (status diferente de canceled)
-  const { data: ucData } = await supabase
-    .from("user_company")
-    .select("company_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Resolver role do usuário (usuarios.tipo ou user_company.role)
+  const uTipo = (profile?.tipo || "").toLowerCase();
+  const ucRole = (ucRes.data?.role || "").toLowerCase();
+  const userRole = (uTipo === 'admin' || uTipo === 'super_admin') 
+    ? uTipo 
+    : (ucRole === 'admin' || ucRole === 'super_admin' ? ucRole : (ucRole || uTipo || null));
 
-  const userCompanyId = ucData?.company_id ?? user.id;
-
+  // Busca assinatura em paralelo
   const { data: subData } = await supabase
     .from("subscriptions")
     .select("status")
@@ -84,19 +104,30 @@ export async function getUserProfileAction() {
 
   const temAssinatura = !!subData;
 
-  // Converter logo_url para URL Pública se necessário
-  let logoUrl = profile?.logo_url || null;
-  if (logoUrl && !logoUrl.startsWith("http")) {
-    const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(logoUrl);
-    logoUrl = data.publicUrl;
+  // Resolver foto de perfil / logo
+  let finalLogoUrl = profile?.logo_url && profile.logo_url.trim() !== "" ? profile.logo_url : null;
+  if (finalLogoUrl && !finalLogoUrl.startsWith("http")) {
+    const { data } = supabase.storage.from("logoEmpresa").getPublicUrl(finalLogoUrl);
+    finalLogoUrl = data.publicUrl;
   }
-  // Fallback: usa avatar do Google/OAuth se não tiver logo no banco
-  if (!logoUrl && authAvatar) {
-    logoUrl = authAvatar;
+  if (!finalLogoUrl && authAvatar) {
+    finalLogoUrl = authAvatar;
   }
 
-  // Fallback de nome: usa metadados do auth se nome do banco estiver vazio
-  const nomeCompleto = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
+  const finalNome = profile?.nome_completo || authName || user.email?.split("@")[0] || "Dentista";
+  const finalEmail = profile?.email || user.email || "";
+  const finalTelefone = profile?.telefone || authPhone || "";
+
+  // Auto-sync (fire-and-forget) — apenas se perfil for nulo
+  if (!profile) {
+    supabase.from("usuarios").upsert({
+      id: user.id,
+      email: finalEmail,
+      nome_completo: finalNome,
+      telefone: finalTelefone || null,
+      logo_url: finalLogoUrl || null,
+    }, { onConflict: "id" }).then(() => {});
+  }
 
   return {
     error: null,
@@ -104,15 +135,17 @@ export async function getUserProfileAction() {
       profile: {
         ...(profile ?? {}),
         id: user.id,
-        email: profile?.email || user.email || "",
-        nome_completo: nomeCompleto,
-        logo_url: logoUrl,
+        email: finalEmail,
+        nome_completo: finalNome,
+        telefone: finalTelefone,
+        logo_url: finalLogoUrl,
       },
       status: {
         status_code: statusData?.status_code ?? null,
         dias_restantes: statusData?.dias_restantes ?? null,
         tem_assinatura: temAssinatura,
-      }
+      },
+      userRole,
     }
   };
 }
@@ -131,16 +164,27 @@ export async function updateUserProfileAction(payload: {
     return { error: "Não autenticado" };
   }
 
+  // Atualiza metadata no Auth
+  await supabase.auth.updateUser({
+    data: {
+      full_name: payload.nome_completo,
+      whatsapp: payload.telefone,
+      telefone: payload.telefone,
+      phone: payload.telefone,
+    }
+  });
+
   const { error } = await supabase
     .from("usuarios")
-    .update({
+    .upsert({
+      id: user.id,
+      email: user.email || "",
       nome_completo: payload.nome_completo,
       telefone: payload.telefone,
       empresa: payload.empresa,
       cpf: payload.cpf,
       PIX: payload.PIX,
-    })
-    .eq("id", user.id);
+    }, { onConflict: "id" });
 
   if (error) {
     return { error: error.message };
