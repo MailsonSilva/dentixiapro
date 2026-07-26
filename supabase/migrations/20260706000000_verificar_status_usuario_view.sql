@@ -1,5 +1,5 @@
--- Migração para liberar acesso completo ao perfil 'admin'
--- View: public.verificar_status_usuario
+-- Migration: 20260706000000_verificar_status_usuario_view.sql
+-- Descrição: View para verificação de status da assinatura, trial e privilégios de Admin do usuário
 
 CREATE OR REPLACE VIEW public.verificar_status_usuario AS
  SELECT u.id AS user_id,
@@ -7,19 +7,19 @@ CREATE OR REPLACE VIEW public.verificar_status_usuario AS
     u.trial_ends_at,
     s.price_id AS plano_atual,
         CASE
-            WHEN (u.tipo = 'admin'::tipo_usuario) THEN 3
+            WHEN (u.tipo = 'admin'::tipo_usuario OR public.is_admin(u.id)) THEN 3
             WHEN ((s.status = ANY (ARRAY['active'::subscription_status, 'trialing'::subscription_status])) OR (u.trial_ends_at > now())) THEN 3
             WHEN (uc.company_id IS NULL) THEN 1
             ELSE 2
         END AS status_code,
         CASE
-            WHEN (u.tipo = 'admin'::tipo_usuario) THEN 'Acesso Liberado (Admin).'::text
+            WHEN (u.tipo = 'admin'::tipo_usuario OR public.is_admin(u.id)) THEN 'Acesso Liberado (Admin).'::text
             WHEN ((s.status = ANY (ARRAY['active'::subscription_status, 'trialing'::subscription_status])) OR (u.trial_ends_at > now())) THEN 'Acesso Liberado.'::text
             WHEN (uc.company_id IS NULL) THEN 'Trial Expirado -> Cadastrar Empresa.'::text
             ELSE 'Trial Expirado -> Pagar.'::text
         END AS descricao,
         CASE
-            WHEN (u.tipo = 'admin'::tipo_usuario) THEN 999
+            WHEN (u.tipo = 'admin'::tipo_usuario OR public.is_admin(u.id)) THEN 999
             WHEN (s.status = ANY (ARRAY['active'::subscription_status, 'trialing'::subscription_status])) THEN 999
             WHEN (u.trial_ends_at > now()) THEN (ceil((EXTRACT(epoch FROM (u.trial_ends_at - now())) / (86400)::numeric)))::integer
             ELSE 0

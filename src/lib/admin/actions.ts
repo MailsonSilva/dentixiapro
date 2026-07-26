@@ -36,10 +36,22 @@ export interface ClientRow {
   subscription_status: string;
   plan_name: string;
   trial_days_remaining: number | null;
-  simulations_success: number;
+  simulations_total: number;
+  simulations_saved: number;
+  simulations_unsaved: number;
   simulations_error: number;
   created_at: string;
   last_login: string | null;
+}
+
+export interface ClientSavedSimulation {
+  id: number;
+  nome_paciente: string;
+  procedimento: string;
+  cor_utilizada: string;
+  img_original_url: string;
+  img_simulada_url: string;
+  created_at: string;
 }
 
 export interface SimulationHistoryItem {
@@ -158,18 +170,17 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "trialing"]);
 
-    // 3. Volume de Operações do Dia (simulacao_tracking)
-    const { data: simData } = await supabase
-      .from("simulacao_tracking")
-      .select("status")
-      .gte("created_at", startOfToday);
+    // 3. Volume de Operações do Dia
+    const [simData, simSavedData] = await Promise.all([
+      supabase.from("simulacao_tracking").select("status").gte("created_at", startOfToday),
+      supabase.from("simulacoes").select("id").gte("created_at", startOfToday),
+    ]);
 
     let successCount = 0;
     let errorCount = 0;
-    const todayTotal = simData ? simData.length : 0;
 
-    if (simData) {
-      simData.forEach((s) => {
+    if (simData.data) {
+      simData.data.forEach((s) => {
         if (s.status === "acerto" || s.status === "salva" || s.status === "refeita") {
           successCount++;
         } else if (s.status === "erro") {
@@ -178,6 +189,12 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       });
     }
 
+    const savedTodayCount = simSavedData.data ? simSavedData.data.length : 0;
+    if (successCount < savedTodayCount) {
+      successCount = savedTodayCount;
+    }
+
+    const todayTotal = Math.max(simData.data ? simData.data.length : 0, successCount + errorCount);
     const successRate = todayTotal > 0 ? Math.round((successCount / todayTotal) * 100) : 100;
 
     // 4. Métricas de Crescimento (Referral)
@@ -234,31 +251,35 @@ export async function getAdminClientsAction(
 
     let query = supabase
       .from("usuarios")
-      .select("id, nome_completo, email, telefone, referral_code, user_referredbycode, is_blocked, tipo, created_at, last_login, trial_ends_at", { count: "exact" });
+      .select("*", { count: "exact" });
 
     // Busca Textual Global
-    if (searchQuery.trim()) {
+    if (searchQuery && searchQuery.trim()) {
       const q = `%${searchQuery.trim()}%`;
       query = query.or(`nome_completo.ilike.${q},email.ilike.${q},telefone.ilike.${q},referral_code.ilike.${q},id.eq.${searchQuery.trim()}`);
     }
 
-    // Filtros por Período de Data
-    if (startDate) {
+    // Filtros por Período de Data de Cadastro
+    if (startDate && typeof startDate === "string" && startDate.trim()) {
       const sDate = new Date(startDate);
-      sDate.setHours(0, 0, 0, 0);
-      query = query.gte("created_at", sDate.toISOString());
+      if (!isNaN(sDate.getTime())) {
+        sDate.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", sDate.toISOString());
+      }
     }
-    if (endDate) {
+    if (endDate && typeof endDate === "string" && endDate.trim()) {
       const eDate = new Date(endDate);
-      eDate.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", eDate.toISOString());
+      if (!isNaN(eDate.getTime())) {
+        eDate.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", eDate.toISOString());
+      }
     }
 
     // Filtros por Status da Conta
     if (statusFilter === "blocked") {
       query = query.eq("is_blocked", true);
     } else if (statusFilter === "trial") {
-      query = query.eq("is_blocked", false).gte("trial_ends_at", now.toISOString());
+      query = query.or("is_blocked.is.null,is_blocked.eq.false").gte("trial_ends_at", now.toISOString());
     }
 
     const from = (page - 1) * pageSize;
@@ -269,6 +290,7 @@ export async function getAdminClientsAction(
       .range(from, to);
 
     if (fetchErr) {
+      console.error("Erro no getAdminClientsAction query:", fetchErr);
       return { clients: [], total: 0, error: fetchErr.message };
     }
 
@@ -278,39 +300,45 @@ export async function getAdminClientsAction(
 
     const userIds = users.map((u) => u.id);
 
-    // Buscar contagem de simulações e status de assinatura em lote
-    const [simRes, subRes] = await Promise.all([
+    // Buscar contagem de simulações em paralelo: 1. simulacao_tracking, 2. simulacoes
+    const [simRes, simSavedRes] = await Promise.all([
       supabase
         .from("simulacao_tracking")
         .select("user_id, status")
         .in("user_id", userIds),
       supabase
-        .from("subscriptions")
-        .select("company_id, status, price_id")
-        .in("status", ["active", "trialing"]),
+        .from("simulacoes")
+        .select("usuario_id")
+        .in("usuario_id", userIds),
     ]);
 
-    const simMap: Record<string, { success: number; error: number }> = {};
+    const simMap: Record<string, { saved: number; unsaved: number; error: number }> = {};
+
+    // 1. Processar simulacoes salvas
+    if (simSavedRes.data) {
+      simSavedRes.data.forEach((s) => {
+        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, unsaved: 0, error: 0 };
+        simMap[s.usuario_id].saved++;
+      });
+    }
+
+    // 2. Processar tracking
     if (simRes.data) {
       simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { success: 0, error: 0 };
+        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, unsaved: 0, error: 0 };
         if (s.status === "erro") {
           simMap[s.user_id].error++;
-        } else {
-          simMap[s.user_id].success++;
+        } else if (s.status === "acerto" || s.status === "refeita") {
+          simMap[s.user_id].unsaved++;
+        } else if (s.status === "salva" && simMap[s.user_id].saved === 0) {
+          simMap[s.user_id].saved++;
         }
       });
     }
 
-    // Set de IDs com assinaturas ativas se houver vínculo
-    const activeSubUserIds = new Set<string>();
-    if (subRes.data && subRes.data.length > 0) {
-      // Como subscriptions se liga via company_id ou user_company, mapeamos se disponível
-    }
-
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { success: 0, error: 0 };
-      const isBlocked = u.is_blocked ?? false;
+      const sim = simMap[u.id] || { saved: 0, unsaved: 0, error: 0 };
+      const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
 
@@ -328,43 +356,43 @@ export async function getAdminClientsAction(
         statusCategory = "blocked";
         subscriptionStatus = "Bloqueado";
         planName = "Acesso Suspenso";
-      } else if (activeSubUserIds.has(u.id)) {
-        statusCategory = "subscriber";
-        subscriptionStatus = "Assinante Ativo";
-        planName = "Plano Pro / Anual";
       } else if (isTrial) {
         statusCategory = "trial";
         subscriptionStatus = `Em Testes (${trialDaysRemaining}d restantes)`;
         planName = "Plano Trial (7 Dias)";
       }
 
+      const totalSims = sim.saved + sim.unsaved + sim.error;
+
       return {
         id: u.id,
-        nome_completo: u.nome_completo || "Sem nome",
+        nome_completo: u.nome_completo || u.full_name || u.email?.split("@")[0] || "Sem nome",
         email: u.email || "",
-        telefone: u.telefone || null,
+        telefone: u.telefone || u.whatsapp || u.phone || null,
         referral_code: u.referral_code || null,
-        user_referredbycode: u.user_referredbycode || null,
+        user_referredbycode: u.user_referredbycode || u.user_referred_by_code || null,
         is_blocked: isBlocked,
         tipo: u.tipo || "comum",
         status_category: statusCategory,
         subscription_status: subscriptionStatus,
         plan_name: planName,
         trial_days_remaining: trialDaysRemaining,
-        simulations_success: sim.success,
+        simulations_total: totalSims,
+        simulations_saved: sim.saved,
+        simulations_unsaved: sim.unsaved,
         simulations_error: sim.error,
-        created_at: u.created_at,
-        last_login: u.last_login || u.created_at,
+        created_at: u.created_at || new Date().toISOString(),
+        last_login: u.last_login || u.created_at || null,
       };
     });
 
-    // Se o filtro for por "subscribers" (assinantes), aplicamos pós-formatação
     if (statusFilter === "subscribers") {
       formattedClients = formattedClients.filter((c) => c.status_category === "subscriber");
     }
 
     return { clients: formattedClients, total: count || formattedClients.length, error: null };
   } catch (err: any) {
+    console.error("Exceção no getAdminClientsAction:", err);
     return { clients: [], total: 0, error: err.message || "Erro ao buscar clientes" };
   }
 }
@@ -393,27 +421,69 @@ export async function toggleBlockClientAction(userId: string, isBlocked: boolean
 }
 
 /**
- * Detailed Simulation History for Modal / Expandable Row
+ * Obter Estatísticas Métricas das Simulações de um Cliente (Salvas, Geradas Não Salvas e Erros)
  */
-export async function getClientUsageHistoryAction(userId: string): Promise<{ history: SimulationHistoryItem[]; error: string | null }> {
+export async function getClientUsageHistoryAction(userId: string): Promise<{
+  metrics: {
+    total: number;
+    saved: number;
+    unsaved: number;
+    error: number;
+    successRate: number;
+  };
+  error: string | null;
+}> {
   const access = await checkAdminAccessAction();
-  if (!access.isAdmin) return { history: [], error: access.error || "Acesso negado" };
+  if (!access.isAdmin) return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: access.error || "Acesso negado" };
 
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("simulacao_tracking")
-      .select("id, status, metadata, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const [savedRes, trackingRes] = await Promise.all([
+      supabase
+        .from("simulacoes")
+        .select("id")
+        .eq("usuario_id", userId),
+      supabase
+        .from("simulacao_tracking")
+        .select("status")
+        .eq("user_id", userId),
+    ]);
 
-    if (error) return { history: [], error: error.message };
+    const savedCount = savedRes.data ? savedRes.data.length : 0;
+    let unsavedCount = 0;
+    let errorCount = 0;
+    let trackingSavedCount = 0;
 
-    return { history: data as SimulationHistoryItem[], error: null };
+    if (trackingRes.data) {
+      trackingRes.data.forEach((item) => {
+        if (item.status === "erro") {
+          errorCount++;
+        } else if (item.status === "acerto" || item.status === "refeita") {
+          unsavedCount++;
+        } else if (item.status === "salva") {
+          trackingSavedCount++;
+        }
+      });
+    }
+
+    const totalSaved = Math.max(savedCount, trackingSavedCount);
+    const totalSimulations = totalSaved + unsavedCount + errorCount;
+    const successTotal = totalSaved + unsavedCount;
+    const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;
+
+    return {
+      metrics: {
+        total: totalSimulations,
+        saved: totalSaved,
+        unsaved: unsavedCount,
+        error: errorCount,
+        successRate,
+      },
+      error: null,
+    };
   } catch (err: any) {
-    return { history: [], error: err.message || "Erro ao obter histórico" };
+    return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: err.message || "Erro ao obter métricas" };
   }
 }
 
@@ -474,11 +544,12 @@ export async function getSaaSFinancialAndCostMetricsAction(): Promise<{ data: Sa
     const heavyTrialNonConvertedCount = heavyUsers.length;
 
     // 6. Monitoramento de Custos de API
-    const { count: totalSimulationsCount } = await supabase
-      .from("simulacao_tracking")
-      .select("id", { count: "exact", head: true });
+    const [simTrackingCountRes, simulacoesCountRes] = await Promise.all([
+      supabase.from("simulacao_tracking").select("id", { count: "exact", head: true }),
+      supabase.from("simulacoes").select("id", { count: "exact", head: true }),
+    ]);
 
-    const simTotal = totalSimulationsCount || 0;
+    const simTotal = Math.max(simTrackingCountRes.count || 0, simulacoesCountRes.count || 0);
     const estimatedCostPerSimulationUSD = 0.015;
     const totalCostUSD = parseFloat((simTotal * estimatedCostPerSimulationUSD).toFixed(2));
     const estimatedRevenueBRL = mrr;
@@ -564,7 +635,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false);
+        .or("is_blocked.is.null,is_blocked.eq.false");
       return { count: count || 0, error: null };
     }
 
@@ -573,7 +644,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .gte("created_at", sevenDaysAgo);
       return { count: count || 0, error: null };
     }
@@ -582,7 +653,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .gte("trial_ends_at", now.toISOString());
       return { count: count || 0, error: null };
     }
@@ -599,7 +670,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .or(`trial_ends_at.lt.${now.toISOString()},trial_ends_at.is.null`);
       return { count: count || 0, error: null };
     }
@@ -633,11 +704,9 @@ export async function sendNotificationAction(payload: {
       return { success: false, recipients_count: 0, error: "O título não pode exceder 60 caracteres." };
     }
 
-    // 1. Obter quantidade exata de destinatários
     const countRes = await getTargetAudienceCountAction(payload.target_audience);
     const recipientsCount = countRes.count || 0;
 
-    // 2. Inserir no histórico de notificações
     const { error: insertErr } = await supabase
       .from("notifications_history")
       .insert({
@@ -683,5 +752,57 @@ export async function getNotificationHistoryAction(): Promise<{
     return { history: (data as NotificationHistoryItem[]) || [], error: null };
   } catch (err: any) {
     return { history: [], error: err.message || "Erro ao obter histórico de notificações" };
+  }
+}
+
+/**
+ * APP CLIENTE: Busca as notificações mais recentes para exibição ao usuário logado
+ */
+export async function getUserNotificationsAction(): Promise<{
+  notifications: NotificationHistoryItem[];
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { notifications: [], error: null };
+    }
+
+    const { data: userData } = await supabase
+      .from("usuarios")
+      .select("created_at, trial_ends_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const now = new Date();
+    const userCategories: NotificationTargetAudience[] = ["all"];
+
+    if (userData) {
+      const createdAt = new Date(userData.created_at);
+      const isNewUser = now.getTime() - createdAt.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      if (isNewUser) userCategories.push("new_users");
+
+      const trialEndsAt = userData.trial_ends_at ? new Date(userData.trial_ends_at) : null;
+      if (trialEndsAt && trialEndsAt > now) {
+        userCategories.push("trial");
+      } else {
+        userCategories.push("inactive");
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("notifications_history")
+      .select("id, title, message, category, target_audience, recipients_count, created_at, created_by")
+      .in("target_audience", userCategories)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) return { notifications: [], error: error.message };
+
+    return { notifications: (data as NotificationHistoryItem[]) || [], error: null };
+  } catch (err: any) {
+    return { notifications: [], error: err.message };
   }
 }
