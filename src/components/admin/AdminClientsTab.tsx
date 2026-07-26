@@ -3,8 +3,6 @@
 import React, { useState } from "react";
 import {
   ClientRow,
-  ClientSavedSimulation,
-  SimulationHistoryItem,
   toggleBlockClientAction,
   getClientUsageHistoryAction,
 } from "@/lib/admin/actions";
@@ -12,12 +10,10 @@ import {
   Search,
   Lock,
   Unlock,
-  History,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   X,
-  AlertCircle,
-  CheckCircle2,
   Copy,
   Check,
   UserCheck,
@@ -25,9 +21,9 @@ import {
   Clock,
   RotateCcw,
   Sparkles,
-  ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
   Layers,
-  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,13 +63,17 @@ export function AdminClientsTab({
   // Feedback visual individual de cópia (email ou telefone)
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Modal de Histórico Completo de Simulações do Cliente
-  const [selectedClientHistory, setSelectedClientHistory] = useState<{
+  // Modal de Métricas Numéricas de Simulações do Cliente
+  const [selectedClientMetrics, setSelectedClientMetrics] = useState<{
     client: ClientRow;
-    savedSimulations: ClientSavedSimulation[];
-    trackingHistory: SimulationHistoryItem[];
+    metrics: {
+      total: number;
+      saved: number;
+      unsaved: number;
+      error: number;
+      successRate: number;
+    };
     loading: boolean;
-    activeTab: "saved" | "tracking";
   } | null>(null);
 
   const totalPages = Math.ceil(totalClients / 10) || 1;
@@ -113,27 +113,31 @@ export function AdminClientsTab({
     }
   };
 
-  // Abrir Histórico de Uso e Simulações no Modal
-  const handleOpenHistory = async (client: ClientRow) => {
-    setSelectedClientHistory({
+  // Abrir Métricas Numéricas de Simulação no Modal
+  const handleOpenMetrics = async (client: ClientRow) => {
+    setSelectedClientMetrics({
       client,
-      savedSimulations: [],
-      trackingHistory: [],
+      metrics: {
+        total: client.simulations_total,
+        saved: client.simulations_saved,
+        unsaved: client.simulations_unsaved,
+        error: client.simulations_error,
+        successRate: client.simulations_total > 0
+          ? Math.round(((client.simulations_saved + client.simulations_unsaved) / client.simulations_total) * 100)
+          : 100,
+      },
       loading: true,
-      activeTab: "saved",
     });
+
     const res = await getClientUsageHistoryAction(client.id);
-    if (res.error) {
-      toast.error(`Erro ao carregar histórico: ${res.error}`);
-      setSelectedClientHistory(null);
-    } else {
-      setSelectedClientHistory({
+    if (!res.error && res.metrics) {
+      setSelectedClientMetrics({
         client,
-        savedSimulations: res.savedSimulations,
-        trackingHistory: res.trackingHistory,
+        metrics: res.metrics,
         loading: false,
-        activeTab: res.savedSimulations.length > 0 ? "saved" : "tracking",
       });
+    } else {
+      setSelectedClientMetrics((prev) => prev ? { ...prev, loading: false } : null);
     }
   };
 
@@ -290,7 +294,7 @@ export function AdminClientsTab({
                 <th className="py-4 px-6">Contato Direct</th>
                 <th className="py-4 px-6">Cadastro</th>
                 <th className="py-4 px-6">Status do Plano</th>
-                <th className="py-4 px-6 text-center">Simulações</th>
+                <th className="py-4 px-6 text-center">Quantidades de Simulações</th>
                 <th className="py-4 px-6 text-right">Ações</th>
               </tr>
             </thead>
@@ -403,12 +407,39 @@ export function AdminClientsTab({
                         )}
                       </td>
 
-                      {/* Contador de Simulações */}
+                      {/* Resumo de Quantidades de Simulação */}
                       <td className="py-4 px-6 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 text-xs font-mono">
-                          <span className="text-emerald-700 font-bold">{client.simulations_success} ok</span>
-                          <span className="text-slate-300">/</span>
-                          <span className="text-rose-600 font-bold">{client.simulations_error} erros</span>
+                        <div className="flex flex-col items-center gap-1">
+                          
+                          {/* Badge de Total de Simulações Geradas */}
+                          <div className="text-xs font-bold text-slate-800">
+                            Total: <strong className="text-primary font-mono text-sm">{client.simulations_total}</strong>
+                          </div>
+
+                          {/* Detalhamento de Salvas, Não Salvas e Erros */}
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                            <span
+                              className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold"
+                              title="Simulações salvas no histórico"
+                            >
+                              💾 {client.simulations_saved} salvas
+                            </span>
+                            <span
+                              className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold"
+                              title="Simulações geradas que o usuário não salvou"
+                            >
+                              ⚡ {client.simulations_unsaved} não salvas
+                            </span>
+                            {client.simulations_error > 0 && (
+                              <span
+                                className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-semibold"
+                                title="Tentativas de simulação com erro"
+                              >
+                                ❌ {client.simulations_error} erros
+                              </span>
+                            )}
+                          </div>
+
                         </div>
                       </td>
 
@@ -416,11 +447,11 @@ export function AdminClientsTab({
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleOpenHistory(client)}
-                            title="Ver Simulações e Histórico de Uso"
+                            onClick={() => handleOpenMetrics(client)}
+                            title="Ver Detalhamento das Quantidades de Simulação"
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                           >
-                            <History className="w-3.5 h-3.5 text-primary" /> Ver Simulações
+                            <BarChart3 className="w-3.5 h-3.5 text-primary" /> Métricas
                           </button>
 
                           <button
@@ -478,229 +509,94 @@ export function AdminClientsTab({
         </div>
       </div>
 
-      {/* Modal Detalhado de Simulações (Salvas e Geradas/Tracking) do Cliente */}
-      {selectedClientHistory && (
+      {/* Modal de Quantidades e Estatísticas Numéricas (Sem exibição de imagens) */}
+      {selectedClientMetrics && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-white border border-slate-200 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             
             {/* Header do Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
               <div>
                 <h3 className="text-base font-bold text-slate-800">
-                  Painel de Simulações: {selectedClientHistory.client.nome_completo}
+                  Métricas de Simulações: {selectedClientMetrics.client.nome_completo}
                 </h3>
-                <p className="text-xs text-slate-500">{selectedClientHistory.client.email}</p>
+                <p className="text-xs text-slate-500">{selectedClientMetrics.client.email}</p>
               </div>
               <button
-                onClick={() => setSelectedClientHistory(null)}
+                onClick={() => setSelectedClientMetrics(null)}
                 className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Abas Internas do Modal */}
-            <div className="flex items-center gap-2 px-6 pt-3 bg-slate-50 border-b border-slate-200">
-              <button
-                onClick={() => setSelectedClientHistory({ ...selectedClientHistory, activeTab: "saved" })}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
-                  selectedClientHistory.activeTab === "saved"
-                    ? "bg-white text-primary border-primary shadow-sm"
-                    : "text-slate-500 hover:text-slate-800 border-transparent"
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Simulações Salvas ({selectedClientHistory.savedSimulations.length})
-              </button>
+            {/* Conteúdo Numérico Resumido */}
+            <div className="p-6 space-y-5">
+              
+              {/* Card de Resumo Principal */}
+              <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-slate-50 border border-primary/20 p-5 rounded-2xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    Total de Simulações Geradas
+                  </span>
+                  <div className="text-3xl font-black text-slate-900 font-mono mt-1">
+                    {selectedClientMetrics.metrics.total}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    Taxa de Sucesso
+                  </span>
+                  <div className="text-2xl font-bold text-emerald-600 font-mono mt-1">
+                    {selectedClientMetrics.metrics.successRate}%
+                  </div>
+                </div>
+              </div>
 
-              <button
-                onClick={() => setSelectedClientHistory({ ...selectedClientHistory, activeTab: "tracking" })}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
-                  selectedClientHistory.activeTab === "tracking"
-                    ? "bg-white text-primary border-primary shadow-sm"
-                    : "text-slate-500 hover:text-slate-800 border-transparent"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" /> Todas Gerações & Tracking ({selectedClientHistory.trackingHistory.length})
-              </button>
-            </div>
-
-            {/* Conteúdo do Modal */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              {selectedClientHistory.loading ? (
-                <div className="py-12 text-center text-slate-500">Carregando simulações do cliente...</div>
-              ) : selectedClientHistory.activeTab === "saved" ? (
+              {/* Grid das 3 Quantidades Específicas */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 
-                /* Lista de Simulações SALVAS */
-                selectedClientHistory.savedSimulations.length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 text-xs">
-                    Nenhuma simulação salva explicitamente por este cliente ainda.
+                {/* 1. Salvas */}
+                <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                    <Sparkles className="w-4 h-4 text-emerald-600" /> Salvas pelo Cliente
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {selectedClientHistory.savedSimulations.map((sim) => (
-                      <div
-                        key={sim.id}
-                        className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-slate-800">{sim.nome_paciente}</span>
-                            <div className="text-[11px] text-primary font-semibold capitalize">{sim.procedimento}</div>
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {new Date(sim.created_at).toLocaleDateString("pt-BR")}
-                          </span>
-                        </div>
-
-                        {/* Thumbnails Antes e Depois */}
-                        <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-lg border border-slate-200">
-                          <div>
-                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Foto Original</span>
-                            {sim.img_original_url ? (
-                              <img
-                                src={sim.img_original_url}
-                                alt="Original"
-                                className="w-full h-24 object-cover rounded-md border border-slate-200"
-                              />
-                            ) : (
-                              <div className="w-full h-24 bg-slate-100 rounded-md flex items-center justify-center text-slate-400">
-                                <ImageIcon className="w-6 h-6" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <span className="text-[10px] font-bold text-primary block mb-1">Foto Simulada</span>
-                            {sim.img_simulada_url ? (
-                              <img
-                                src={sim.img_simulada_url}
-                                alt="Simulada"
-                                className="w-full h-24 object-cover rounded-md border border-slate-200"
-                              />
-                            ) : (
-                              <div className="w-full h-24 bg-slate-100 rounded-md flex items-center justify-center text-slate-400">
-                                <ImageIcon className="w-6 h-6" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Detalhes de Cor e Ações */}
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                          <span>Cor: <strong className="text-slate-800">{sim.cor_utilizada || "N/A"}</strong></span>
-                          <div className="flex items-center gap-2">
-                            {sim.img_simulada_url && (
-                              <a
-                                href={sim.img_simulada_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline font-bold flex items-center gap-1"
-                              >
-                                Abrir Imagem <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-2xl font-bold text-emerald-900 font-mono">
+                    {selectedClientMetrics.metrics.saved}
                   </div>
-                )
+                  <p className="text-[10px] text-emerald-700">Guardadas no histórico</p>
+                </div>
 
-              ) : (
-
-                /* Lista de Histórico de GERAÇÃO & Tracking (Salvas e Não Salvas) */
-                selectedClientHistory.trackingHistory.length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 text-xs">
-                    Nenhum registro de geração encontrado no tracking.
+                {/* 2. Geradas Não Salvas */}
+                <div className="bg-blue-50/80 border border-blue-200/80 p-4 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
+                    <Layers className="w-4 h-4 text-blue-600" /> Geradas (Não Salvas)
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedClientHistory.trackingHistory.map((item) => {
-                      const meta = item.metadata || {};
-                      const hasImages = meta.urlOriginal || meta.urlSimulada;
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {item.status === "salva" && (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                  ✅ Salva no Histórico
-                                </span>
-                              )}
-                              {item.status === "acerto" && (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                                  ⚡ Gerada (Não salva pelo usuário)
-                                </span>
-                              )}
-                              {item.status === "erro" && (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
-                                  ❌ Erro de Processamento
-                                </span>
-                              )}
-                              {item.status === "refeita" && (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
-                                  🔄 Simulação Refeita
-                                </span>
-                              )}
-                              <span className="font-bold text-slate-800 capitalize">
-                                {meta.tipoTratamento || meta.procedimento || "Simulação IA"}
-                              </span>
-                            </div>
-
-                            <span className="text-[11px] text-slate-400">
-                              {new Date(item.created_at).toLocaleString("pt-BR")}
-                            </span>
-                          </div>
-
-                          {/* Se houver imagens no metadata de simulação gerada não salva */}
-                          {hasImages && (
-                            <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-lg border border-slate-200 mt-2">
-                              {meta.urlOriginal && (
-                                <div>
-                                  <span className="text-[10px] font-bold text-slate-500 block mb-1">Foto Original</span>
-                                  <img
-                                    src={meta.urlOriginal}
-                                    alt="Original"
-                                    className="w-full h-20 object-cover rounded-md border border-slate-200"
-                                  />
-                                </div>
-                              )}
-                              {meta.urlSimulada && (
-                                <div>
-                                  <span className="text-[10px] font-bold text-primary block mb-1">Foto Simulada (Gerada)</span>
-                                  <img
-                                    src={meta.urlSimulada}
-                                    alt="Simulada"
-                                    className="w-full h-20 object-cover rounded-md border border-slate-200"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {meta.error && (
-                            <div className="text-[11px] text-rose-600 bg-rose-50 p-2 rounded border border-rose-200 font-mono">
-                              Erro: {meta.error}
-                            </div>
-                          )}
-
-                        </div>
-                      );
-                    })}
+                  <div className="text-2xl font-bold text-blue-900 font-mono">
+                    {selectedClientMetrics.metrics.unsaved}
                   </div>
-                )
+                  <p className="text-[10px] text-blue-700">Simulações de teste</p>
+                </div>
 
-              )}
+                {/* 3. Com Falha / Erro */}
+                <div className="bg-rose-50/80 border border-rose-200/80 p-4 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" /> Com Falha / Erro
+                  </div>
+                  <div className="text-2xl font-bold text-rose-900 font-mono">
+                    {selectedClientMetrics.metrics.error}
+                  </div>
+                  <p className="text-[10px] text-rose-700">Erros no processamento</p>
+                </div>
+
+              </div>
+
             </div>
 
             {/* Footer do Modal */}
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
               <button
-                onClick={() => setSelectedClientHistory(null)}
+                onClick={() => setSelectedClientMetrics(null)}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition-colors"
               >
                 Fechar

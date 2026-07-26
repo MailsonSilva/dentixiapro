@@ -36,7 +36,9 @@ export interface ClientRow {
   subscription_status: string;
   plan_name: string;
   trial_days_remaining: number | null;
-  simulations_success: number;
+  simulations_total: number;
+  simulations_saved: number;
+  simulations_unsaved: number;
   simulations_error: number;
   created_at: string;
   last_login: string | null;
@@ -168,7 +170,7 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "trialing"]);
 
-    // 3. Volume de Operações do Dia (simulacao_tracking + simulacoes)
+    // 3. Volume de Operações do Dia
     const [simData, simSavedData] = await Promise.all([
       supabase.from("simulacao_tracking").select("status").gte("created_at", startOfToday),
       supabase.from("simulacoes").select("id").gte("created_at", startOfToday),
@@ -298,8 +300,8 @@ export async function getAdminClientsAction(
 
     const userIds = users.map((u) => u.id);
 
-    // Buscar em paralelo contagem de simulações (tracking + salvas na tabela simulacoes) e assinaturas
-    const [simRes, simSavedRes, subRes] = await Promise.all([
+    // Buscar contagem de simulações em paralelo: 1. simulacao_tracking, 2. simulacoes
+    const [simRes, simSavedRes] = await Promise.all([
       supabase
         .from("simulacao_tracking")
         .select("user_id, status")
@@ -308,37 +310,34 @@ export async function getAdminClientsAction(
         .from("simulacoes")
         .select("usuario_id")
         .in("usuario_id", userIds),
-      supabase
-        .from("subscriptions")
-        .select("id, company_id, status, price_id")
-        .in("status", ["active", "trialing"]),
     ]);
 
-    const simMap: Record<string, { success: number; error: number; saved: number }> = {};
+    const simMap: Record<string, { saved: number; unsaved: number; error: number }> = {};
 
-    if (simRes.data) {
-      simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { success: 0, error: 0, saved: 0 };
-        if (s.status === "erro") {
-          simMap[s.user_id].error++;
-        } else {
-          simMap[s.user_id].success++;
-        }
+    // 1. Processar simulacoes salvas
+    if (simSavedRes.data) {
+      simSavedRes.data.forEach((s) => {
+        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, unsaved: 0, error: 0 };
+        simMap[s.usuario_id].saved++;
       });
     }
 
-    if (simSavedRes.data) {
-      simSavedRes.data.forEach((s) => {
-        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { success: 0, error: 0, saved: 0 };
-        simMap[s.usuario_id].saved++;
-        if (simMap[s.usuario_id].success < simMap[s.usuario_id].saved) {
-          simMap[s.usuario_id].success = simMap[s.usuario_id].saved;
+    // 2. Processar tracking
+    if (simRes.data) {
+      simRes.data.forEach((s) => {
+        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, unsaved: 0, error: 0 };
+        if (s.status === "erro") {
+          simMap[s.user_id].error++;
+        } else if (s.status === "acerto" || s.status === "refeita") {
+          simMap[s.user_id].unsaved++;
+        } else if (s.status === "salva" && simMap[s.user_id].saved === 0) {
+          simMap[s.user_id].saved++;
         }
       });
     }
 
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { success: 0, error: 0, saved: 0 };
+      const sim = simMap[u.id] || { saved: 0, unsaved: 0, error: 0 };
       const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
@@ -363,6 +362,8 @@ export async function getAdminClientsAction(
         planName = "Plano Trial (7 Dias)";
       }
 
+      const totalSims = sim.saved + sim.unsaved + sim.error;
+
       return {
         id: u.id,
         nome_completo: u.nome_completo || u.full_name || u.email?.split("@")[0] || "Sem nome",
@@ -376,7 +377,9 @@ export async function getAdminClientsAction(
         subscription_status: subscriptionStatus,
         plan_name: planName,
         trial_days_remaining: trialDaysRemaining,
-        simulations_success: sim.success,
+        simulations_total: totalSims,
+        simulations_saved: sim.saved,
+        simulations_unsaved: sim.unsaved,
         simulations_error: sim.error,
         created_at: u.created_at || new Date().toISOString(),
         last_login: u.last_login || u.created_at || null,
@@ -418,44 +421,69 @@ export async function toggleBlockClientAction(userId: string, isBlocked: boolean
 }
 
 /**
- * Detailed Simulation History: Obter simulações SALVAS e histórico de GERAÇÃO (Salvas e Não Salvas)
+ * Obter Estatísticas Métricas das Simulações de um Cliente (Salvas, Geradas Não Salvas e Erros)
  */
 export async function getClientUsageHistoryAction(userId: string): Promise<{
-  savedSimulations: ClientSavedSimulation[];
-  trackingHistory: SimulationHistoryItem[];
+  metrics: {
+    total: number;
+    saved: number;
+    unsaved: number;
+    error: number;
+    successRate: number;
+  };
   error: string | null;
 }> {
   const access = await checkAdminAccessAction();
-  if (!access.isAdmin) return { savedSimulations: [], trackingHistory: [], error: access.error || "Acesso negado" };
+  if (!access.isAdmin) return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: access.error || "Acesso negado" };
 
   try {
     const supabase = await createClient();
 
-    // Buscar em paralelo: 1. Simulações salvas (tabela simulacoes) e 2. Tracking de gerações (tabela simulacao_tracking)
     const [savedRes, trackingRes] = await Promise.all([
       supabase
         .from("simulacoes")
-        .select("id, nome_paciente, procedimento, cor_utilizada, img_original_url, img_simulada_url, created_at")
-        .eq("usuario_id", userId)
-        .order("created_at", { ascending: false }),
+        .select("id")
+        .eq("usuario_id", userId),
       supabase
         .from("simulacao_tracking")
-        .select("id, status, metadata, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(50),
+        .select("status")
+        .eq("user_id", userId),
     ]);
 
-    if (savedRes.error) console.error("Erro ao buscar simulacoes salvas:", savedRes.error);
-    if (trackingRes.error) console.error("Erro ao buscar simulacao_tracking:", trackingRes.error);
+    const savedCount = savedRes.data ? savedRes.data.length : 0;
+    let unsavedCount = 0;
+    let errorCount = 0;
+    let trackingSavedCount = 0;
+
+    if (trackingRes.data) {
+      trackingRes.data.forEach((item) => {
+        if (item.status === "erro") {
+          errorCount++;
+        } else if (item.status === "acerto" || item.status === "refeita") {
+          unsavedCount++;
+        } else if (item.status === "salva") {
+          trackingSavedCount++;
+        }
+      });
+    }
+
+    const totalSaved = Math.max(savedCount, trackingSavedCount);
+    const totalSimulations = totalSaved + unsavedCount + errorCount;
+    const successTotal = totalSaved + unsavedCount;
+    const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;
 
     return {
-      savedSimulations: (savedRes.data as ClientSavedSimulation[]) || [],
-      trackingHistory: (trackingRes.data as SimulationHistoryItem[]) || [],
+      metrics: {
+        total: totalSimulations,
+        saved: totalSaved,
+        unsaved: unsavedCount,
+        error: errorCount,
+        successRate,
+      },
       error: null,
     };
   } catch (err: any) {
-    return { savedSimulations: [], trackingHistory: [], error: err.message || "Erro ao obter histórico" };
+    return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: err.message || "Erro ao obter métricas" };
   }
 }
 
