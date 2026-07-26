@@ -54,7 +54,7 @@ export async function getUserProfileAction() {
   const [profileRes, statusRes, ucRes] = await Promise.all([
     supabase
       .from("usuarios")
-      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video")
       .eq("id", user.id)
       .maybeSingle(),
     supabase

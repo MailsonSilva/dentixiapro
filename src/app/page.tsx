@@ -17,10 +17,14 @@ export default function Home() {
 
   useEffect(() => {
     async function loadData() {
-      // 1. Carregar perfil do usuário
+      // 1. Carregar perfil do usuário e verificar o campo check_video no banco de dados
       const res = await getUserProfileAction();
+      let hasWatchedVideo = false;
+
       if (res.data?.profile) {
         const profile = res.data.profile;
+        hasWatchedVideo = !!profile.check_video;
+
         const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
         const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
         const firstName = cleanName.split(' ')[0];
@@ -28,12 +32,13 @@ export default function Home() {
         setUserName(formattedName);
       }
 
-      // 2. Carregar URL do vídeo de boas-vindas do sistema
-      const videoRes = await getPublicWelcomeVideoUrlAction();
-      if (videoRes.url && videoRes.url.trim()) {
-        setWelcomeVideoUrl(videoRes.url.trim());
-        // Abrir modal automaticamente se houver URL definida
-        setIsVideoModalOpen(true);
+      // 2. O vídeo só deve aparecer se o usuário AINDA NÃO marcou no banco (check_video = false)
+      if (!hasWatchedVideo) {
+        const videoRes = await getPublicWelcomeVideoUrlAction();
+        if (videoRes.url && videoRes.url.trim()) {
+          setWelcomeVideoUrl(videoRes.url.trim());
+          setIsVideoModalOpen(true);
+        }
       }
     }
     loadData();
@@ -97,17 +102,6 @@ export default function Home() {
                 Nova Simulação
               </Button>
             </Link>
-
-            {/* Botão para rever vídeo caso haja URL */}
-            {welcomeVideoUrl && (
-              <button
-                onClick={() => setIsVideoModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all border border-slate-200 shadow-sm active:scale-95"
-              >
-                <PlayCircle size={16} className="text-cyan-600" />
-                <span>Assistir Apresentação</span>
-              </button>
-            )}
           </motion.div>
         </div>
       </section>
