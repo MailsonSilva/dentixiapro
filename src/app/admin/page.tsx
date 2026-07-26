@@ -13,15 +13,16 @@ import {
 } from "@/lib/admin/actions";
 import { AdminDashboardTab } from "@/components/admin/AdminDashboardTab";
 import { AdminClientsTab } from "@/components/admin/AdminClientsTab";
+import { AdminNotificationsTab } from "@/components/admin/AdminNotificationsTab";
 import { AdminSaaSMetricsTab } from "@/components/admin/AdminSaaSMetricsTab";
-import { ShieldCheck, LayoutDashboard, Users, BarChart3, ArrowLeft, RefreshCw } from "lucide-react";
+import { ShieldCheck, LayoutDashboard, Users, Bell, BarChart3, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminPage() {
   const router = useRouter();
   
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "clients" | "saas">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "clients" | "notifications" | "saas">("dashboard");
 
   // Dados das abas
   const [dashboardMetrics, setDashboardMetrics] = useState<AdminMetrics | null>(null);
@@ -107,34 +108,34 @@ export default function AdminPage() {
   // Gatekeeper loading state
   if (authorized === null) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 gap-3">
-        <ShieldCheck className="w-10 h-10 text-cyan-400 animate-pulse" />
+      <div className="min-h-screen bg-secondary-bg flex flex-col items-center justify-center text-slate-500 gap-3">
+        <ShieldCheck className="w-10 h-10 text-primary animate-pulse" />
         <p className="text-sm font-medium">Verificando credenciais de acesso restrito...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-4 sm:p-6 lg:p-8 space-y-8">
+    <div className="min-h-screen bg-secondary-bg text-slate-800 p-4 sm:p-6 lg:p-8 space-y-8">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/simulacoes")}
-            className="p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors"
+            className="p-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-colors shadow-sm"
             title="Voltar ao App"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white tracking-tight">Painel Administrativo</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Painel Administrativo</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
                 🔒 Área Restrita
               </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-1">
-              Gestão de segurança, clientes, operações e saúde financeira DentixiaPro.
+            <p className="text-xs text-slate-500 mt-1">
+              Gestão de segurança, clientes, notificações e saúde financeira DentixiaPro.
             </p>
           </div>
         </div>
@@ -147,21 +148,21 @@ export default function AdminPage() {
               if (activeTab === "saas") loadSaaSData();
               toast.info("Dados atualizados.");
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-all shadow-sm"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-cyan-400" /> Atualizar Dados
+            <RefreshCw className="w-3.5 h-3.5 text-primary" /> Atualizar Dados
           </button>
         </div>
       </div>
 
-      {/* Navegação por Abas */}
-      <div className="flex items-center gap-2 border-b border-zinc-800/80 overflow-x-auto pb-1">
+      {/* Navegação por Abas Principais */}
+      <div className="flex items-center gap-2 border-b border-slate-200/80 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab("dashboard")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
             activeTab === "dashboard"
-              ? "bg-zinc-900 text-cyan-400 border-cyan-400 shadow-sm"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 border-transparent"
+              ? "bg-white text-primary border-primary shadow-sm"
+              : "text-slate-500 hover:text-slate-800 hover:bg-white/50 border-transparent"
           }`}
         >
           <LayoutDashboard className="w-4 h-4" /> Visão Geral (Dashboard)
@@ -169,21 +170,32 @@ export default function AdminPage() {
 
         <button
           onClick={() => setActiveTab("clients")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
             activeTab === "clients"
-              ? "bg-zinc-900 text-cyan-400 border-cyan-400 shadow-sm"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 border-transparent"
+              ? "bg-white text-primary border-primary shadow-sm"
+              : "text-slate-500 hover:text-slate-800 hover:bg-white/50 border-transparent"
           }`}
         >
           <Users className="w-4 h-4" /> Gestão de Clientes
         </button>
 
         <button
+          onClick={() => setActiveTab("notifications")}
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
+            activeTab === "notifications"
+              ? "bg-white text-primary border-primary shadow-sm"
+              : "text-slate-500 hover:text-slate-800 hover:bg-white/50 border-transparent"
+          }`}
+        >
+          <Bell className="w-4 h-4" /> Central de Notificações
+        </button>
+
+        <button
           onClick={() => setActiveTab("saas")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all border-b-2 ${
             activeTab === "saas"
-              ? "bg-zinc-900 text-cyan-400 border-cyan-400 shadow-sm"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 border-transparent"
+              ? "bg-white text-primary border-primary shadow-sm"
+              : "text-slate-500 hover:text-slate-800 hover:bg-white/50 border-transparent"
           }`}
         >
           <BarChart3 className="w-4 h-4" /> Métricas SaaS & Custos API
@@ -222,6 +234,10 @@ export default function AdminPage() {
             onRefresh={loadClientsData}
             loading={clientsLoading}
           />
+        )}
+
+        {activeTab === "notifications" && (
+          <AdminNotificationsTab />
         )}
 
         {activeTab === "saas" && (

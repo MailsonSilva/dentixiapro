@@ -232,33 +232,38 @@ export async function getAdminClientsAction(
     const supabase = await createClient();
     const now = new Date();
 
+    // Selecionar todos os campos com safe fallback para garantir resiliência
     let query = supabase
       .from("usuarios")
-      .select("id, nome_completo, email, telefone, referral_code, user_referredbycode, is_blocked, tipo, created_at, last_login, trial_ends_at", { count: "exact" });
+      .select("*", { count: "exact" });
 
     // Busca Textual Global
-    if (searchQuery.trim()) {
+    if (searchQuery && searchQuery.trim()) {
       const q = `%${searchQuery.trim()}%`;
       query = query.or(`nome_completo.ilike.${q},email.ilike.${q},telefone.ilike.${q},referral_code.ilike.${q},id.eq.${searchQuery.trim()}`);
     }
 
-    // Filtros por Período de Data
-    if (startDate) {
+    // Filtros por Período de Data de Cadastro
+    if (startDate && typeof startDate === "string" && startDate.trim()) {
       const sDate = new Date(startDate);
-      sDate.setHours(0, 0, 0, 0);
-      query = query.gte("created_at", sDate.toISOString());
+      if (!isNaN(sDate.getTime())) {
+        sDate.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", sDate.toISOString());
+      }
     }
-    if (endDate) {
+    if (endDate && typeof endDate === "string" && endDate.trim()) {
       const eDate = new Date(endDate);
-      eDate.setHours(23, 59, 59, 999);
-      query = query.lte("created_at", eDate.toISOString());
+      if (!isNaN(eDate.getTime())) {
+        eDate.setHours(23, 59, 59, 999);
+        query = query.lte("created_at", eDate.toISOString());
+      }
     }
 
     // Filtros por Status da Conta
     if (statusFilter === "blocked") {
       query = query.eq("is_blocked", true);
     } else if (statusFilter === "trial") {
-      query = query.eq("is_blocked", false).gte("trial_ends_at", now.toISOString());
+      query = query.or("is_blocked.is.null,is_blocked.eq.false").gte("trial_ends_at", now.toISOString());
     }
 
     const from = (page - 1) * pageSize;
@@ -269,6 +274,7 @@ export async function getAdminClientsAction(
       .range(from, to);
 
     if (fetchErr) {
+      console.error("Erro no getAdminClientsAction query:", fetchErr);
       return { clients: [], total: 0, error: fetchErr.message };
     }
 
@@ -286,7 +292,7 @@ export async function getAdminClientsAction(
         .in("user_id", userIds),
       supabase
         .from("subscriptions")
-        .select("company_id, status, price_id")
+        .select("id, company_id, status, price_id")
         .in("status", ["active", "trialing"]),
     ]);
 
@@ -302,15 +308,9 @@ export async function getAdminClientsAction(
       });
     }
 
-    // Set de IDs com assinaturas ativas se houver vínculo
-    const activeSubUserIds = new Set<string>();
-    if (subRes.data && subRes.data.length > 0) {
-      // Como subscriptions se liga via company_id ou user_company, mapeamos se disponível
-    }
-
     let formattedClients: ClientRow[] = users.map((u) => {
       const sim = simMap[u.id] || { success: 0, error: 0 };
-      const isBlocked = u.is_blocked ?? false;
+      const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
 
@@ -328,10 +328,6 @@ export async function getAdminClientsAction(
         statusCategory = "blocked";
         subscriptionStatus = "Bloqueado";
         planName = "Acesso Suspenso";
-      } else if (activeSubUserIds.has(u.id)) {
-        statusCategory = "subscriber";
-        subscriptionStatus = "Assinante Ativo";
-        planName = "Plano Pro / Anual";
       } else if (isTrial) {
         statusCategory = "trial";
         subscriptionStatus = `Em Testes (${trialDaysRemaining}d restantes)`;
@@ -340,11 +336,11 @@ export async function getAdminClientsAction(
 
       return {
         id: u.id,
-        nome_completo: u.nome_completo || "Sem nome",
+        nome_completo: u.nome_completo || u.full_name || u.email?.split("@")[0] || "Sem nome",
         email: u.email || "",
-        telefone: u.telefone || null,
+        telefone: u.telefone || u.whatsapp || u.phone || null,
         referral_code: u.referral_code || null,
-        user_referredbycode: u.user_referredbycode || null,
+        user_referredbycode: u.user_referredbycode || u.user_referred_by_code || null,
         is_blocked: isBlocked,
         tipo: u.tipo || "comum",
         status_category: statusCategory,
@@ -353,18 +349,18 @@ export async function getAdminClientsAction(
         trial_days_remaining: trialDaysRemaining,
         simulations_success: sim.success,
         simulations_error: sim.error,
-        created_at: u.created_at,
-        last_login: u.last_login || u.created_at,
+        created_at: u.created_at || new Date().toISOString(),
+        last_login: u.last_login || u.created_at || null,
       };
     });
 
-    // Se o filtro for por "subscribers" (assinantes), aplicamos pós-formatação
     if (statusFilter === "subscribers") {
       formattedClients = formattedClients.filter((c) => c.status_category === "subscriber");
     }
 
     return { clients: formattedClients, total: count || formattedClients.length, error: null };
   } catch (err: any) {
+    console.error("Exceção no getAdminClientsAction:", err);
     return { clients: [], total: 0, error: err.message || "Erro ao buscar clientes" };
   }
 }
@@ -564,7 +560,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false);
+        .or("is_blocked.is.null,is_blocked.eq.false");
       return { count: count || 0, error: null };
     }
 
@@ -573,7 +569,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .gte("created_at", sevenDaysAgo);
       return { count: count || 0, error: null };
     }
@@ -582,7 +578,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .gte("trial_ends_at", now.toISOString());
       return { count: count || 0, error: null };
     }
@@ -599,7 +595,7 @@ export async function getTargetAudienceCountAction(
       const { count } = await supabase
         .from("usuarios")
         .select("id", { count: "exact", head: true })
-        .eq("is_blocked", false)
+        .or("is_blocked.is.null,is_blocked.eq.false")
         .or(`trial_ends_at.lt.${now.toISOString()},trial_ends_at.is.null`);
       return { count: count || 0, error: null };
     }
@@ -633,11 +629,9 @@ export async function sendNotificationAction(payload: {
       return { success: false, recipients_count: 0, error: "O título não pode exceder 60 caracteres." };
     }
 
-    // 1. Obter quantidade exata de destinatários
     const countRes = await getTargetAudienceCountAction(payload.target_audience);
     const recipientsCount = countRes.count || 0;
 
-    // 2. Inserir no histórico de notificações
     const { error: insertErr } = await supabase
       .from("notifications_history")
       .insert({
