@@ -10,7 +10,7 @@ import { DrawerProvider, useDrawer } from "../lib/DrawerContext";
 import { NotificationProvider } from "../lib/NotificationContext";
 import { getClientLayoutDataAction, signOutAction, saveUserPhoneAction, setCheckVideoAction } from "@/lib/auth/actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut, Phone, Play, CheckSquare, Square } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut, Phone, Play, CheckSquare, Square, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,7 @@ function MobileDrawer({
     { name: 'Simulações', href: '/simulacoes/resultados', icon: Sparkles },
     { name: 'Aulas', href: '/aulas', icon: BookOpen },
     { name: 'Perfil', href: '/perfil', icon: User },
+    ...((userRole === 'admin' || userRole === 'super_admin') ? [{ name: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
   ];
 
   // Badge descritivo do role
@@ -326,7 +327,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-full bg-secondary-bg overflow-hidden relative">
-      <Sidebar type={userType} />
+      <Sidebar type={userType} userRole={userRole} />
 
       {/* Mobile Drawer (tarefa 7) */}
       <MobileDrawer userType={userType} userRole={userRole} />

@@ -12,6 +12,7 @@ import {
   Menu,
   ChevronLeft,
   BookOpen,
+  ShieldCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ import { Button } from "./ui/Button";
 
 interface SidebarProps {
   type: "comum" | "parceiro";
+  userRole?: string | null;
 }
 
 type MenuItemShape = {
@@ -34,7 +36,7 @@ type MenuItemShape = {
   icon: LucideIcon;
 };
 
-export function Sidebar({ type }: SidebarProps) {
+export function Sidebar({ type, userRole }: SidebarProps) {
   const pathname = usePathname();
   const path = pathname ?? "";
   const router = useRouter();
@@ -47,7 +49,7 @@ export function Sidebar({ type }: SidebarProps) {
     router.push("/login");
   };
 
-  const menuItems: MenuItemShape[] =
+  const baseItems: MenuItemShape[] =
     type === "parceiro"
       ? [
           { name: "Dashboard", href: "/parceiros", icon: LayoutDashboard },
@@ -59,6 +61,11 @@ export function Sidebar({ type }: SidebarProps) {
           { name: "Aulas", href: "/aulas", icon: BookOpen },
           { name: "Perfil", href: "/perfil", icon: User },
         ];
+
+  const menuItems: MenuItemShape[] =
+    (userRole === 'admin' || userRole === 'super_admin')
+      ? [...baseItems, { name: "Admin", href: "/admin", icon: ShieldCheck }]
+      : baseItems;
 
   return (
     <aside

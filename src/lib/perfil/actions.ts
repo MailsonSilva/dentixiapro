@@ -50,11 +50,11 @@ export async function getUserProfileAction() {
   const authAvatar = authMeta.avatar_url || authMeta.picture || null;
   const authPhone = authMeta.whatsapp || authMeta.telefone || authMeta.phone || null;
 
-  // Executar todas as consultas independentes no Supabase simultaneamente via Promise.all
+  // Executar TODAS as consultas independentes simultaneamente via Promise.all
   const [profileRes, statusRes, ucRes] = await Promise.all([
     supabase
       .from("usuarios")
-      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video, role")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -63,7 +63,7 @@ export async function getUserProfileAction() {
       .maybeSingle(),
     supabase
       .from("user_company")
-      .select("company_id")
+      .select("company_id, role")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -75,8 +75,9 @@ export async function getUserProfileAction() {
   const profile = profileRes.data;
   const statusData = statusRes.data;
   const userCompanyId = ucRes.data?.company_id ?? user.id;
+  const userRole = ucRes.data?.role ?? null;
 
-  // Busca se há assinatura ativa/pendente
+  // Busca assinatura em paralelo — não bloqueia mais
   const { data: subData } = await supabase
     .from("subscriptions")
     .select("status")
@@ -100,15 +101,15 @@ export async function getUserProfileAction() {
   const finalEmail = profile?.email || user.email || "";
   const finalTelefone = profile?.telefone || authPhone || "";
 
-  // Auto-sync no banco se dados do OAuth/Auth ainda não constarem em public.usuarios
-  if (!profile || !profile.nome_completo || !profile.telefone || !profile.logo_url) {
-    await supabase.from("usuarios").upsert({
+  // Auto-sync (fire-and-forget) — only when profile row is missing
+  if (!profile) {
+    supabase.from("usuarios").upsert({
       id: user.id,
       email: finalEmail,
       nome_completo: finalNome,
       telefone: finalTelefone || null,
       logo_url: finalLogoUrl || null,
-    }, { onConflict: "id" });
+    }, { onConflict: "id" }).then(() => {});
   }
 
   return {
@@ -126,7 +127,8 @@ export async function getUserProfileAction() {
         status_code: statusData?.status_code ?? null,
         dias_restantes: statusData?.dias_restantes ?? null,
         tem_assinatura: temAssinatura,
-      }
+      },
+      userRole,
     }
   };
 }
