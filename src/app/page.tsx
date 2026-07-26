@@ -2,33 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera } from "lucide-react";
+import { Camera, PlayCircle } from "lucide-react";
 import { getUserProfileAction } from "@/lib/perfil/actions";
+import { getPublicWelcomeVideoUrlAction } from "@/lib/admin/actions";
+import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 
 export default function Home() {
   const [userName, setUserName] = useState("Dentista");
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState("");
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   useEffect(() => {
-    async function loadUser() {
+    async function loadData() {
+      // 1. Carregar perfil do usuário
       const res = await getUserProfileAction();
-      if (res.error || !res.data) return;
-      const profile = res.data.profile;
+      if (res.data?.profile) {
+        const profile = res.data.profile;
+        const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
+        const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
+        const firstName = cleanName.split(' ')[0];
+        const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+        setUserName(formattedName);
+      }
 
-      const rawName = profile.nome_completo || profile.email?.split('@')[0] || "Dentista";
-      const cleanName = rawName.replace(/^(dr\(a\)\.?|dr\.?|dra\.?|doctor\.?)\s+/i, "").trim();
-      const firstName = cleanName.split(' ')[0];
-      const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-      
-      setUserName(formattedName);
+      // 2. Carregar URL do vídeo de boas-vindas do sistema
+      const videoRes = await getPublicWelcomeVideoUrlAction();
+      if (videoRes.url && videoRes.url.trim()) {
+        setWelcomeVideoUrl(videoRes.url.trim());
+        // Abrir modal automaticamente se houver URL definida
+        setIsVideoModalOpen(true);
+      }
     }
-    loadUser();
+    loadData();
   }, []);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center h-full px-4 relative overflow-hidden">
+      {/* Modal do Vídeo de Boas-Vindas Vertical (1080x1920 / ~80% da tela) */}
+      <WelcomeVideoModal
+        isOpen={isVideoModalOpen}
+        videoUrl={welcomeVideoUrl}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
+
       {/* Decorative Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-glow/5 blur-[120px] rounded-full animate-float"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary-cyan/5 blur-[100px] rounded-full animate-float" style={{ animationDelay: '-3s' }}></div>
@@ -78,6 +97,17 @@ export default function Home() {
                 Nova Simulação
               </Button>
             </Link>
+
+            {/* Botão para rever vídeo caso haja URL */}
+            {welcomeVideoUrl && (
+              <button
+                onClick={() => setIsVideoModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all border border-slate-200 shadow-sm active:scale-95"
+              >
+                <PlayCircle size={16} className="text-cyan-600" />
+                <span>Assistir Apresentação</span>
+              </button>
+            )}
           </motion.div>
         </div>
       </section>

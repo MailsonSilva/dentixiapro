@@ -427,3 +427,46 @@ export async function getSaaSFinancialAndCostMetricsAction(): Promise<{ data: Sa
     return { data: null, error: err.message || "Erro ao calcular métricas SaaS" };
   }
 }
+
+/**
+ * Busca o link do vídeo de boas-vindas (Pública)
+ */
+export async function getPublicWelcomeVideoUrlAction(): Promise<{ url: string; error: string | null }> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "welcome_video_url")
+      .maybeSingle();
+
+    if (error) return { url: "", error: error.message };
+    return { url: data?.value || "", error: null };
+  } catch (err: any) {
+    return { url: "", error: err.message };
+  }
+}
+
+/**
+ * Atualiza o link do vídeo de boas-vindas no painel admin
+ */
+export async function updateWelcomeVideoUrlAction(url: string): Promise<{ success: boolean; error: string | null }> {
+  const access = await checkAdminAccessAction();
+  if (!access.isAdmin) return { success: false, error: access.error || "Acesso negado" };
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert({
+        key: "welcome_video_url",
+        value: url.trim(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, error: null };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

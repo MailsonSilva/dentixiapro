@@ -19,7 +19,6 @@ interface Plan {
 }
 
 const PERKS = [
-  "7 dias gratuitos para testar",
   "Simulações ilimitadas com IA",
   "Cancele quando quiser",
   "Suporte via WhatsApp",
@@ -64,7 +63,7 @@ export default function PlanosPage() {
   const isAnnual = (p: Plan) => p.interval === "year";
 
   const formatCurrency = (amount: number) =>
-    (amount / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    (Math.floor(amount) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   const handleCheckout = async (planId: string) => {
     if (!userData) return;
@@ -119,38 +118,38 @@ export default function PlanosPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#dce8f8] to-[#eef2f7] flex flex-col items-center pt-6 pb-12 px-4 font-sans relative">
       {/* Botão de Navegação de Saída: Voltar ao Início */}
-      <div className="w-full max-w-2xl flex items-center justify-between mb-4">
+      <div className="w-full max-w-md flex items-center justify-between mb-4">
         <button
           onClick={() => router.push("/")}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/80 hover:bg-white text-gray-700 font-bold text-xs shadow-sm border border-gray-200/60 transition-all active:scale-[0.98]"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/80 hover:bg-white text-gray-700 font-bold text-xs shadow-sm border border-gray-200/60 transition-all active:scale-[0.98]"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={15} />
           <span>Voltar ao Início</span>
         </button>
       </div>
 
       {/* Header Compacto */}
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-6 text-center">
-        <div className="flex justify-center mb-3">
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center mb-5 text-center">
+        <div className="flex justify-center mb-2.5">
           <Image
             src="/logo.png"
             alt="DentixIA"
-            width={140}
-            height={36}
-            className="h-8 w-auto object-contain"
+            width={130}
+            height={34}
+            className="h-7 w-auto object-contain"
             priority
           />
         </div>
-        <h1 className="text-xl md:text-2xl font-bold text-[#1a2a4a] mb-1">
+        <h1 className="text-lg md:text-xl font-bold text-[#1a2a4a] mb-0.5">
           Escolha o plano ideal
         </h1>
-        <p className="text-gray-500 text-xs max-w-xs">
+        <p className="text-gray-500 text-[11px] max-w-xs">
           Assinatura segura via Stripe. Cancele quando quiser.
         </p>
       </motion.div>
 
-      {/* Grid de Planos Compactos */}
-      <div className="w-full max-w-lg grid grid-cols-1 sm:grid-cols-2 gap-5 items-stretch">
+      {/* Grid de Planos Compactos com espaçamento aumentado */}
+      <div className="w-full max-w-md grid grid-cols-1 sm:grid-cols-2 gap-7 items-stretch">
         {plans.map((plan, i) => {
           const annual = isAnnual(plan);
           const monthlyEq = annual ? plan.unit_amount / 12 : plan.unit_amount;
@@ -161,7 +160,7 @@ export default function PlanosPage() {
           const annualCostIfMonthly = baseMonthlyAmount * 12;
           const realDiscountPercent = annualCostIfMonthly > 0 
             ? Math.round(((annualCostIfMonthly - plan.unit_amount) / annualCostIfMonthly) * 100)
-            : 16;
+            : 17;
 
           return (
             <motion.div
@@ -172,69 +171,69 @@ export default function PlanosPage() {
             >
               {/* Destaque Visual "Mais vendido" VERDE no plano principal (Anual) */}
               {annual && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-emerald-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap uppercase tracking-wider ring-2 ring-[#dce8f8]">
-                  <Sparkles size={11} className="text-yellow-300" />
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-emerald-600 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md whitespace-nowrap uppercase tracking-wider ring-2 ring-[#dce8f8]">
+                  <Sparkles size={10} className="text-yellow-300" />
                   Mais vendido
                 </div>
               )}
 
               <div
                 onClick={() => setSelectedId(plan.id)}
-                className={`group flex flex-col h-full bg-white rounded-2xl transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
+                className={`group flex flex-col h-full bg-white rounded-xl transition-all duration-300 cursor-pointer ring-offset-2 ring-offset-[#eef2f7] ${
                   selected
-                    ? "ring-2 ring-emerald-600 shadow-xl scale-[1.01] z-10 border-transparent"
+                    ? "ring-2 ring-emerald-600 shadow-lg scale-[1.01] z-10 border-transparent"
                     : "hover:scale-[1.005] hover:shadow-md border border-gray-200"
                 }`}
               >
-                <div className="flex flex-col h-full p-4">
+                <div className="flex flex-col h-full p-3.5">
                   {/* Header do Card */}
-                  <div className="flex items-start justify-between mb-3 pt-1">
+                  <div className="flex items-start justify-between mb-2 pt-0.5">
                     <div className="flex-1">
-                      <p className={`font-bold text-sm mb-0.5 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
+                      <p className={`font-bold text-xs mb-0.5 ${selected ? "text-[#1a2a4a]" : "text-gray-700"}`}>
                         {plan.product_name}
                       </p>
                       {annual && (
-                        <span className="inline-block text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                          ECONOMIZE {realDiscountPercent}%
+                        <span className="inline-block text-[8px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          ECONOMIZE {realDiscountPercent}% (2 MESES GRÁTIS)
                         </span>
                       )}
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                       selected ? "border-emerald-600 bg-white shadow-inner" : "border-gray-300 bg-gray-50"
                     }`}>
-                      <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
                         selected ? "bg-emerald-600 scale-100" : "bg-transparent scale-0"
                       }`} />
                     </div>
                   </div>
 
                   {/* Preço */}
-                  <div className="mb-4 flex flex-col justify-center">
+                  <div className="mb-3 flex flex-col justify-center">
                     <div className="flex items-baseline gap-1">
-                      <span className={`text-2xl font-black tracking-tight transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-800"}`}>
+                      <span className={`text-xl font-black tracking-tight transition-colors ${selected ? "text-[#1a2a4a]" : "text-gray-800"}`}>
                         {formatCurrency(monthlyEq)}
                       </span>
-                      <span className="text-gray-400 text-xs font-bold">/mês</span>
+                      <span className="text-gray-400 text-[10px] font-bold">/mês</span>
                     </div>
                     {annual && (
-                      <p className="text-gray-400 text-[11px] font-medium mt-0.5">
+                      <p className="text-gray-400 text-[10px] font-medium mt-0.5">
                         Cobrado anualmente: <span className="text-emerald-700 font-bold">{formatCurrency(plan.unit_amount)}</span>
                       </p>
                     )}
                   </div>
 
                   {/* Benefícios (Perks) */}
-                  <ul className="space-y-2 mb-5 flex-1">
+                  <ul className="space-y-1.5 mb-4 flex-1">
                     {PERKS.map((perk, j) => (
-                      <li key={j} className="flex items-center gap-2 text-[11px] font-medium text-gray-600">
-                        <CheckCircle2 size={14} strokeWidth={2.5} className={annual ? "text-emerald-500" : "text-gray-400"} />
+                      <li key={j} className="flex items-center gap-1.5 text-[10px] font-medium text-gray-600">
+                        <CheckCircle2 size={13} strokeWidth={2.5} className={annual ? "text-emerald-500" : "text-gray-400"} />
                         <span>{perk}</span>
                       </li>
                     ))}
                     {annual && (
-                      <li className="flex items-center gap-2 text-[11px] font-bold text-emerald-700">
-                        <Star size={14} fill="currentColor" className="text-emerald-500" />
-                        <span>Economia de {realDiscountPercent}% no ano</span>
+                      <li className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700">
+                        <Star size={13} fill="currentColor" className="text-emerald-500" />
+                        <span>Economia de {realDiscountPercent}% no ano (2 meses grátis)</span>
                       </li>
                     )}
                   </ul>
@@ -244,14 +243,14 @@ export default function PlanosPage() {
                     onClick={(e) => { e.stopPropagation(); handleCheckout(plan.id); }}
                     disabled={checkoutLoading}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                    className={`w-full py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 ${
                       annual
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200"
-                        : "bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/20"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200"
+                        : "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20"
                     } disabled:opacity-70 disabled:cursor-wait`}
                   >
                     {isLoadingThis ? (
-                      <><Loader2 size={16} className="animate-spin" /><span>Processando...</span></>
+                      <><Loader2 size={14} className="animate-spin" /><span>Processando...</span></>
                     ) : (
                       <span>Assinar Agora</span>
                     )}
@@ -265,13 +264,13 @@ export default function PlanosPage() {
 
       {/* Footer */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}
-        className="mt-8 flex flex-col items-center gap-2 text-center">
-        <div className="flex items-center gap-1.5 text-gray-400 font-bold text-xs tracking-wider">
-          <ShieldCheck size={16} className="text-emerald-500" />
+        className="mt-6 flex flex-col items-center gap-1 text-center">
+        <div className="flex items-center gap-1.5 text-gray-400 font-bold text-[11px] tracking-wider">
+          <ShieldCheck size={15} className="text-emerald-500" />
           <span>Pagamento Seguro via Stripe</span>
         </div>
         <p className="text-gray-400 text-[10px] max-w-[260px] leading-relaxed">
-          *Teste por 7 dias grátis. Cancele a qualquer momento.
+          Cancele a qualquer momento.
         </p>
       </motion.div>
     </div>
