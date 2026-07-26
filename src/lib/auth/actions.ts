@@ -109,12 +109,24 @@ export async function getClientLayoutDataAction() {
   }
 
   try {
-    // 1. Tipo, telefone e check_video do usuário
-    const { data: usuarioData } = await supabase
+    // 1. Tipo, telefone e check_video do usuário (com fallback resiliente se a coluna check_video não existir)
+    let usuarioData: any = null;
+    const { data: uData, error: uError } = await supabase
       .from('usuarios')
       .select('tipo, telefone, check_video')
       .eq('id', user.id)
       .maybeSingle();
+
+    if (uError) {
+      const { data: uFallback } = await supabase
+        .from('usuarios')
+        .select('tipo, telefone')
+        .eq('id', user.id)
+        .maybeSingle();
+      usuarioData = uFallback;
+    } else {
+      usuarioData = uData;
+    }
 
     let finalTipo: 'comum' | 'parceiro' = (usuarioData?.tipo as 'comum' | 'parceiro') || 'comum';
 
@@ -142,7 +154,7 @@ export async function getClientLayoutDataAction() {
       };
     }
 
-    // 3. Se for comum, busca role
+    // 3. Se for comum, busca role em user_company
     const { data: ucData } = await supabase
       .from('user_company')
       .select('role')
@@ -152,10 +164,18 @@ export async function getClientLayoutDataAction() {
       .limit(1)
       .maybeSingle();
 
-    const role = ucData?.role as 'admin' | 'manager' | 'user' | 'super_admin' | null;
+    const uTipo = (usuarioData?.tipo || "").toLowerCase();
+    const ucRole = (ucData?.role || "").toLowerCase();
+    
+    // Define se o usuário é admin/super_admin por qualquer uma das duas fontes
+    const isSuperAdmin = uTipo === 'super_admin' || ucRole === 'super_admin';
+    const isAdmin = isSuperAdmin || uTipo === 'admin' || ucRole === 'admin';
+    
+    const role: 'admin' | 'manager' | 'user' | 'super_admin' | null = 
+      isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : (ucData?.role as any || null));
 
     // Admin e super_admin NUNCA são bloqueados pelo trial
-    if (role === 'admin' || role === 'super_admin') {
+    if (isAdmin) {
       return {
         error: null,
         data: {
@@ -169,7 +189,7 @@ export async function getClientLayoutDataAction() {
       };
     }
 
-    // Verifica status do trial
+    // Verifica status do trial para usuários normais
     const { data: statusData } = await supabase
       .from('verificar_status_usuario')
       .select('status_code')
@@ -249,7 +269,10 @@ export async function setCheckVideoAction(checkVideo: boolean) {
     .update({ check_video: checkVideo })
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.warn("Aviso ao atualizar check_video no banco:", error.message);
+  }
+
   return { error: null };
 }
 

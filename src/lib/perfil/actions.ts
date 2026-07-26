@@ -50,11 +50,11 @@ export async function getUserProfileAction() {
   const authAvatar = authMeta.avatar_url || authMeta.picture || null;
   const authPhone = authMeta.whatsapp || authMeta.telefone || authMeta.phone || null;
 
-  // Executar TODAS as consultas independentes simultaneamente via Promise.all
+  // Executar consultas simultaneamente
   const [profileRes, statusRes, ucRes] = await Promise.all([
     supabase
       .from("usuarios")
-      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video, role")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX, check_video")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -68,16 +68,33 @@ export async function getUserProfileAction() {
       .maybeSingle(),
   ]);
 
+  let profile = profileRes.data;
+
+  // Fallback se a coluna check_video não existir na tabela usuarios
   if (profileRes.error) {
-    return { error: profileRes.error.message, data: null };
+    const { data: fallbackProfile, error: fallbackError } = await supabase
+      .from("usuarios")
+      .select("id, nome_completo, telefone, email, logo_url, tipo, empresa, cpf, PIX")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (fallbackError) {
+      return { error: fallbackError.message, data: null };
+    }
+    profile = fallbackProfile;
   }
 
-  const profile = profileRes.data;
   const statusData = statusRes.data;
   const userCompanyId = ucRes.data?.company_id ?? user.id;
-  const userRole = ucRes.data?.role ?? null;
 
-  // Busca assinatura em paralelo — não bloqueia mais
+  // Resolver role do usuário (usuarios.tipo ou user_company.role)
+  const uTipo = (profile?.tipo || "").toLowerCase();
+  const ucRole = (ucRes.data?.role || "").toLowerCase();
+  const userRole = (uTipo === 'admin' || uTipo === 'super_admin') 
+    ? uTipo 
+    : (ucRole === 'admin' || ucRole === 'super_admin' ? ucRole : (ucRole || uTipo || null));
+
+  // Busca assinatura em paralelo
   const { data: subData } = await supabase
     .from("subscriptions")
     .select("status")
@@ -101,7 +118,7 @@ export async function getUserProfileAction() {
   const finalEmail = profile?.email || user.email || "";
   const finalTelefone = profile?.telefone || authPhone || "";
 
-  // Auto-sync (fire-and-forget) — only when profile row is missing
+  // Auto-sync (fire-and-forget) — apenas se perfil for nulo
   if (!profile) {
     supabase.from("usuarios").upsert({
       id: user.id,
