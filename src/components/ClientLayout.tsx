@@ -17,6 +17,7 @@ import { IMAGES } from "@/lib/images";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/Input";
 import { useNotification } from "../lib/NotificationContext";
+import { UserNotificationsBanner } from "@/components/UserNotificationsBanner";
 
 
 type UserRole = 'admin' | 'manager' | 'user' | 'super_admin' | null;
@@ -329,6 +330,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-full bg-secondary-bg overflow-hidden relative">
+      <UserNotificationsBanner />
       <Sidebar type={userType} userRole={userRole} />
 
       {/* Mobile Drawer (tarefa 7) */}

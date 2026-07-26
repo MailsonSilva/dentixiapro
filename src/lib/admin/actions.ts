@@ -42,6 +42,16 @@ export interface ClientRow {
   last_login: string | null;
 }
 
+export interface ClientSavedSimulation {
+  id: number;
+  nome_paciente: string;
+  procedimento: string;
+  cor_utilizada: string;
+  img_original_url: string;
+  img_simulada_url: string;
+  created_at: string;
+}
+
 export interface SimulationHistoryItem {
   id: string;
   status: "acerto" | "erro" | "refeita" | "salva";
@@ -232,7 +242,6 @@ export async function getAdminClientsAction(
     const supabase = await createClient();
     const now = new Date();
 
-    // Selecionar todos os campos com safe fallback para garantir resiliência
     let query = supabase
       .from("usuarios")
       .select("*", { count: "exact" });
@@ -285,11 +294,15 @@ export async function getAdminClientsAction(
     const userIds = users.map((u) => u.id);
 
     // Buscar contagem de simulações e status de assinatura em lote
-    const [simRes, subRes] = await Promise.all([
+    const [simRes, simSavedRes, subRes] = await Promise.all([
       supabase
         .from("simulacao_tracking")
         .select("user_id, status")
         .in("user_id", userIds),
+      supabase
+        .from("simulacoes")
+        .select("usuario_id")
+        .in("usuario_id", userIds),
       supabase
         .from("subscriptions")
         .select("id, company_id, status, price_id")
@@ -305,6 +318,13 @@ export async function getAdminClientsAction(
         } else {
           simMap[s.user_id].success++;
         }
+      });
+    }
+
+    // Adicionar simulações salvas à contagem de sucesso se não rastreadas
+    if (simSavedRes.data) {
+      simSavedRes.data.forEach((s) => {
+        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { success: 0, error: 0 };
       });
     }
 
@@ -389,27 +409,44 @@ export async function toggleBlockClientAction(userId: string, isBlocked: boolean
 }
 
 /**
- * Detailed Simulation History for Modal / Expandable Row
+ * Detailed Simulation History: Obter simulações SALVAS e histórico de GERAÇÃO (Salvas e Não Salvas)
  */
-export async function getClientUsageHistoryAction(userId: string): Promise<{ history: SimulationHistoryItem[]; error: string | null }> {
+export async function getClientUsageHistoryAction(userId: string): Promise<{
+  savedSimulations: ClientSavedSimulation[];
+  trackingHistory: SimulationHistoryItem[];
+  error: string | null;
+}> {
   const access = await checkAdminAccessAction();
-  if (!access.isAdmin) return { history: [], error: access.error || "Acesso negado" };
+  if (!access.isAdmin) return { savedSimulations: [], trackingHistory: [], error: access.error || "Acesso negado" };
 
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-      .from("simulacao_tracking")
-      .select("id, status, metadata, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    // Buscar em paralelo: 1. Simulações salvas (tabela simulacoes) e 2. Tracking de gerações (tabela simulacao_tracking)
+    const [savedRes, trackingRes] = await Promise.all([
+      supabase
+        .from("simulacoes")
+        .select("id, nome_paciente, procedimento, cor_utilizada, img_original_url, img_simulada_url, created_at")
+        .eq("usuario_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("simulacao_tracking")
+        .select("id, status, metadata, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
 
-    if (error) return { history: [], error: error.message };
+    if (savedRes.error) console.error("Erro ao buscar simulacoes salvas:", savedRes.error);
+    if (trackingRes.error) console.error("Erro ao buscar simulacao_tracking:", trackingRes.error);
 
-    return { history: data as SimulationHistoryItem[], error: null };
+    return {
+      savedSimulations: (savedRes.data as ClientSavedSimulation[]) || [],
+      trackingHistory: (trackingRes.data as SimulationHistoryItem[]) || [],
+      error: null,
+    };
   } catch (err: any) {
-    return { history: [], error: err.message || "Erro ao obter histórico" };
+    return { savedSimulations: [], trackingHistory: [], error: err.message || "Erro ao obter histórico" };
   }
 }
 
@@ -677,5 +714,58 @@ export async function getNotificationHistoryAction(): Promise<{
     return { history: (data as NotificationHistoryItem[]) || [], error: null };
   } catch (err: any) {
     return { history: [], error: err.message || "Erro ao obter histórico de notificações" };
+  }
+}
+
+/**
+ * APP CLIENTE: Busca as notificações mais recentes para exibição ao usuário logado
+ */
+export async function getUserNotificationsAction(): Promise<{
+  notifications: NotificationHistoryItem[];
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { notifications: [], error: null };
+    }
+
+    const { data: userData } = await supabase
+      .from("usuarios")
+      .select("created_at, trial_ends_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const now = new Date();
+    const userCategories: NotificationTargetAudience[] = ["all"];
+
+    if (userData) {
+      const createdAt = new Date(userData.created_at);
+      const isNewUser = now.getTime() - createdAt.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      if (isNewUser) userCategories.push("new_users");
+
+      const trialEndsAt = userData.trial_ends_at ? new Date(userData.trial_ends_at) : null;
+      if (trialEndsAt && trialEndsAt > now) {
+        userCategories.push("trial");
+      } else {
+        userCategories.push("inactive");
+      }
+    }
+
+    // Buscar notificações ativas direcionadas a estes segmentos
+    const { data, error } = await supabase
+      .from("notifications_history")
+      .select("id, title, message, category, target_audience, recipients_count, created_at, created_by")
+      .in("target_audience", userCategories)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) return { notifications: [], error: error.message };
+
+    return { notifications: (data as NotificationHistoryItem[]) || [], error: null };
+  } catch (err: any) {
+    return { notifications: [], error: err.message };
   }
 }

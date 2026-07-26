@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import {
   ClientRow,
+  ClientSavedSimulation,
   SimulationHistoryItem,
   toggleBlockClientAction,
   getClientUsageHistoryAction,
@@ -23,6 +24,10 @@ import {
   UserX,
   Clock,
   RotateCcw,
+  Sparkles,
+  ExternalLink,
+  Layers,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,11 +67,13 @@ export function AdminClientsTab({
   // Feedback visual individual de cópia (email ou telefone)
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Modal de Histórico de Uso
+  // Modal de Histórico Completo de Simulações do Cliente
   const [selectedClientHistory, setSelectedClientHistory] = useState<{
     client: ClientRow;
-    history: SimulationHistoryItem[];
+    savedSimulations: ClientSavedSimulation[];
+    trackingHistory: SimulationHistoryItem[];
     loading: boolean;
+    activeTab: "saved" | "tracking";
   } | null>(null);
 
   const totalPages = Math.ceil(totalClients / 10) || 1;
@@ -106,15 +113,27 @@ export function AdminClientsTab({
     }
   };
 
-  // Abrir Histórico de Uso no Modal
+  // Abrir Histórico de Uso e Simulações no Modal
   const handleOpenHistory = async (client: ClientRow) => {
-    setSelectedClientHistory({ client, history: [], loading: true });
+    setSelectedClientHistory({
+      client,
+      savedSimulations: [],
+      trackingHistory: [],
+      loading: true,
+      activeTab: "saved",
+    });
     const res = await getClientUsageHistoryAction(client.id);
     if (res.error) {
       toast.error(`Erro ao carregar histórico: ${res.error}`);
       setSelectedClientHistory(null);
     } else {
-      setSelectedClientHistory({ client, history: res.history, loading: false });
+      setSelectedClientHistory({
+        client,
+        savedSimulations: res.savedSimulations,
+        trackingHistory: res.trackingHistory,
+        loading: false,
+        activeTab: res.savedSimulations.length > 0 ? "saved" : "tracking",
+      });
     }
   };
 
@@ -398,10 +417,10 @@ export function AdminClientsTab({
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenHistory(client)}
-                            title="Ver Histórico de Uso"
-                            className="p-2 text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            title="Ver Simulações e Histórico de Uso"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                           >
-                            <History className="w-4 h-4" />
+                            <History className="w-3.5 h-3.5 text-primary" /> Ver Simulações
                           </button>
 
                           <button
@@ -459,15 +478,16 @@ export function AdminClientsTab({
         </div>
       </div>
 
-      {/* Modal do Histórico de Uso */}
+      {/* Modal Detalhado de Simulações (Salvas e Geradas/Tracking) do Cliente */}
       {selectedClientHistory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="bg-white border border-slate-200 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
+            {/* Header do Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
               <div>
                 <h3 className="text-base font-bold text-slate-800">
-                  Histórico Comportamental: {selectedClientHistory.client.nome_completo}
+                  Painel de Simulações: {selectedClientHistory.client.nome_completo}
                 </h3>
                 <p className="text-xs text-slate-500">{selectedClientHistory.client.email}</p>
               </div>
@@ -479,61 +499,205 @@ export function AdminClientsTab({
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4">
-              {selectedClientHistory.loading ? (
-                <div className="py-8 text-center text-slate-500">Carregando histórico detalhado...</div>
-              ) : selectedClientHistory.history.length === 0 ? (
-                <div className="py-8 text-center text-slate-500">
-                  Nenhuma simulação registrada para este cliente até o momento.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedClientHistory.history.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                    >
-                      <div className="flex items-center gap-3">
-                        {item.status === "acerto" && (
-                          <span className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </span>
-                        )}
-                        {item.status === "erro" && (
-                          <span className="p-2 bg-rose-100 text-rose-700 rounded-lg">
-                            <AlertCircle className="w-4 h-4" />
-                          </span>
-                        )}
-                        {item.status === "refeita" && (
-                          <span className="p-2 bg-amber-100 text-amber-700 rounded-lg">
-                            <History className="w-4 h-4" />
-                          </span>
-                        )}
-                        {item.status === "salva" && (
-                          <span className="p-2 bg-blue-100 text-blue-700 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </span>
-                        )}
+            {/* Abas Internas do Modal */}
+            <div className="flex items-center gap-2 px-6 pt-3 bg-slate-50 border-b border-slate-200">
+              <button
+                onClick={() => setSelectedClientHistory({ ...selectedClientHistory, activeTab: "saved" })}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
+                  selectedClientHistory.activeTab === "saved"
+                    ? "bg-white text-primary border-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 border-transparent"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Simulações Salvas ({selectedClientHistory.savedSimulations.length})
+              </button>
 
-                        <div>
-                          <div className="font-bold text-slate-800 capitalize">Simulação: {item.status}</div>
-                          <div className="text-[11px] text-slate-500">
-                            {new Date(item.created_at).toLocaleString("pt-BR")}
+              <button
+                onClick={() => setSelectedClientHistory({ ...selectedClientHistory, activeTab: "tracking" })}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
+                  selectedClientHistory.activeTab === "tracking"
+                    ? "bg-white text-primary border-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 border-transparent"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" /> Todas Gerações & Tracking ({selectedClientHistory.trackingHistory.length})
+              </button>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {selectedClientHistory.loading ? (
+                <div className="py-12 text-center text-slate-500">Carregando simulações do cliente...</div>
+              ) : selectedClientHistory.activeTab === "saved" ? (
+                
+                /* Lista de Simulações SALVAS */
+                selectedClientHistory.savedSimulations.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 text-xs">
+                    Nenhuma simulação salva explicitamente por este cliente ainda.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedClientHistory.savedSimulations.map((sim) => (
+                      <div
+                        key={sim.id}
+                        className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-slate-800">{sim.nome_paciente}</span>
+                            <div className="text-[11px] text-primary font-semibold capitalize">{sim.procedimento}</div>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(sim.created_at).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+
+                        {/* Thumbnails Antes e Depois */}
+                        <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-lg border border-slate-200">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 block mb-1">Foto Original</span>
+                            {sim.img_original_url ? (
+                              <img
+                                src={sim.img_original_url}
+                                alt="Original"
+                                className="w-full h-24 object-cover rounded-md border border-slate-200"
+                              />
+                            ) : (
+                              <div className="w-full h-24 bg-slate-100 rounded-md flex items-center justify-center text-slate-400">
+                                <ImageIcon className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] font-bold text-primary block mb-1">Foto Simulada</span>
+                            {sim.img_simulada_url ? (
+                              <img
+                                src={sim.img_simulada_url}
+                                alt="Simulada"
+                                className="w-full h-24 object-cover rounded-md border border-slate-200"
+                              />
+                            ) : (
+                              <div className="w-full h-24 bg-slate-100 rounded-md flex items-center justify-center text-slate-400">
+                                <ImageIcon className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Detalhes de Cor e Ações */}
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                          <span>Cor: <strong className="text-slate-800">{sim.cor_utilizada || "N/A"}</strong></span>
+                          <div className="flex items-center gap-2">
+                            {sim.img_simulada_url && (
+                              <a
+                                href={sim.img_simulada_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline font-bold flex items-center gap-1"
+                              >
+                                Abrir Imagem <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )
 
-                      {item.metadata && Object.keys(item.metadata).length > 0 && (
-                        <div className="text-[11px] text-slate-600 bg-white px-2.5 py-1 rounded border border-slate-200 font-mono">
-                          {JSON.stringify(item.metadata)}
+              ) : (
+
+                /* Lista de Histórico de GERAÇÃO & Tracking (Salvas e Não Salvas) */
+                selectedClientHistory.trackingHistory.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 text-xs">
+                    Nenhum registro de geração encontrado no tracking.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedClientHistory.trackingHistory.map((item) => {
+                      const meta = item.metadata || {};
+                      const hasImages = meta.urlOriginal || meta.urlSimulada;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {item.status === "salva" && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                  ✅ Salva no Histórico
+                                </span>
+                              )}
+                              {item.status === "acerto" && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                                  ⚡ Gerada (Não salva pelo usuário)
+                                </span>
+                              )}
+                              {item.status === "erro" && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                  ❌ Erro de Processamento
+                                </span>
+                              )}
+                              {item.status === "refeita" && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                  🔄 Simulação Refeita
+                                </span>
+                              )}
+                              <span className="font-bold text-slate-800 capitalize">
+                                {meta.tipoTratamento || meta.procedimento || "Simulação IA"}
+                              </span>
+                            </div>
+
+                            <span className="text-[11px] text-slate-400">
+                              {new Date(item.created_at).toLocaleString("pt-BR")}
+                            </span>
+                          </div>
+
+                          {/* Se houver imagens no metadata de simulação gerada não salva */}
+                          {hasImages && (
+                            <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-lg border border-slate-200 mt-2">
+                              {meta.urlOriginal && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-slate-500 block mb-1">Foto Original</span>
+                                  <img
+                                    src={meta.urlOriginal}
+                                    alt="Original"
+                                    className="w-full h-20 object-cover rounded-md border border-slate-200"
+                                  />
+                                </div>
+                              )}
+                              {meta.urlSimulada && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-primary block mb-1">Foto Simulada (Gerada)</span>
+                                  <img
+                                    src={meta.urlSimulada}
+                                    alt="Simulada"
+                                    className="w-full h-20 object-cover rounded-md border border-slate-200"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {meta.error && (
+                            <div className="text-[11px] text-rose-600 bg-rose-50 p-2 rounded border border-rose-200 font-mono">
+                              Erro: {meta.error}
+                            </div>
+                          )}
+
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )
+
               )}
             </div>
 
+            {/* Footer do Modal */}
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
               <button
                 onClick={() => setSelectedClientHistory(null)}
