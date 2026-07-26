@@ -68,7 +68,7 @@ export async function getUserProfileAction() {
       .maybeSingle(),
   ]);
 
-  let profile = profileRes.data;
+  let profile: any = profileRes.data;
 
   // Fallback se a coluna check_video não existir na tabela usuarios
   if (profileRes.error) {
