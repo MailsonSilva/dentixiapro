@@ -440,6 +440,7 @@ export default function PerfilPage() {
   }
 
   const isComum = userData?.tipo === "comum" || !userData?.tipo;
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   return (
     <div className="flex flex-col min-h-full flex-1 pb-24 md:pb-8 bg-secondary-bg">
@@ -478,8 +479,8 @@ export default function PerfilPage() {
           <p className="text-sm text-gray-400">{userData?.email}</p>
         </motion.div>
 
-        {/* Trial Banner — apenas para usuário comum; oculto se assinatura ativa (statusCode=3, diasRestantes=999) */}
-        {isComum && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} temAssinatura={temAssinatura} />}
+        {/* Trial Banner — apenas para usuário comum que NÃO é admin */}
+        {isComum && !isAdmin && <TrialBanner statusCode={statusCode} diasRestantes={diasRestantes} temAssinatura={temAssinatura} />}
 
         <p className="text-sm font-bold text-gray-400 capitalize tracking-widest mb-3 px-1">
           Abaixo estão suas configurações

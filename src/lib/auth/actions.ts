@@ -154,7 +154,8 @@ export async function getClientLayoutDataAction() {
 
     const role = ucData?.role as 'admin' | 'manager' | 'user' | 'super_admin' | null;
 
-    if (role === 'super_admin') {
+    // Admin e super_admin NUNCA são bloqueados pelo trial
+    if (role === 'admin' || role === 'super_admin') {
       return {
         error: null,
         data: {

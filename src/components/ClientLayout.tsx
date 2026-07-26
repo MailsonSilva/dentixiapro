@@ -323,7 +323,8 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const showBlocker = trialExpired;
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const showBlocker = trialExpired && !isAdmin;
 
   return (
     <div className="flex h-[100dvh] w-full bg-secondary-bg overflow-hidden relative">
