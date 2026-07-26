@@ -168,18 +168,17 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "trialing"]);
 
-    // 3. Volume de Operações do Dia (simulacao_tracking)
-    const { data: simData } = await supabase
-      .from("simulacao_tracking")
-      .select("status")
-      .gte("created_at", startOfToday);
+    // 3. Volume de Operações do Dia (simulacao_tracking + simulacoes)
+    const [simData, simSavedData] = await Promise.all([
+      supabase.from("simulacao_tracking").select("status").gte("created_at", startOfToday),
+      supabase.from("simulacoes").select("id").gte("created_at", startOfToday),
+    ]);
 
     let successCount = 0;
     let errorCount = 0;
-    const todayTotal = simData ? simData.length : 0;
 
-    if (simData) {
-      simData.forEach((s) => {
+    if (simData.data) {
+      simData.data.forEach((s) => {
         if (s.status === "acerto" || s.status === "salva" || s.status === "refeita") {
           successCount++;
         } else if (s.status === "erro") {
@@ -188,6 +187,12 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       });
     }
 
+    const savedTodayCount = simSavedData.data ? simSavedData.data.length : 0;
+    if (successCount < savedTodayCount) {
+      successCount = savedTodayCount;
+    }
+
+    const todayTotal = Math.max(simData.data ? simData.data.length : 0, successCount + errorCount);
     const successRate = todayTotal > 0 ? Math.round((successCount / todayTotal) * 100) : 100;
 
     // 4. Métricas de Crescimento (Referral)
@@ -293,7 +298,7 @@ export async function getAdminClientsAction(
 
     const userIds = users.map((u) => u.id);
 
-    // Buscar contagem de simulações e status de assinatura em lote
+    // Buscar em paralelo contagem de simulações (tracking + salvas na tabela simulacoes) e assinaturas
     const [simRes, simSavedRes, subRes] = await Promise.all([
       supabase
         .from("simulacao_tracking")
@@ -309,10 +314,11 @@ export async function getAdminClientsAction(
         .in("status", ["active", "trialing"]),
     ]);
 
-    const simMap: Record<string, { success: number; error: number }> = {};
+    const simMap: Record<string, { success: number; error: number; saved: number }> = {};
+
     if (simRes.data) {
       simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { success: 0, error: 0 };
+        if (!simMap[s.user_id]) simMap[s.user_id] = { success: 0, error: 0, saved: 0 };
         if (s.status === "erro") {
           simMap[s.user_id].error++;
         } else {
@@ -321,15 +327,18 @@ export async function getAdminClientsAction(
       });
     }
 
-    // Adicionar simulações salvas à contagem de sucesso se não rastreadas
     if (simSavedRes.data) {
       simSavedRes.data.forEach((s) => {
-        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { success: 0, error: 0 };
+        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { success: 0, error: 0, saved: 0 };
+        simMap[s.usuario_id].saved++;
+        if (simMap[s.usuario_id].success < simMap[s.usuario_id].saved) {
+          simMap[s.usuario_id].success = simMap[s.usuario_id].saved;
+        }
       });
     }
 
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { success: 0, error: 0 };
+      const sim = simMap[u.id] || { success: 0, error: 0, saved: 0 };
       const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
@@ -507,11 +516,12 @@ export async function getSaaSFinancialAndCostMetricsAction(): Promise<{ data: Sa
     const heavyTrialNonConvertedCount = heavyUsers.length;
 
     // 6. Monitoramento de Custos de API
-    const { count: totalSimulationsCount } = await supabase
-      .from("simulacao_tracking")
-      .select("id", { count: "exact", head: true });
+    const [simTrackingCountRes, simulacoesCountRes] = await Promise.all([
+      supabase.from("simulacao_tracking").select("id", { count: "exact", head: true }),
+      supabase.from("simulacoes").select("id", { count: "exact", head: true }),
+    ]);
 
-    const simTotal = totalSimulationsCount || 0;
+    const simTotal = Math.max(simTrackingCountRes.count || 0, simulacoesCountRes.count || 0);
     const estimatedCostPerSimulationUSD = 0.015;
     const totalCostUSD = parseFloat((simTotal * estimatedCostPerSimulationUSD).toFixed(2));
     const estimatedRevenueBRL = mrr;
@@ -754,7 +764,6 @@ export async function getUserNotificationsAction(): Promise<{
       }
     }
 
-    // Buscar notificações ativas direcionadas a estes segmentos
     const { data, error } = await supabase
       .from("notifications_history")
       .select("id, title, message, category, target_audience, recipients_count, created_at, created_by")

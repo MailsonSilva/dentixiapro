@@ -357,7 +357,7 @@ export function AdminNotificationsTab() {
                       <h4 className="text-xs font-bold text-slate-800">{item.title}</h4>
                     </div>
                     <span className="text-[11px] text-slate-400">
-                      {new Date(item.created_at).toLocaleString("pt-BR")}
+                      {new Date(item.created_at).toLocaleDateString("pt-BR")}
                     </span>
                   </div>
 

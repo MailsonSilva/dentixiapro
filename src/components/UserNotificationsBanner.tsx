@@ -77,12 +77,6 @@ export function UserNotificationsBanner() {
               <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 {activeNotification.category}
               </span>
-              <span className="text-[11px] text-slate-400">
-                {new Date(activeNotification.created_at).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
             </div>
 
             <h4 className="text-xs font-bold text-slate-900 leading-tight">
