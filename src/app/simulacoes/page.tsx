@@ -194,6 +194,7 @@ export default function SimulationPage() {
       const fd = new FormData();
       fd.append("imagem", imageFile);
       fd.append("tipoTratamento", tipoTratamento);
+      fd.append("corSelecionada", selectedColor);
 
       const resultado = await gerarSimulacaoNativa(fd);
 
