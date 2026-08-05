@@ -26,7 +26,6 @@ import {
   Camera,
   QrCode,
   ArrowRight,
-  Receipt,
   Gift
 } from "lucide-react";
 import Image from "next/image";
@@ -41,9 +40,10 @@ import { useRouter } from "next/navigation";
 import { useNotification } from "@/lib/NotificationContext";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import packageJson from "../../../package.json";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const APP_VERSION = "4.0.0";
+const APP_VERSION = packageJson.version;
 const SUPPORT_URL =
   "https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0";
 const PROSPECTA_URL =
@@ -253,7 +253,6 @@ export default function PerfilPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -320,7 +319,6 @@ export default function PerfilPage() {
       notify("Sem assinatura", "Você ainda não possui uma assinatura ativa.", "info");
       return;
     }
-    setPortalLoading(true);
     try {
       const return_url = `${window.location.origin}/perfil`;
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-portal`, {
@@ -340,8 +338,6 @@ export default function PerfilPage() {
       }
     } catch (err: unknown) {
       notify("Erro", err instanceof Error ? err.message : "Tente novamente.", "error");
-    } finally {
-      setPortalLoading(false);
     }
   };
 
