@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, History, Check, Save
+  Upload, ImageIcon, Camera, Check, Save
 } from "lucide-react";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
@@ -441,7 +441,7 @@ export default function SimulationPage() {
               className="flex-1 flex flex-col items-center justify-center w-full gap-6 py-4"
             >
               {/* Slider de Comparação Centralizado com tamanho máximo */}
-              <div className="w-full max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
+              <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
                 <BeforeAfterSlider
                   before={urlOriginal ?? imageBase64!}
                   after={urlSimulada ?? ""}

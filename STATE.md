@@ -1,12 +1,22 @@
 # 🗺️ Mission Control: Estado do Projeto (Project State)
 
-**Última atualização**: 2026-06-21 — Sprint: Auditoria de Segurança, Limpeza e Desativação de Módulos Legados
+**Última atualização**: 2026-08-05 — Sprint: Ajustes de UX/UI no Comparador Antes/Depois & Limpeza de Lints
 
 ---
 
 ## 1. O Que Mudou (What Changed)
 
-### Sprint Atual (2026-06-21 — Auditoria de Segurança, Limpeza e Desativação de Módulos Legados)
+### Sprint Atual (2026-08-05 — Ajustes de UX/UI no Comparador Antes/Depois & Limpeza de Lints)
+
+- ✅ **Ajustes no Slider e Comparador Antes e Depois**:
+  - Redução do tamanho do círculo/manípulo divisório (`w-6 h-6 sm:w-7 sm:h-7`) nos componentes `BeforeAfterSlider.tsx` e `SimulationGallery.tsx` para um visual mais elegante e refinado.
+  - Otimização das dimensões do contêiner de imagem no mobile (`max-h-[42vh]`, `max-w-xs`), impedindo que imagens fiquem desproporcionalmente grandes em telas móveis.
+- ✅ **Correções de Tipagem e Lints**:
+  - Remoção de imports não utilizados (`User`, `History`) nos arquivos `SimulationGallery.tsx` e `src/app/simulacoes/page.tsx`.
+  - Tratamento de exceções com tipagem estrita (`err: unknown` com `instanceof Error`) em `SimulationGallery.tsx`.
+  - Inclusão de supressões organizadas de avisos ESLint para elementos `<img>` de origem remota.
+
+### Sprint Anterior (2026-06-21 — Auditoria de Segurança, Limpeza e Desativação de Módulos Legados)
 
 - ✅ **Auditoria de Segurança (Passo 1)**:
   - Isolamento de todas as chamadas ao Supabase em Server Actions em `src/lib/auth/actions.ts`, `src/lib/planos/actions.ts`, `src/lib/indique-e-ganhe/actions.ts` e `src/lib/perfil/actions.ts`.

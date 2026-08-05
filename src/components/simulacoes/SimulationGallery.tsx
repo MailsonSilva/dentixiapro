@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Camera,
-  User,
   Trash2,
   Search,
   X,
@@ -47,8 +46,9 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
       if (selectedSim?.id === id) {
         setSelectedSim(null);
       }
-    } catch (err: any) {
-      notify("Erro ao excluir", err.message || "Não foi possível excluir a simulação.", "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Não foi possível excluir a simulação.";
+      notify("Erro ao excluir", msg, "error");
     } finally {
       setDeletingId(null);
     }
@@ -156,6 +156,7 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-slate-700 text-center mb-2">Antes</span>
                       <div className="aspect-[4/3] rounded-md overflow-hidden bg-slate-50 relative border border-slate-100 flex items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={item.img_original_url} alt="Antes" className="w-full h-full object-cover rounded-md" />
                       </div>
                     </div>
@@ -164,6 +165,7 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                       <span className="text-sm font-medium text-slate-700 text-center mb-2">Depois</span>
                       <div className="aspect-[4/3] rounded-md overflow-hidden bg-slate-50 relative border border-slate-100 flex items-center justify-center">
                         {item.img_simulada_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img src={item.img_simulada_url} alt="Depois" className="w-full h-full object-cover rounded-md" />
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] p-2 text-center">
@@ -234,13 +236,14 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
                   </p>
                 </div>
 
-                <div className="relative w-full max-h-[58vh] aspect-[4/3] md:aspect-video rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
+                <div className="relative w-full max-h-[40vh] md:max-h-[58vh] aspect-[4/3] md:aspect-video rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
                   <ReactCompareSlider
                     handle={
                       <div className="h-full flex flex-col items-center justify-center relative select-none pointer-events-none">
                         <div className="w-0.5 h-full bg-white shadow-xl"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary overflow-hidden p-1.5 cursor-col-resize pointer-events-auto">
-                          <img src={IMAGES.logoIcon} alt="Dentixia" className="w-5 h-5 object-contain" />
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-primary overflow-hidden p-1 cursor-col-resize pointer-events-auto">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={IMAGES.logoIcon} alt="Dentixia" className="w-3.5 h-3.5 object-contain" />
                         </div>
                       </div>
                     }

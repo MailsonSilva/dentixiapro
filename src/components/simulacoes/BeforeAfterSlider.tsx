@@ -63,7 +63,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
+      className="relative w-full aspect-[4/3] max-h-[42vh] sm:max-h-none rounded-2xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
       onMouseDown={onMouseDown}
     >
       {/* Camada DEPOIS — fundo completo */}
@@ -92,12 +92,12 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl pointer-events-none"
         style={{ left: `${sliderPos}%` }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-2xl flex items-center justify-center border-2 border-primary overflow-hidden p-1.5 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-primary overflow-hidden p-1 pointer-events-none">
           <Image
             src={IMAGES.logoIcon}
             alt="Drag"
-            width={24}
-            height={24}
+            width={16}
+            height={16}
             className="w-full h-full object-contain"
           />
         </div>
