@@ -184,10 +184,11 @@ export default function SimulationPage() {
     setIsProcessing(true);
     try {
       // Mapeia os valores da UI para os aceitos pela Server Action (type TipoTratamento)
-      const procedureMap: Record<string, "clareamento" | "faceta" | "implante"> = {
+      const procedureMap: Record<string, "clareamento" | "faceta" | "implante_total" | "implante_parcial"> = {
         Clareamento: "clareamento",
         Facetas: "faceta",
-        Implante: "implante",
+        "Implante total": "implante_total",
+        "Implante parcial": "implante_parcial",
       };
       const tipoTratamento = procedureMap[procedure] ?? "faceta";
 
@@ -316,19 +317,19 @@ export default function SimulationPage() {
                 Escolha um dos procedimentos abaixo para iniciar a simulação.
               </p>
 
-              <div className="flex gap-4 justify-center w-full mb-6">
-                {[...procedures].reverse().map((p) => (
+              <div className="flex flex-wrap sm:flex-nowrap gap-3 justify-center w-full mb-6">
+                {procedures.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setProcedure(p.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center w-28 h-28 rounded-xl border transition-all duration-200 cursor-pointer shadow-sm",
+                      "flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl border transition-all duration-200 cursor-pointer shadow-sm p-2",
                       procedure === p.id
                         ? "bg-blue-50 border-blue-500 text-blue-700 shadow-md scale-105"
                         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                     )}
                   >
-                    <div className="w-10 h-10 relative mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 relative mb-1.5">
                       <Image
                         src={p.id === "Facetas" ? "/facetas.svg" : "/implante.svg"}
                         alt={p.label}
@@ -341,7 +342,7 @@ export default function SimulationPage() {
                         }}
                       />
                     </div>
-                    <span className="font-semibold text-xs capitalize">{p.label}</span>
+                    <span className="font-semibold text-[11px] sm:text-xs text-center leading-tight capitalize">{p.label}</span>
                   </button>
                 ))}
               </div>

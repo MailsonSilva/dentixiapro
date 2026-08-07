@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { toothColors } from "@/lib/simulacoes/utils";
 
 // ─── Types (TypeScript puro, sem Zod) ────────────────────────────────────────
-type TipoTratamento = "clareamento" | "faceta" | "implante";
+type TipoTratamento =
+  | "clareamento"
+  | "faceta"
+  | "implante_total"
+  | "implante_parcial";
 
 export interface ResultadoSimulacao {
   success: boolean;
@@ -24,8 +28,9 @@ const STORAGE_BUCKET = "simulacoes";
 const PROMPTS_CLINICOS: Record<TipoTratamento, string> = {
   clareamento:
     "APLIQUE CLAREAMENTO DENTAL FOTORREALISTA - PRIORIZAR ASPECTO NATURAL E BRILHO EQUILIBRADO",
-  faceta: `pinte o dente de azul se não ouver dentes insira flores no lugar`,
-  implante: `pinte o dente de verde se não ouver dentes insira flores no lugar`,
+  faceta: `Edit this dental photograph with a conservative, highly realistic veneer treatment.Apply dental veneers to all visible natural teeth. Use the exact shade {{ COR_HEX }} as the primary color reference. Neutralize the original tooth discoloration while preserving realistic enamel depth, natural shadows, subtle optical variation, soft surface gloss, fine microtexture, and controlled incisal translucency. Use the patient’s existing teeth, dental arch, gingival contour, smile line, occlusal plane, and facial proportions as fixed anatomical references. Preserve the original scale of the dentition. Keep the veneers thin, anatomically proportionate, and visually integrated with the original teeth. Do not noticeably increase tooth height, mesiodistal width, facial thickness, or forward projection. Do not enlarge the smile, expand the dental arch, increase the visible dental area, or make the teeth dominate the mouth. Improve the shape and alignment of all visible teeth conservatively. Correct minor rotations, small asymmetries, irregular edges, superficial cracks, wear, and shape inconsistencies while preserving the natural identity of the smile. Maintain individual tooth anatomy. Central incisors may have slight natural prominence; lateral incisors must remain subtly narrower and slightly shorter when anatomically appropriate; canines must preserve their characteristic contour. Do not make all teeth identical in width, height, shape, or surface texture. Create a harmonious natural incisal line with subtle anatomical variation. Preserve realistic interdental separation, incisal embrasures, interproximal contours, and visible individualization between teeth. Avoid a flat continuous edge, monolithic appearance, single-piece effect, or “domino” teeth. The final veneers must look refined, natural, proportional, and clinically plausible. Avoid oversized, overly wide, excessively long, thick, square, flat, bulky, protruding, perfectly uniform, opaque, or artificial-looking teeth. Do not add or remove teeth. Do not modify the gingiva, lips, mouth opening, cheeks, skin, facial structure, background, lighting, framing, camera angle, or perspective. When aesthetic perfection conflicts with anatomical naturalness, always prioritize conservative proportions and natural anatomy. When uncertain about size, preserve the original dimensions or choose the smaller anatomically plausible result.`,
+  implante_total: `Edit this dental photo conservatively, restore and refine all visible natural teeth. Improve the full visible dentition with a complete aesthetic dental restoration. Adjust color, shape, alignment, surface appearance, and symmetry across all visible teeth while keeping a natural and realistic result. Apply the exact color {{ COR_HEX }} to all visible teeth. The result should look clean, harmonious, and natural, with realistic enamel texture, soft natural shine, subtle incisal translucency, and natural integration with the gingiva. Use the existing dental arch, gingiva, occlusal plane, smile line, and the patient’s own anatomy as the reference. Keep the teeth anatomically proportionate and natural. Do not create teeth that are too large, too wide, too long, too thick, too square, too flat, or protruding. Do not create a “domino” look or a single continuous block of teeth. Refine the teeth conservatively. Correct visible irregularities such as small asymmetries, minor misalignment, uneven edges, cracks, stains, spacing issues, worn areas, and shape inconsistencies, but keep the smile natural. The teeth should look aligned and aesthetically improved without looking artificial or exaggerated. Preserve natural individual tooth anatomy. Keep visible separation between teeth, natural embrasures, and realistic contour differences between central incisors, lateral incisors, and canines. Do not make all teeth identical in width, height, or shape. Keep the incisal line harmonious but not unnaturally straight or flat. Do not enlarge the smile. Do not expand the dental arch. Do not increase the total visible dental area excessively. Keep the teeth within normal anatomical proportions relative to the mouth and face. Do not modify lips, gingiva, skin, cheeks, background, lighting, framing, or perspective. If there is any uncertainty, choose the most conservative and natural-looking result.`,
+  implante_parcial: `Edit this dental photograph with a conservative, highly realistic veneer treatment. Apply dental veneers to all visible natural teeth. Use the exact shade {{ COR_HEX }} as the primary color reference. Neutralize the original tooth discoloration while preserving realistic enamel depth, natural shadows, subtle optical variation, soft surface gloss, fine microtexture, and controlled incisal translucency. Use the patient’s existing teeth, dental arch, gingival contour, smile line, occlusal plane, and facial proportions as fixed anatomical references. Preserve the original scale of the dentition. Keep the veneers thin, anatomically proportionate, and visually integrated with the original teeth. Do not noticeably increase tooth height, mesiodistal width, facial thickness, or forward projection. Do not enlarge the smile, expand the dental arch, increase the visible dental area, or make the teeth dominate the mouth. Improve the shape and alignment of all visible teeth conservatively. Correct minor rotations, small asymmetries, irregular edges, superficial cracks, wear, and shape inconsistencies while preserving the natural identity of the smile. Maintain individual tooth anatomy. Central incisors may have slight natural prominence; lateral incisors must remain subtly narrower and slightly shorter when anatomically appropriate; canines must preserve their characteristic contour. Do not make all teeth identical in width, height, shape, or surface texture. Create a harmonious natural incisal line with subtle anatomical variation. Preserve realistic interdental separation, incisal embrasures, interproximal contours, and visible individualization between teeth. Avoid a flat continuous edge, monolithic appearance, single-piece effect, or “domino” teeth. The final veneers must look refined, natural, proportional, and clinically plausible. Avoid oversized, overly wide, excessively long, thick, square, flat, bulky, protruding, perfectly uniform, opaque, or artificial-looking teeth. Do not add or remove teeth. Do not modify the gingiva, lips, mouth opening, cheeks, skin, facial structure, background, lighting, framing, camera angle, or perspective. When aesthetic perfection conflicts with anatomical naturalness, always prioritize conservative proportions and natural anatomy. When uncertain about size, preserve the original dimensions or choose the smaller anatomically plausible result.`,
 };
 
 // ─── Validação nativa (TypeScript puro — sem biblioteca Zod) ──────────────────
@@ -105,7 +110,12 @@ export async function gerarSimulacaoNativa(
     const corSelecionada = formData.get("corSelecionada") as string | null;
 
     // ── 3. Validação de negócio com condicionais TypeScript (sem Zod) ─────────
-    const tiposValidos: TipoTratamento[] = ["clareamento", "faceta", "implante"];
+    const tiposValidos: TipoTratamento[] = [
+      "clareamento",
+      "faceta",
+      "implante_total",
+      "implante_parcial",
+    ];
 
     if (
       !tipoTratamentoRaw ||
@@ -129,7 +139,7 @@ export async function gerarSimulacaoNativa(
 
     const colorItem = toothColors.find((c) => c.id === corSelecionada);
     const hex = colorItem ? colorItem.hex : "#F7F5EC"; // Fallback para BL1
-    promptClinico = promptClinico.replace(/\{\{COR_HEX\}\}/g, hex);
+    promptClinico = promptClinico.replace(/\{\{\s*COR_HEX\s*\}\}/g, hex);
 
     // ── 4. Upload da foto original para o Supabase Storage ────────────────────
     const fileBuffer = Buffer.from(await file.arrayBuffer());

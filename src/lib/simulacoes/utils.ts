@@ -5,7 +5,8 @@ export interface ProcedureItem {
 
 export const procedures: ProcedureItem[] = [
   { id: "Facetas", label: "Facetas" },
-  { id: "Implante", label: "Implante" }
+  { id: "Implante total", label: "Implante total" },
+  { id: "Implante parcial", label: "Implante parcial" }
 ];
 
 export interface ToothColorItem {
