@@ -16,7 +16,7 @@ export interface ToothColorItem {
 }
 
 export const toothColors: ToothColorItem[] = [
-  { id: "BL1", label: "BL1", hex: "#F7F5EC" },
+  { id: "BL1", label: "BL1", hex: "#FFFFFF" },
   { id: "BL2", label: "BL2", hex: "#F3EFE0" },
   { id: "BL3", label: "BL3", hex: "#EFEBD8" },
   { id: "BL4", label: "BL4", hex: "#EAE6D0" },

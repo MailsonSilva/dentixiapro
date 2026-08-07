@@ -141,6 +141,11 @@ export async function gerarSimulacaoNativa(
     const hex = colorItem ? colorItem.hex : "#F7F5EC"; // Fallback para BL1
     promptClinico = promptClinico.replace(/\{\{\s*COR_HEX\s*\}\}/g, hex);
 
+    // ── DEBUG: confirma prompt e cor enviados à API ───────────────────────────
+    console.log("[Simulação] Tipo:", tipoTratamento);
+    console.log("[Simulação] Cor selecionada:", corSelecionada, "→ HEX:", hex);
+    console.log("[Simulação] Prompt final (primeiros 300 chars):", promptClinico.slice(0, 300));
+
     // ── 4. Upload da foto original para o Supabase Storage ────────────────────
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
