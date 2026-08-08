@@ -63,25 +63,31 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-[4/3] max-h-[42vh] sm:max-h-none rounded-2xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
+      // h-[60dvh]: ocupa 60% da viewport dinâmica — grande parte da tela no mobile
+      // max-h-[700px]: limita em desktops grandes para não distorcer
+      className="relative w-full h-[60dvh] max-h-[700px] rounded-2xl overflow-hidden cursor-col-resize select-none shadow-2xl bg-slate-100"
       onMouseDown={onMouseDown}
     >
-      {/* Camada DEPOIS — fundo completo */}
+      {/* Camada DEPOIS — fundo completo — priority: carrega imediatamente sem lazy-load */}
       <Image
         src={after}
         alt="Depois"
         fill
         unoptimized
+        priority
+        sizes="100vw"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none"
         draggable={false}
       />
 
-      {/* Camada ANTES — clipada pela direita via clipPath */}
+      {/* Camada ANTES — clipada pela direita via clipPath — priority: sem delay */}
       <Image
         src={before}
         alt="Antes"
         fill
         unoptimized
+        priority
+        sizes="100vw"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none"
         style={{ clipPath: `inset(0 ${clipRight}% 0 0)` }}
         draggable={false}
@@ -92,20 +98,21 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         className="absolute top-0 bottom-0 w-0.5 bg-white shadow-xl pointer-events-none"
         style={{ left: `${sliderPos}%` }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-primary overflow-hidden p-1 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-primary overflow-hidden p-1 pointer-events-none">
           <Image
             src={IMAGES.logoIcon}
             alt="Drag"
-            width={16}
-            height={16}
+            width={20}
+            height={20}
             className="w-full h-full object-contain"
           />
         </div>
       </div>
 
       {/* Labels */}
-      <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/60 text-white text-[10px] font-semibold capitalize rounded-full pointer-events-none">Antes</div>
-      <div className="absolute bottom-4 right-4 px-3 py-1 bg-primary text-white text-[10px] font-semibold capitalize rounded-full pointer-events-none">Depois</div>
+      <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-black/60 text-white text-xs font-semibold capitalize rounded-full pointer-events-none backdrop-blur-sm">Antes</div>
+      <div className="absolute bottom-4 right-4 px-3 py-1.5 bg-primary text-white text-xs font-semibold capitalize rounded-full pointer-events-none backdrop-blur-sm">Depois</div>
     </div>
   );
 }
+

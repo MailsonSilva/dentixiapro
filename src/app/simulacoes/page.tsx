@@ -203,6 +203,18 @@ export default function SimulationPage() {
         throw new Error(resultado.error ?? "Falha na simulação.");
       }
 
+      // Pré-carrega a imagem simulada no browser antes de trocar o step.
+      // Isso garante que quando o BeforeAfterSlider montar, a imagem já
+      // está no cache do browser — zero delay visual na tela de resultado.
+      if (resultado.urlSimulada) {
+        await new Promise<void>((resolve) => {
+          const img = new window.Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve(); // resolve mesmo em erro — não bloqueia UX
+          img.src = resultado.urlSimulada!;
+        });
+      }
+
       setUrlOriginal(resultado.urlOriginal ?? null);
       setUrlSimulada(resultado.urlSimulada ?? null);
       setStep("result");
@@ -437,12 +449,13 @@ export default function SimulationPage() {
           {step === "result" && (urlSimulada || urlOriginal) && (
             <motion.div 
               key="res" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              className="flex-1 flex flex-col items-center justify-center w-full gap-6 py-4"
+              initial={{ opacity: 0, scale: 0.98 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              transition={{ duration: 0.3 }}
+              className="flex-1 flex flex-col items-center w-full gap-4 py-2"
             >
-              {/* Slider de Comparação Centralizado com tamanho máximo */}
-              <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
+              {/* Slider: w-full sem max-width restritiva — ocupa toda a tela disponível */}
+              <div className="w-full max-w-3xl bg-white p-0 rounded-2xl shadow-lg overflow-hidden border border-slate-100">
                 <BeforeAfterSlider
                   before={urlOriginal ?? imageBase64!}
                   after={urlSimulada ?? ""}

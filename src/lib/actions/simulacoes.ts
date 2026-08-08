@@ -190,6 +190,13 @@ export async function gerarSimulacaoNativa(
               data: base64Imagem,
             },
           ],
+          // response_format é obrigatório para garantir output de imagem editada
+          // gemini-3.1-flash-lite-image: suporta apenas 1K (não incluir image_size)
+          response_format: {
+            type: "image",
+            mime_type: "image/png",
+            aspect_ratio: "4:3",
+          },
         }),
       }
     );
@@ -214,7 +221,8 @@ export async function gerarSimulacaoNativa(
       geminiData.candidates?.[0]?.content?.parts?.[0]?.inline_data?.data;  // Fallback: Variação snake_case
 
     if (!imagemSimuladaBase64) {
-      console.log("JSON COMPLETO (sem cortes):", JSON.stringify(geminiData));
+      console.error("[Simulação] FALHA — imagem não encontrada no retorno da API.");
+      console.error("[Simulação] JSON COMPLETO:", JSON.stringify(geminiData, null, 2));
       await trackSimulacaoAction("erro", { tipoTratamento, error: "Formato de retorno da API não reconhecido" });
       return {
         success: false,
