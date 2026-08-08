@@ -190,12 +190,11 @@ export async function gerarSimulacaoNativa(
               data: base64Imagem,
             },
           ],
-          // response_format é obrigatório para garantir output de imagem editada
-          // gemini-3.1-flash-lite-image: suporta apenas 1K (não incluir image_size)
+          // response_format sem aspect_ratio: o modelo preserva as dimensões
+          // da imagem de entrada (edição conserva as proporções originais)
           response_format: {
             type: "image",
             mime_type: "image/jpeg",
-            aspect_ratio: "4:3",
           },
         }),
       }

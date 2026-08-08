@@ -76,7 +76,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         unoptimized
         priority
         sizes="100vw"
-        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         draggable={false}
       />
 
@@ -88,7 +88,7 @@ export function BeforeAfterSlider({ before, after }: { before: string; after: st
         unoptimized
         priority
         sizes="100vw"
-        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         style={{ clipPath: `inset(0 ${clipRight}% 0 0)` }}
         draggable={false}
       />
