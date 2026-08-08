@@ -462,9 +462,28 @@ export default function SimulationPage() {
                 />
               </div>
 
-              {/* Container de Botões posicionado abaixo com espaçamento consistente */}
+              {/* Container de Botões */}
               <div className="w-full max-w-md space-y-3 mt-2">
-                {/* Botão de Salvar Simulação */}
+                {/* Linha 1: + Nova | Refazer */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleNewSimulation}
+                    className="h-10 rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: "#3C83F6" }}
+                  >
+                    <Plus size={14} /> Nova
+                  </button>
+                  <button
+                    onClick={handleRetry}
+                    disabled={isProcessing}
+                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    {isProcessing ? "Gerando..." : "Refazer"}
+                  </button>
+                </div>
+
+                {/* Linha 2: Salvar Simulação */}
                 <button
                   onClick={() => setShowSaveModal(true)}
                   disabled={isSaved}
@@ -475,24 +494,6 @@ export default function SimulationPage() {
                 >
                   {isSaved ? <><Check size={14} /> Salva com Sucesso</> : <><Save size={14} /> Salvar Simulação</>}
                 </button>
-
-                {/* Ações rápidas */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={handleRetry}
-                    disabled={isProcessing}
-                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                    {isProcessing ? "Gerando..." : "Refazer"}
-                  </button>
-                  <button
-                    onClick={handleNewSimulation}
-                    className="h-10 border-2 border-[#FB923C] bg-[#FB923C] rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FB923C]/90 shadow-sm transition-all"
-                  >
-                    <Plus size={14} /> Nova
-                  </button>
-                </div>
               </div>
             </motion.div>
           )}
