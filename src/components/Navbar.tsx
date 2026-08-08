@@ -47,10 +47,10 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
                 "p-2 rounded-xl transition-all duration-300",
                 isActive ? "bg-primary/10" : "group-hover:bg-primary/5"
               )}>
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={22} strokeWidth={isActive ? 2 : 1.75} />
               </div>
               <span className={cn(
-                "text-[10px] capitalize tracking-wide font-bold transition-all",
+                "text-[10px] capitalize tracking-wide font-medium transition-all",
                 isActive ? "text-primary" : "text-gray-400"
               )}>
                 {item.name}
@@ -72,9 +72,9 @@ export function Navbar({ type = 'comum' }: NavbarProps) {
           aria-label="Abrir menu"
         >
           <div className="p-2 rounded-xl hover:bg-primary/5 transition-all">
-            <Menu size={22} strokeWidth={2} />
+            <Menu size={22} strokeWidth={1.75} />
           </div>
-          <span className="text-[10px] capitalize tracking-wide font-bold text-gray-400">Menu</span>
+          <span className="text-[10px] capitalize tracking-wide font-medium text-gray-400">Menu</span>
         </button>
       </div>
     </nav>

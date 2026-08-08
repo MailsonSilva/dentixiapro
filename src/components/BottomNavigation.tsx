@@ -42,18 +42,18 @@ export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
               <div className="relative">
                 <Icon
                   size={18}
-                  strokeWidth={item.isActive ? 2.5 : 2}
+                  strokeWidth={item.isActive ? 2 : 1.75}
                   className="transition-transform duration-200"
                 />
                 {item.locked && (
                   <Lock
                     size={10}
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     className="absolute -top-1 -right-1.5 text-red-500"
                   />
                 )}
               </div>
-              <span className="text-xs font-semibold tracking-tight leading-none">
+              <span className="text-xs font-medium tracking-tight leading-none">
                 {item.name}
               </span>
             </div>

@@ -11,7 +11,7 @@ import {
   Info
 } from "lucide-react";
 import Link from "next/link";
-import { ReactCompareSlider, ReactCompareSliderImage } from 'react-compare-slider';
+import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
 import { useNotification } from "@/lib/NotificationContext";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -228,51 +228,19 @@ export function SimulationGallery({ initialSimulations }: SimulationGalleryProps
               </div>
 
               {/* Slider Area */}
-              <div className="flex-1 overflow-hidden p-3 md:p-4 flex flex-col items-center">
-                <div className="bg-blue-50/50 rounded-xl p-3 mb-3 flex items-center gap-2.5 w-full max-w-2xl border border-blue-100">
+              <div className="flex-1 overflow-hidden p-3 md:p-4 flex flex-col items-center justify-center">
+                <div className="bg-blue-50/50 rounded-xl p-3 mb-3 flex items-center gap-2.5 w-full max-w-3xl border border-blue-100">
                   <Info className="text-primary flex-shrink-0" size={16} />
                   <p className="text-[10px] md:text-xs text-gray-600 font-medium leading-relaxed italic">
                     O resultado real depende de fatores clínicos individuais. Esta é uma projeção baseada em IA.
                   </p>
                 </div>
 
-                <div className="relative w-full max-h-[40vh] md:max-h-[58vh] aspect-[4/3] md:aspect-video rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
-                  <ReactCompareSlider
-                    handle={
-                      <div className="h-full flex flex-col items-center justify-center relative select-none pointer-events-none">
-                        <div className="w-0.5 h-full bg-white shadow-xl"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-lg flex items-center justify-center border-2 border-primary overflow-hidden p-1 cursor-col-resize pointer-events-auto">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={IMAGES.logoIcon} alt="Dentixia" className="w-3.5 h-3.5 object-contain" />
-                        </div>
-                      </div>
-                    }
-                    itemOne={
-                      <ReactCompareSliderImage
-                        src={selectedSim.img_original_url}
-                        alt="Antes"
-                        style={{ objectFit: "contain", objectPosition: "center" }}
-                      />
-                    }
-                    itemTwo={
-                      <ReactCompareSliderImage
-                        src={selectedSim.img_simulada_url}
-                        alt="Depois"
-                        style={{ objectFit: "contain", objectPosition: "center" }}
-                      />
-                    }
-                    style={{ width: '100%', height: '100%' }}
+                <div className="w-full max-w-3xl bg-white p-0 rounded-2xl shadow-lg overflow-hidden border border-slate-100">
+                  <BeforeAfterSlider
+                    before={selectedSim.img_original_url}
+                    after={selectedSim.img_simulada_url!}
                   />
-                </div>
-
-                <div className="mt-4 flex items-center gap-4 w-full max-w-2xl">
-                  <div className="flex-1 h-9 bg-gray-800 rounded-lg flex items-center justify-center text-white font-semibold capitalize text-xs shadow-md">
-                    Antes
-                  </div>
-                  <div className="w-8 h-0.5 bg-gray-200 rounded-full"></div>
-                  <div className="flex-1 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-semibold capitalize text-xs shadow-md shadow-primary/10">
-                    Depois
-                  </div>
                 </div>
               </div>
             </motion.div>
