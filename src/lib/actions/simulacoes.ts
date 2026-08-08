@@ -194,7 +194,7 @@ export async function gerarSimulacaoNativa(
           // gemini-3.1-flash-lite-image: suporta apenas 1K (não incluir image_size)
           response_format: {
             type: "image",
-            mime_type: "image/png",
+            mime_type: "image/jpeg",
             aspect_ratio: "4:3",
           },
         }),
@@ -231,12 +231,12 @@ export async function gerarSimulacaoNativa(
     }
 
     // ── 6. Upload da imagem simulada gerada pela IA ───────────────────────────
-    const simFileName = `${user.id}/${Date.now()}-simulada.png`;
+    const simFileName = `${user.id}/${Date.now()}-simulada.jpg`;
     const simBuffer = Buffer.from(imagemSimuladaBase64, "base64");
 
     const { error: simUploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(simFileName, simBuffer, { contentType: "image/png", upsert: false });
+      .upload(simFileName, simBuffer, { contentType: "image/jpeg", upsert: false });
 
     if (simUploadError) {
       await trackSimulacaoAction("erro", { tipoTratamento, error: simUploadError.message });
