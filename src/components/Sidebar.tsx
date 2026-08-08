@@ -217,7 +217,7 @@ export function Sidebar({ type, userRole }: SidebarProps) {
                 "group relative flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300",
                 isActive
                   ? "bg-primary text-white shadow-lg shadow-primary/20"
-                  : "text-gray-400 hover:bg-primary/5 hover:text-primary",
+                  : "text-primary hover:bg-primary/8 hover:text-primary/80",
                 isOpen ? "justify-between" : "justify-center"
               )}
             >

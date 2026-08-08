@@ -365,10 +365,13 @@ export default function PerfilPage() {
             throw new Error(uploadRes.error || "Erro no upload da imagem.");
           }
 
-          setLogoUrl(uploadRes.url);
+          // Adiciona timestamp para forçar o browser/Next.js a buscar a nova imagem
+          // sem servir a versão cacheada da URL anterior
+          const freshUrl = `${uploadRes.url}?t=${Date.now()}`;
+          setLogoUrl(freshUrl);
           setImageError(false);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setUserData((prev: any) => ({ ...prev, logo_url: uploadRes.url }));
+          setUserData((prev: any) => ({ ...prev, logo_url: freshUrl }));
           notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Não foi possível processar a imagem.";
