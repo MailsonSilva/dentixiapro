@@ -177,35 +177,33 @@ export default function IndiqueEGanhePage() {
             <p className="text-gray-500 text-sm">Acompanhe suas indicações e comissões do seu link.</p>
           </div>
 
-          {/* Link Section */}
-          <div className="bg-[#E6F7F9] rounded-2xl p-4 md:p-6 border border-[#CCEEF2]">
+          {/* Link Section (Card com cor verde suave - Regra 8) */}
+          <div className="bg-[#F0FDF4] rounded-2xl p-4 md:p-6 border border-[#DCFCE7] shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="bg-white p-2 sm:p-3 rounded-xl flex-shrink-0">
-                  <Copy size={20} className="text-primary" />
-                </div>
+                {/* Ícone removido conforme Regra 2 */}
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-gray-700">Seu link de indicação</p>
-                  <p className="text-[11px] sm:text-xs text-gray-500 truncate w-[200px] sm:w-[300px] md:w-auto">
+                  <p className="text-xs sm:text-sm font-bold text-gray-800">Seu link de indicação</p>
+                  <p className="text-[11px] sm:text-xs text-emerald-800 font-mono truncate w-[220px] sm:w-[320px] md:w-auto mt-0.5">
                     {referralLink || "Link não gerado. Complete seu cadastro."}
                   </p>
                 </div>
               </div>
               <button 
                 onClick={handleCopy}
-                className="bg-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-md active:scale-95 transition-all flex items-center gap-2 flex-shrink-0"
+                className="bg-white hover:bg-emerald-50/50 text-gray-700 border border-emerald-200/80 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm active:scale-95 transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer"
               >
-                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-                {copied ? "Copiado" : "Copiar"}
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} className="text-emerald-600" />}
+                {copied ? "Copiado!" : "Clique para copiar"}
               </button>
             </div>
-            <p className="text-xs sm:text-sm text-gray-600 mt-4 sm:mt-0">
-              Sua comissão é de: <span className="font-bold text-primary">{headerData?.commission_rate ? `${headerData.commission_rate}%` : "10%"}</span> por assinatura ativa.
+            <p className="text-xs text-gray-600 mt-2">
+              Sua comissão é de: <span className="font-bold text-emerald-700">{headerData?.commission_rate ? `${headerData.commission_rate}%` : "10%"}</span> por assinatura ativa.
             </p>
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-3 items-center flex-wrap pt-2">
+          {/* Filters (Fontes e botões reduzidos - Regra 3) */}
+          <div className="flex gap-2 items-center flex-wrap pt-1">
             <select
               value={filterType}
               onChange={(e) => {
@@ -215,26 +213,28 @@ export default function IndiqueEGanhePage() {
                   setSelectedMonth("todos");
                 }
               }}
-              className="bg-white border-gray-200 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm outline-none w-32 focus:ring-2 focus:ring-primary/20"
+              className="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-28 focus:ring-2 focus:ring-primary/20"
             >
               <option value="mensal">Mensal</option>
               <option value="anual">Anual</option>
             </select>
+
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-white border-gray-200 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm outline-none w-32 focus:ring-2 focus:ring-primary/20"
+              className="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-24 focus:ring-2 focus:ring-primary/20"
             >
               {availableYears.map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
+
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value === "todos" ? "todos" : Number(e.target.value))}
               disabled={filterType === "anual"}
               className={cn(
-                "bg-white border-gray-200 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm outline-none w-44 focus:ring-2 focus:ring-primary/20",
+                "bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-36 focus:ring-2 focus:ring-primary/20",
                 filterType === "anual" && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -244,7 +244,7 @@ export default function IndiqueEGanhePage() {
             </select>
           </div>
 
-          <p className="text-xs font-semibold text-gray-400 capitalize tracking-widest mt-2">Visão do Período ({filteredIndicados.length} indicações)</p>
+          <p className="text-[11px] font-bold text-gray-400 capitalize tracking-wider mt-2">Visão do Período ({filteredIndicados.length} indicações)</p>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {/* Status Cards Dinâmicos */}
@@ -293,61 +293,69 @@ export default function IndiqueEGanhePage() {
                  $
                </div>
                <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-2xl bg-[#E6F9F0] flex items-center justify-center text-green-500 font-bold">
+                 <div className="w-8 h-8 rounded-2xl bg-[#E6F9F0] flex items-center justify-center text-emerald-600 font-bold">
                     $
                  </div>
                </div>
                <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block z-10 relative">Comissão (Global)</span>
-               <p className="text-2xl sm:text-3xl font-semibold text-green-500">{(resumoComputed.comissao_total).toFixed(0)}</p>
+               <p className="text-2xl sm:text-3xl font-semibold text-emerald-600">R$ {(resumoComputed.comissao_total).toFixed(2)}</p>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="space-y-3 pt-4">
+          {/* Table (Visualização melhorada e dados completos - Regras 4 & 5) */}
+          <div className="space-y-3 pt-2">
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-[#F9FBFC]">
-                    <tr>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize">Cliente</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Status</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Plano</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Inscrição</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-gray-400 capitalize text-center">Ações</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
+                      <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                      <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Plano</th>
+                      <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Data Inscrição</th>
+                      <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Comissão Est.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredIndicados.map((item, i) => (
-                      <tr key={i} className="text-xs sm:text-sm text-gray-600 hover:bg-gray-50/50 transition-colors">
-                        <td className="px-5 py-4 font-semibold text-gray-800 truncate max-w-[120px]">
-                          {item.nome_cliente?.split(' ')[0] || "Sem Nome"}
+                      <tr key={i} className="text-xs text-gray-700 hover:bg-slate-50/60 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-gray-800">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-gray-800">{item.nome_cliente || "Cliente"}</span>
+                            {item.email_cliente && (
+                              <span className="text-[10px] text-gray-400 font-normal">{item.email_cliente}</span>
+                            )}
+                          </div>
                         </td>
-                        <td className="p-4 text-sm whitespace-nowrap text-center">
-                      <div className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
-                        // "trialing" / "active" / "canceled" / etc
-                        item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo" ? "bg-[#11A0D9]/10 text-[#11A0D9]" :
-                        item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" ? "bg-red-100 text-red-600" :
-                        "bg-[#F19642]/10 text-[#F19642]"
-                      )}>
-                        {(item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo") && <Check size={14} className="mr-1" />}
-                        {(item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" || item.status_formatado?.toLowerCase() === "trialing") && <Clock size={14} className="mr-1" />}
-                        {item.status_formatado}
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm whitespace-nowrap text-gray-600 font-medium text-center">
-                      {item.nome_plano || "-"}
-                    </td>
-                        <td className="px-5 py-4 text-center font-medium">
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <div className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
+                            item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo" 
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                              : item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" 
+                              ? "bg-rose-50 text-rose-700 border-rose-200" 
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          )}>
+                            {(item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo") && <Check size={12} className="mr-1 text-emerald-600" />}
+                            {(item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" || item.status_formatado?.toLowerCase() === "trialing") && <Clock size={12} className="mr-1 text-amber-600" />}
+                            {item.status_formatado}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center whitespace-nowrap text-gray-600 font-medium">
+                          {item.nome_plano || "Plano DentixIA"}
+                        </td>
+                        <td className="px-4 py-3 text-center font-medium text-gray-500 whitespace-nowrap">
                           {item.data_cadastro_user ? new Date(item.data_cadastro_user).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                         </td>
-                        <td className="px-5 py-4 text-center text-gray-400 font-medium">-</td>
+                        <td className="px-4 py-3 text-center font-bold text-emerald-700 whitespace-nowrap">
+                          {item.valor_comissao_estimada ? `R$ ${Number(item.valor_comissao_estimada).toFixed(2)}` : "-"}
+                        </td>
                       </tr>
                     ))}
                     {filteredIndicados.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-5 py-10 text-center text-gray-400 italic font-medium">
-                            Nenhuma indicação ocorreu no período selecionado.
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic text-xs">
+                          Nenhuma indicação registrada no período selecionado.
                         </td>
                       </tr>
                     )}

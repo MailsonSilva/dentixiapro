@@ -140,19 +140,23 @@ function SettingsRow({
   label,
   onClick,
   danger,
+  highlightGreen,
 }: {
   icon: React.ElementType;
   label: string;
   onClick: () => void;
   danger?: boolean;
+  highlightGreen?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center justify-between px-4 py-3.5 transition-colors group",
+        "w-full flex items-center justify-between px-4 py-3.5 transition-colors group cursor-pointer",
         danger
           ? "text-red-500 hover:bg-red-50"
+          : highlightGreen
+          ? "bg-[#F0FDF4] hover:bg-emerald-100/60 text-emerald-900"
           : "text-gray-700 hover:bg-primary/5"
       )}
     >
@@ -160,7 +164,11 @@ function SettingsRow({
         <div
           className={cn(
             "w-9 h-9 rounded-xl flex items-center justify-center",
-            danger ? "bg-red-100 text-red-500" : "bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary"
+            danger
+              ? "bg-red-100 text-red-500"
+              : highlightGreen
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary"
           )}
         >
           <Icon size={18} />
@@ -171,7 +179,7 @@ function SettingsRow({
         size={18}
         className={cn(
           "transition-transform group-hover:translate-x-0.5",
-          danger ? "text-red-300" : "text-gray-300 group-hover:text-primary"
+          danger ? "text-red-300" : highlightGreen ? "text-emerald-500" : "text-gray-300 group-hover:text-primary"
         )}
       />
     </button>
@@ -527,6 +535,7 @@ export default function PerfilPage() {
               <SettingsRow
                 icon={Gift}
                 label="Indique e Ganhe"
+                highlightGreen
                 onClick={() => router.push("/indique-e-ganhe")}
               />
             )}
