@@ -202,8 +202,8 @@ export default function IndiqueEGanhePage() {
             </p>
           </div>
 
-          {/* Filters (Fontes e botões reduzidos - Regra 3) */}
-          <div className="flex gap-2 items-center flex-wrap pt-1">
+          {/* Filters (Compacto em 1 linha no mobile) */}
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2 items-center pt-1">
             <select
               value={filterType}
               onChange={(e) => {
@@ -213,7 +213,7 @@ export default function IndiqueEGanhePage() {
                   setSelectedMonth("todos");
                 }
               }}
-              className="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-28 focus:ring-2 focus:ring-primary/20"
+              className="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-28 text-center sm:text-left truncate cursor-pointer"
             >
               <option value="mensal">Mensal</option>
               <option value="anual">Anual</option>
@@ -222,7 +222,7 @@ export default function IndiqueEGanhePage() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-24 focus:ring-2 focus:ring-primary/20"
+              className="bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-24 text-center sm:text-left cursor-pointer"
             >
               {availableYears.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -234,7 +234,7 @@ export default function IndiqueEGanhePage() {
               onChange={(e) => setSelectedMonth(e.target.value === "todos" ? "todos" : Number(e.target.value))}
               disabled={filterType === "anual"}
               className={cn(
-                "bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none w-36 focus:ring-2 focus:ring-primary/20",
+                "bg-white border border-gray-200 rounded-xl px-2 py-1.5 text-xs font-medium text-gray-700 shadow-sm outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-36 text-center sm:text-left truncate cursor-pointer",
                 filterType === "anual" && "opacity-50 cursor-not-allowed"
               )}
             >
