@@ -69,7 +69,7 @@ export function AdminClientsTab({
   // Feedback visual individual de cópia (email ou telefone)
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Modal de Métricas e Imagens de Simulações do Cliente
+  // Modal de Métricas Numéricas de Simulações do Cliente
   const [selectedClientMetrics, setSelectedClientMetrics] = useState<{
     client: ClientRow;
     metrics: {
@@ -79,15 +79,8 @@ export function AdminClientsTab({
       error: number;
       successRate: number;
     };
-    simulations: ClientSimulationItem[];
     loading: boolean;
   } | null>(null);
-
-  // Filtro de imagens no modal (Todas, Salvas, Geradas Não Salvas)
-  const [simulationFilter, setSimulationFilter] = useState<"all" | "saved" | "unsaved">("all");
-  
-  // Imagem expandida para visualização em alta definição (Lightbox)
-  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const totalPages = Math.ceil(totalClients / 10) || 1;
 
@@ -126,9 +119,8 @@ export function AdminClientsTab({
     }
   };
 
-  // Abrir Métricas Numéricas e Imagens de Simulação no Modal
+  // Abrir Métricas Numéricas de Simulação no Modal
   const handleOpenMetrics = async (client: ClientRow) => {
-    setSimulationFilter("all");
     setSelectedClientMetrics({
       client,
       metrics: {
@@ -140,7 +132,6 @@ export function AdminClientsTab({
           ? Math.round(((client.simulations_saved + client.simulations_unsaved) / client.simulations_total) * 100)
           : 100,
       },
-      simulations: [],
       loading: true,
     });
 
@@ -149,7 +140,6 @@ export function AdminClientsTab({
       setSelectedClientMetrics({
         client,
         metrics: res.metrics,
-        simulations: res.simulations || [],
         loading: false,
       });
     } else {
@@ -525,17 +515,16 @@ export function AdminClientsTab({
         </div>
       </div>
 
-      {/* Modal Completo de Métricas e Galeria de Imagens das Simulações */}
+      {/* Modal de Quantidades e Estatísticas Numéricas */}
       {selectedClientMetrics && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="bg-white border border-slate-200 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             
             {/* Header do Modal */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
               <div>
-                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                  Métricas & Imagens: {selectedClientMetrics.client.nome_completo}
+                <h3 className="text-base font-bold text-slate-800">
+                  Métricas de Simulações: {selectedClientMetrics.client.nome_completo}
                 </h3>
                 <p className="text-xs text-slate-500">{selectedClientMetrics.client.email}</p>
               </div>
@@ -547,8 +536,8 @@ export function AdminClientsTab({
               </button>
             </div>
 
-            {/* Conteúdo com Scroll interno */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            {/* Conteúdo Numérico Resumido */}
+            <div className="p-6 space-y-5">
               
               {/* Card de Resumo Principal */}
               <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-slate-50 border border-primary/20 p-5 rounded-2xl flex items-center justify-between">
@@ -573,19 +562,10 @@ export function AdminClientsTab({
               {/* Grid das 3 Quantidades Específicas */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 
-                {/* 1. Salvas */}
-                <div
-                  onClick={() => setSimulationFilter("saved")}
-                  className={`p-4 rounded-xl space-y-1 cursor-pointer transition-all border ${
-                    simulationFilter === "saved"
-                      ? "bg-emerald-100/80 border-emerald-400 ring-2 ring-emerald-400/30"
-                      : "bg-emerald-50/80 border-emerald-200/80 hover:bg-emerald-100/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" /> Salvas pelo Cliente
-                    </span>
+                {/* 1. Salvas pelo Cliente */}
+                <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                    <Sparkles className="w-4 h-4 text-emerald-600" /> Salvas pelo Cliente
                   </div>
                   <div className="text-2xl font-bold text-emerald-900 font-mono">
                     {selectedClientMetrics.metrics.saved}
@@ -593,19 +573,10 @@ export function AdminClientsTab({
                   <p className="text-[10px] text-emerald-700">Guardadas no histórico</p>
                 </div>
 
-                {/* 2. Geradas Não Salvas */}
-                <div
-                  onClick={() => setSimulationFilter("unsaved")}
-                  className={`p-4 rounded-xl space-y-1 cursor-pointer transition-all border ${
-                    simulationFilter === "unsaved"
-                      ? "bg-blue-100/80 border-blue-400 ring-2 ring-blue-400/30"
-                      : "bg-blue-50/80 border-blue-200/80 hover:bg-blue-100/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs font-bold text-blue-800">
-                    <span className="flex items-center gap-1.5">
-                      <Layers className="w-4 h-4 text-blue-600" /> Geradas (Não Salvas)
-                    </span>
+                {/* 2. Geradas (Não Salvas) */}
+                <div className="bg-blue-50/80 border border-blue-200/80 p-4 rounded-xl space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
+                    <Layers className="w-4 h-4 text-blue-600" /> Geradas (Não Salvas)
                   </div>
                   <div className="text-2xl font-bold text-blue-900 font-mono">
                     {selectedClientMetrics.metrics.unsaved}
@@ -613,7 +584,7 @@ export function AdminClientsTab({
                   <p className="text-[10px] text-blue-700">Simulações de teste</p>
                 </div>
 
-                {/* 3. Com Falha / Erro */}
+                {/* 3. Com Falha / Erro de API */}
                 <div className="bg-rose-50/80 border border-rose-200/80 p-4 rounded-xl space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
                     <AlertTriangle className="w-4 h-4 text-rose-600" /> Com Falha / Erro
@@ -626,215 +597,13 @@ export function AdminClientsTab({
 
               </div>
 
-              {/* Seção de Galeria Visual de Imagens */}
-              <div className="space-y-4 pt-2 border-t border-slate-200">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-primary" /> Galeria de Imagens de Simulações
-                    </h4>
-                    <p className="text-xs text-slate-500">
-                      Visualização completa de simulações salvas no histórico e testes gerados.
-                    </p>
-                  </div>
-
-                  {/* Filtro da Galeria */}
-                  <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-                    <button
-                      onClick={() => setSimulationFilter("all")}
-                      className={`px-3 py-1 rounded-lg transition-colors ${
-                        simulationFilter === "all"
-                          ? "bg-white text-slate-900 shadow-sm"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      Todas ({selectedClientMetrics.simulations.length})
-                    </button>
-                    <button
-                      onClick={() => setSimulationFilter("saved")}
-                      className={`px-3 py-1 rounded-lg transition-colors ${
-                        simulationFilter === "saved"
-                          ? "bg-white text-emerald-700 shadow-sm font-bold"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      💾 Salvas ({selectedClientMetrics.simulations.filter((s) => s.is_saved).length})
-                    </button>
-                    <button
-                      onClick={() => setSimulationFilter("unsaved")}
-                      className={`px-3 py-1 rounded-lg transition-colors ${
-                        simulationFilter === "unsaved"
-                          ? "bg-white text-blue-700 shadow-sm font-bold"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      ⚡ Não Salvas ({selectedClientMetrics.simulations.filter((s) => !s.is_saved).length})
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grid de Imagens */}
-                {selectedClientMetrics.loading ? (
-                  <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    Carregando imagens e histórico de simulações do cliente...
-                  </div>
-                ) : selectedClientMetrics.simulations.length === 0 ? (
-                  <div className="py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-slate-500 text-xs">
-                    Nenhuma simulação registrada para este cliente.
-                  </div>
-                ) : (() => {
-                  const filteredList = selectedClientMetrics.simulations.filter((s) => {
-                    if (simulationFilter === "saved") return s.is_saved;
-                    if (simulationFilter === "unsaved") return !s.is_saved;
-                    return true;
-                  });
-
-                  if (filteredList.length === 0) {
-                    return (
-                      <div className="py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-slate-500 text-xs">
-                        Nenhuma imagem encontrada para o filtro selecionado ({simulationFilter}).
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredList.map((sim, idx) => (
-                        <div
-                          key={`${sim.id}_${idx}`}
-                          className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                        >
-                          {/* Top Card Header */}
-                          <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                sim.is_saved
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-blue-100 text-blue-800 border border-blue-200"
-                              }`}
-                            >
-                              {sim.is_saved ? (
-                                <>
-                                  <Sparkles className="w-3 h-3 text-emerald-600" /> Salva pelo Cliente
-                                </>
-                              ) : (
-                                <>
-                                  <Layers className="w-3 h-3 text-blue-600" /> Gerada (Não Salva)
-                                </>
-                              )}
-                            </span>
-                            <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(sim.created_at).toLocaleDateString("pt-BR", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              })}{" "}
-                              {new Date(sim.created_at).toLocaleTimeString("pt-BR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-
-                          {/* Detalhes do Paciente e Procedimento */}
-                          <div className="p-4 space-y-3 flex-1">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                                  Paciente / Teste
-                                </span>
-                                <h5 className="text-xs font-bold text-slate-900">{sim.nome_paciente}</h5>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                                  Procedimento & Cor
-                                </span>
-                                <div className="text-xs font-semibold text-slate-700 flex items-center gap-1 justify-end">
-                                  <Tag className="w-3 h-3 text-primary" />
-                                  <span>{sim.procedimento}</span>
-                                  {sim.cor_utilizada && sim.cor_utilizada !== "-" && (
-                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 text-[10px] font-mono font-bold">
-                                      {sim.cor_utilizada}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Imagens (Antes / Depois) Side-by-Side */}
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                              
-                              {/* Imagem Original (Antes) */}
-                              <div className="relative group bg-slate-100 rounded-xl overflow-hidden aspect-[4/3] border border-slate-200">
-                                {sim.img_original_url ? (
-                                  <>
-                                    <img
-                                      src={sim.img_original_url}
-                                      alt="Original"
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-slate-900/70 backdrop-blur-sm text-white text-[10px] font-bold rounded-md">
-                                      Original
-                                    </div>
-                                    <button
-                                      onClick={() => setPreviewImage({ url: sim.img_original_url, title: `Original - ${sim.nome_paciente}` })}
-                                      className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
-                                    >
-                                      <Eye className="w-4 h-4" /> Expandir
-                                    </button>
-                                  </>
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
-                                    Sem imagem original
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Imagem Simulada (Depois) */}
-                              <div className="relative group bg-slate-100 rounded-xl overflow-hidden aspect-[4/3] border border-slate-200">
-                                {sim.img_simulada_url ? (
-                                  <>
-                                    <img
-                                      src={sim.img_simulada_url}
-                                      alt="Simulação IA"
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold rounded-md">
-                                      Simulada (IA)
-                                    </div>
-                                    <button
-                                      onClick={() => setPreviewImage({ url: sim.img_simulada_url, title: `Simulada IA - ${sim.nome_paciente}` })}
-                                      className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1"
-                                    >
-                                      <Eye className="w-4 h-4" /> Expandir
-                                    </button>
-                                  </>
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
-                                    Sem imagem simulada
-                                  </div>
-                                )}
-                              </div>
-
-                            </div>
-
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-
             </div>
 
             {/* Footer do Modal */}
-            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0">
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
               <button
                 onClick={() => setSelectedClientMetrics(null)}
-                className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition-colors"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition-colors"
               >
                 Fechar
               </button>
@@ -844,35 +613,9 @@ export function AdminClientsTab({
         </div>
       )}
 
-      {/* Lightbox para Visualização em Alta Resolução */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-900/90 text-white">
-              <span className="text-xs font-bold">{previewImage.title}</span>
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-2 flex items-center justify-center bg-black max-h-[80vh] overflow-hidden">
-              <img
-                src={previewImage.url}
-                alt={previewImage.title}
-                className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+    </div>
+  );
+}
 
     </div>
   );

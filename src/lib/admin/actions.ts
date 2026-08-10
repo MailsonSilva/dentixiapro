@@ -434,7 +434,7 @@ export async function toggleBlockClientAction(userId: string, isBlocked: boolean
 }
 
 /**
- * Obter Estatísticas Métricas e Lista Completa de Simulações de um Cliente (Salvas e Geradas Não Salvas)
+ * Obter Estatísticas Métricas de Simulações de um Cliente (Salvas, Geradas Não Salvas e Erros de API)
  */
 export async function getClientUsageHistoryAction(userId: string): Promise<{
   metrics: {
@@ -444,14 +444,12 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
     error: number;
     successRate: number;
   };
-  simulations: ClientSimulationItem[];
   error: string | null;
 }> {
   const access = await checkAdminAccessAction();
   if (!access.isAdmin) {
     return {
       metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 },
-      simulations: [],
       error: access.error || "Acesso negado",
     };
   }
@@ -462,33 +460,17 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
     const [savedRes, trackingRes] = await Promise.all([
       supabase
         .from("simulacoes")
-        .select("*")
-        .eq("usuario_id", userId)
-        .order("created_at", { ascending: false }),
+        .select("id", { count: "exact", head: true })
+        .eq("usuario_id", userId),
       supabase
         .from("simulacao_tracking")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
+        .select("status")
+        .eq("user_id", userId),
     ]);
 
-    const savedSimulations: ClientSimulationItem[] = (savedRes.data || []).map((s) => ({
-      id: s.id,
-      nome_paciente: s.nome_paciente || "Paciente sem nome",
-      procedimento: s.procedimento || "Tratamento Dental",
-      cor_utilizada: s.cor_utilizada || "-",
-      img_original_url: s.img_original_url || "",
-      img_simulada_url: s.img_simulada_url || "",
-      created_at: s.created_at,
-      is_saved: true,
-      status: "salva",
-    }));
-
-    const savedUrls = new Set(savedSimulations.map((s) => s.img_simulada_url).filter(Boolean));
-
+    const savedCount = savedRes.count || 0;
     let generatedSuccessCount = 0;
     let errorCount = 0;
-    const unsavedSimulations: ClientSimulationItem[] = [];
 
     if (trackingRes.data) {
       trackingRes.data.forEach((item) => {
@@ -496,36 +478,14 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
           errorCount++;
         } else if (item.status === "acerto" || item.status === "refeita") {
           generatedSuccessCount++;
-          const meta = item.metadata || {};
-          const simUrl = meta.urlSimulada || meta.img_simulada_url || "";
-          const origUrl = meta.urlOriginal || meta.img_original_url || "";
-
-          if (simUrl && !savedUrls.has(simUrl)) {
-            unsavedSimulations.push({
-              id: item.id,
-              nome_paciente: meta.nomePaciente || "Simulação de Teste (Não Salva)",
-              procedimento: meta.tipoTratamento || meta.procedimento || "Simulação IA",
-              cor_utilizada: meta.corSelecionada || meta.corUtilizada || "-",
-              img_original_url: origUrl,
-              img_simulada_url: simUrl,
-              created_at: item.created_at,
-              is_saved: false,
-              status: "gerada_nao_salva",
-            });
-          }
         }
       });
     }
 
-    const savedCount = savedSimulations.length;
     const unsavedCount = Math.max(0, generatedSuccessCount - savedCount);
     const totalSimulations = savedCount + unsavedCount + errorCount;
     const successTotal = savedCount + unsavedCount;
     const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;
-
-    const allSimulations = [...savedSimulations, ...unsavedSimulations].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
 
     return {
       metrics: {
@@ -535,13 +495,11 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
         error: errorCount,
         successRate,
       },
-      simulations: allSimulations,
       error: null,
     };
   } catch (err: any) {
     return {
       metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 },
-      simulations: [],
       error: err.message || "Erro ao obter métricas",
     };
   }
