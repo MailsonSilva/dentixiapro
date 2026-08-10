@@ -249,7 +249,7 @@ export async function gerarSimulacaoNativa(
       .from(STORAGE_BUCKET)
       .getPublicUrl(simFileName).data.publicUrl;
 
-    await trackSimulacaoAction("acerto", { tipoTratamento, urlOriginal, urlSimulada });
+    await trackSimulacaoAction("acerto", { tipoTratamento, urlOriginal, urlSimulada, corSelecionada });
     return { success: true, urlSimulada, urlOriginal };
   } catch (error: unknown) {
     const msg =
