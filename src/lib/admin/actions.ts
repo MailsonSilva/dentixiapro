@@ -21,6 +21,11 @@ export interface AdminMetrics {
   referral: {
     totalReferredSignups: number;
   };
+  simulations: {
+    totalSaved: number;
+    totalGenerated: number;
+    totalErrors: number;
+  };
 }
 
 export interface ClientRow {
@@ -203,6 +208,19 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .not("user_referredbycode", "is", null);
 
+    // 5. Métricas globais (all-time) de simulações na plataforma
+    const [simTotalSavedRes, simTotalGeneratedRes, simTotalErrorsRes] = await Promise.all([
+      supabase.from("simulacoes").select("id", { count: "exact", head: true }),
+      supabase
+        .from("simulacao_tracking")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["acerto", "refeita"]),
+      supabase
+        .from("simulacao_tracking")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "erro"),
+    ]);
+
     return {
       error: null,
       data: {
@@ -223,6 +241,11 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
         },
         referral: {
           totalReferredSignups: referralCount || 0,
+        },
+        simulations: {
+          totalSaved: simTotalSavedRes.count || 0,
+          totalGenerated: simTotalGeneratedRes.count || 0,
+          totalErrors: simTotalErrorsRes.count || 0,
         },
       },
     };
