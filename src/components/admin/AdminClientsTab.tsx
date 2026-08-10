@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   ClientRow,
-  ClientSimulationItem,
   toggleBlockClientAction,
   getClientUsageHistoryAction,
 } from "@/lib/admin/actions";
@@ -25,11 +24,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layers,
-  Eye,
-  ImageIcon,
-  Tag,
-  Filter,
-  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -612,10 +606,6 @@ export function AdminClientsTab({
           </div>
         </div>
       )}
-
-    </div>
-  );
-}
 
     </div>
   );

@@ -54,18 +54,6 @@ export interface ClientSavedSimulation {
   created_at: string;
 }
 
-export interface ClientSimulationItem {
-  id: string | number;
-  nome_paciente: string;
-  procedimento: string;
-  cor_utilizada: string;
-  img_original_url: string;
-  img_simulada_url: string;
-  created_at: string;
-  is_saved: boolean;
-  status: "salva" | "gerada_nao_salva" | "erro";
-}
-
 export interface SimulationHistoryItem {
   id: string;
   status: "acerto" | "erro" | "refeita" | "salva";
