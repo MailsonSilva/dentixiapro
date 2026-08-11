@@ -209,17 +209,18 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .not("user_referredbycode", "is", null);
 
     // 5. Métricas globais (all-time) de simulações na plataforma
-    const [simTotalSavedRes, simTotalGeneratedRes, simTotalErrorsRes] = await Promise.all([
-      supabase.from("simulacoes").select("id", { count: "exact", head: true }),
-      supabase
-        .from("simulacao_tracking")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["acerto", "refeita"]),
-      supabase
-        .from("simulacao_tracking")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "erro"),
-    ]);
+    const globalStatsRes = await supabase
+      .from("user_simulation_stats")
+      .select("total_geradas, total_salvas, total_erros");
+
+    let totalGeradas = 0, totalSalvas = 0, totalErros = 0;
+    if (globalStatsRes.data) {
+      globalStatsRes.data.forEach((s) => {
+        totalGeradas += s.total_geradas;
+        totalSalvas  += s.total_salvas;
+        totalErros   += s.total_erros;
+      });
+    }
 
     return {
       error: null,
@@ -243,9 +244,9 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
           totalReferredSignups: referralCount || 0,
         },
         simulations: {
-          totalSaved: simTotalSavedRes.count || 0,
-          totalGenerated: simTotalGeneratedRes.count || 0,
-          totalErrors: simTotalErrorsRes.count || 0,
+          totalSaved: totalSalvas,
+          totalGenerated: totalGeradas,
+          totalErrors: totalErros,
         },
       },
     };
@@ -323,43 +324,25 @@ export async function getAdminClientsAction(
 
     const userIds = users.map((u) => u.id);
 
-    // Buscar contagem de simulações em paralelo: 1. simulacao_tracking, 2. simulacoes
-    const [simRes, simSavedRes] = await Promise.all([
-      supabase
-        .from("simulacao_tracking")
-        .select("user_id, status")
-        .in("user_id", userIds),
-      supabase
-        .from("simulacoes")
-        .select("usuario_id")
-        .in("usuario_id", userIds),
-    ]);
+    // Buscar estatísticas de simulações da nova tabela de contadores
+    const simStatsRes = await supabase
+      .from("user_simulation_stats")
+      .select("user_id, total_geradas, total_salvas, total_erros")
+      .in("user_id", userIds);
 
-    const simMap: Record<string, { saved: number; unsaved: number; error: number }> = {};
-
-    // 1. Processar simulações salvas no banco
-    if (simSavedRes.data) {
-      simSavedRes.data.forEach((s) => {
-        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, unsaved: 0, error: 0 };
-        simMap[s.usuario_id].saved++;
-      });
-    }
-
-    // 2. Processar tracking — leitura direta dos status gravados
-    if (simRes.data) {
-      simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, unsaved: 0, error: 0 };
-        if (s.status === "erro") {
-          simMap[s.user_id].error++;
-        } else if (s.status === "nao_salva") {
-          simMap[s.user_id].unsaved++;
-        }
-        // "acerto", "refeita" e "salva" são contados via tabela simulacoes diretamente
+    const simMap: Record<string, { geradas: number; salvas: number; erros: number }> = {};
+    if (simStatsRes.data) {
+      simStatsRes.data.forEach((s) => {
+        simMap[s.user_id] = {
+          geradas: s.total_geradas,
+          salvas:  s.total_salvas,
+          erros:   s.total_erros,
+        };
       });
     }
 
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { saved: 0, unsaved: 0, error: 0 };
+      const stats  = simMap[u.id] || { geradas: 0, salvas: 0, erros: 0 };
       const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
@@ -384,10 +367,10 @@ export async function getAdminClientsAction(
         planName = "Plano Trial (7 Dias)";
       }
 
-      const saved = sim.saved;
-      const unsaved = sim.unsaved;
-      const error = sim.error;
-      const totalSims = saved + unsaved + error;
+      const saved   = stats.salvas;
+      const unsaved = Math.max(0, stats.geradas - stats.salvas);
+      const error   = stats.erros;
+      const totalSims = stats.geradas + stats.erros;
 
       return {
         id: u.id,
@@ -469,52 +452,25 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
   try {
     const supabase = await createClient();
 
-    const [savedRes, trackingRes] = await Promise.all([
-      supabase
-        .from("simulacoes")
-        .select("id", { count: "exact", head: true })
-        .eq("usuario_id", userId),
-      supabase
-        .from("simulacao_tracking")
-        .select("status")
-        .eq("user_id", userId),
-    ]);
+    const statsRes = await supabase
+      .from("user_simulation_stats")
+      .select("total_geradas, total_salvas, total_erros")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    const savedCount = savedRes.count || 0;
-    let acertoCount = 0;   // Geradas com sucesso (inclui refeitas)
-    let unsavedCount = 0;  // Explicitamente descartadas sem salvar
-    let errorCount = 0;
-
-    if (trackingRes.data) {
-      trackingRes.data.forEach((item) => {
-        if (item.status === "erro") {
-          errorCount++;
-        } else if (item.status === "nao_salva") {
-          unsavedCount++;
-        } else if (item.status === "acerto" || item.status === "refeita") {
-          acertoCount++;
-        }
-        // "salva" já é contada via tabela simulacoes (savedCount)
-      });
-    }
-
-    // Total = todas as tentativas de geração (sucesso + descartadas + erros)
-    const totalSimulations = acertoCount + unsavedCount + errorCount;
-    // Taxa de sucesso = (geradas com sucesso) / total
-    const successRate = totalSimulations > 0 ? Math.round((acertoCount / totalSimulations) * 100) : 100;
-
-    // Fallback retroativo: usa nao_salva explícito quando disponível,
-    // senão infere por acertos - salvas (compatibilidade com registros anteriores ao fix)
-    const resolvedUnsaved = unsavedCount > 0
-      ? unsavedCount
-      : Math.max(0, acertoCount - savedCount);
+    const geradas = statsRes.data?.total_geradas || 0;
+    const salvas  = statsRes.data?.total_salvas  || 0;
+    const erros   = statsRes.data?.total_erros   || 0;
+    const unsaved = Math.max(0, geradas - salvas);
+    const total   = geradas + erros;
+    const successRate = total > 0 ? Math.round((geradas / total) * 100) : 100;
 
     return {
       metrics: {
-        total: totalSimulations,
-        saved: savedCount,
-        unsaved: resolvedUnsaved,
-        error: errorCount,
+        total,
+        saved: salvas,
+        unsaved,
+        error: erros,
         successRate,
       },
       error: null,

@@ -14,7 +14,7 @@ import { useNotification } from "@/lib/NotificationContext";
 
 // SSD Layers
 import { procedures } from "@/lib/simulacoes/utils";
-import { gerarSimulacaoNativa, salvarSimulacaoConfirmada, trackSimulacaoAction } from "@/lib/actions/simulacoes";
+import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
 
 // UI Components
 import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
@@ -226,21 +226,16 @@ export default function SimulationPage() {
     }
   };
 
-  // ── Refazer: reutiliza o File em memória, re-chama a Server Action ────────
+  // ── Refazer: reutiliza o File em memória, re-chama a Server Action ────────────
   const handleRetry = async () => {
     setUrlSimulada(null);
     setUrlOriginal(null);
     setStep("upload");
-    trackSimulacaoAction("refeita", { procedimento: procedure });
     await handleGenerate();
   };
 
-  // ── Nova Simulação: reset total ───────────────────────────────────────────
+  // ── Nova Simulação: reset total ────────────────────────────────────
   const handleNewSimulation = () => {
-    // Registra descarte apenas se havia resultado gerado e não foi salvo
-    if (urlSimulada && !isSaved) {
-      trackSimulacaoAction("nao_salva", { procedimento: procedure });
-    }
     setImageFile(null);
     setImageBase64(null);
     setUrlOriginal(null);

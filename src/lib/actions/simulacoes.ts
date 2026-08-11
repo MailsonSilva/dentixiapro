@@ -202,7 +202,7 @@ export async function gerarSimulacaoNativa(
 
     if (!geminiResponse.ok) {
       const errBody = await geminiResponse.text();
-      await trackSimulacaoAction("erro", { tipoTratamento, error: errBody });
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: `Falha na API Gemini Interactions (${geminiResponse.status}): ${errBody}`,
@@ -222,7 +222,7 @@ export async function gerarSimulacaoNativa(
     if (!imagemSimuladaBase64) {
       console.error("[Simulação] FALHA — imagem não encontrada no retorno da API.");
       console.error("[Simulação] JSON COMPLETO:", JSON.stringify(geminiData, null, 2));
-      await trackSimulacaoAction("erro", { tipoTratamento, error: "Formato de retorno da API não reconhecido" });
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: "A imagem foi gerada, mas o formato de retorno da API não foi reconhecido. Verifique os logs do servidor.",
@@ -238,7 +238,7 @@ export async function gerarSimulacaoNativa(
       .upload(simFileName, simBuffer, { contentType: "image/jpeg", upsert: false });
 
     if (simUploadError) {
-      await trackSimulacaoAction("erro", { tipoTratamento, error: simUploadError.message });
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: `Erro no upload da simulação: ${simUploadError.message}`,
@@ -249,41 +249,30 @@ export async function gerarSimulacaoNativa(
       .from(STORAGE_BUCKET)
       .getPublicUrl(simFileName).data.publicUrl;
 
-    await trackSimulacaoAction("acerto", { tipoTratamento, urlOriginal, urlSimulada, corSelecionada });
+    await incrementSimulacaoStat(user.id, "total_geradas");
     return { success: true, urlSimulada, urlOriginal };
   } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Erro desconhecido no servidor.";
-    await trackSimulacaoAction("erro", { error: msg });
+    await incrementSimulacaoStat(user.id, "total_erros");
     return { success: false, error: msg };
   }
 }
 
-// ─── Tracking de Simulações ──────────────────────────────────────────────────
-export async function trackSimulacaoAction(
-  status: "acerto" | "erro" | "refeita" | "salva" | "nao_salva",
-  metadata: Record<string, unknown> = {}
-): Promise<{ success: boolean; error?: string }> {
+// ─── Incremento Atômico de Estatísticas via RPC ──────────────────────────────
+async function incrementSimulacaoStat(
+  userId: string,
+  campo: "total_geradas" | "total_salvas" | "total_erros"
+): Promise<void> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Não autenticado" };
-
-    const { error } = await supabase.from("simulacao_tracking").insert({
-      user_id: user.id,
-      status,
-      metadata,
+    const { error } = await supabase.rpc("increment_simulation_stat", {
+      p_user_id: userId,
+      p_campo: campo,
     });
-
-    if (error) {
-      console.error("Erro ao registrar tracking de simulação:", error.message);
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Erro no tracking";
-    console.error("Exceção no tracking de simulação:", msg);
-    return { success: false, error: msg };
+    if (error) console.error(`[Stats] Erro ao incrementar ${campo}:`, error.message);
+  } catch (err) {
+    console.error(`[Stats] Exceção ao incrementar ${campo}:`, err);
   }
 }
 
@@ -319,8 +308,7 @@ export async function salvarSimulacaoConfirmada(
       return { success: false, error: `Erro ao salvar simulação no banco: ${dbError.message}` };
     }
 
-    // Registrar tracking de 'salva'
-    await trackSimulacaoAction("salva", { procedimento, nomePaciente: nomePaciente.trim(), corUtilizada });
+    await incrementSimulacaoStat(user.id, "total_salvas");
 
     revalidatePath("/simulacoes/resultados");
     return { success: true };
