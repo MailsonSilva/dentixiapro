@@ -335,30 +335,31 @@ export async function getAdminClientsAction(
         .in("usuario_id", userIds),
     ]);
 
-    const simMap: Record<string, { saved: number; generatedSuccess: number; error: number }> = {};
+    const simMap: Record<string, { saved: number; unsaved: number; error: number }> = {};
 
-    // 1. Processar simulacoes salvas no banco
+    // 1. Processar simulações salvas no banco
     if (simSavedRes.data) {
       simSavedRes.data.forEach((s) => {
-        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, generatedSuccess: 0, error: 0 };
+        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, unsaved: 0, error: 0 };
         simMap[s.usuario_id].saved++;
       });
     }
 
-    // 2. Processar tracking
+    // 2. Processar tracking — leitura direta dos status gravados
     if (simRes.data) {
       simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, generatedSuccess: 0, error: 0 };
+        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, unsaved: 0, error: 0 };
         if (s.status === "erro") {
           simMap[s.user_id].error++;
-        } else if (s.status === "acerto" || s.status === "refeita") {
-          simMap[s.user_id].generatedSuccess++;
+        } else if (s.status === "nao_salva") {
+          simMap[s.user_id].unsaved++;
         }
+        // "acerto", "refeita" e "salva" são contados via tabela simulacoes diretamente
       });
     }
 
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { saved: 0, generatedSuccess: 0, error: 0 };
+      const sim = simMap[u.id] || { saved: 0, unsaved: 0, error: 0 };
       const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
@@ -384,7 +385,7 @@ export async function getAdminClientsAction(
       }
 
       const saved = sim.saved;
-      const unsaved = Math.max(0, sim.generatedSuccess - saved);
+      const unsaved = sim.unsaved;
       const error = sim.error;
       const totalSims = saved + unsaved + error;
 
@@ -480,20 +481,21 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
     ]);
 
     const savedCount = savedRes.count || 0;
-    let generatedSuccessCount = 0;
+    let unsavedCount = 0;
     let errorCount = 0;
 
+    // Leitura direta dos status — sem inferência por subtração
     if (trackingRes.data) {
       trackingRes.data.forEach((item) => {
         if (item.status === "erro") {
           errorCount++;
-        } else if (item.status === "acerto" || item.status === "refeita") {
-          generatedSuccessCount++;
+        } else if (item.status === "nao_salva") {
+          unsavedCount++;
         }
+        // "acerto", "refeita" e "salva" são contados via tabela simulacoes
       });
     }
 
-    const unsavedCount = Math.max(0, generatedSuccessCount - savedCount);
     const totalSimulations = savedCount + unsavedCount + errorCount;
     const successTotal = savedCount + unsavedCount;
     const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;

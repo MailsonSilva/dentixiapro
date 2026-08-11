@@ -237,6 +237,10 @@ export default function SimulationPage() {
 
   // ── Nova Simulação: reset total ───────────────────────────────────────────
   const handleNewSimulation = () => {
+    // Registra descarte apenas se havia resultado gerado e não foi salvo
+    if (urlSimulada && !isSaved) {
+      trackSimulacaoAction("nao_salva", { procedimento: procedure });
+    }
     setImageFile(null);
     setImageBase64(null);
     setUrlOriginal(null);

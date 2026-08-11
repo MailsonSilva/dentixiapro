@@ -261,7 +261,7 @@ export async function gerarSimulacaoNativa(
 
 // ─── Tracking de Simulações ──────────────────────────────────────────────────
 export async function trackSimulacaoAction(
-  status: "acerto" | "erro" | "refeita" | "salva",
+  status: "acerto" | "erro" | "refeita" | "salva" | "nao_salva",
   metadata: Record<string, unknown> = {}
 ): Promise<{ success: boolean; error?: string }> {
   try {
