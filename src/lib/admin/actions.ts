@@ -481,30 +481,39 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
     ]);
 
     const savedCount = savedRes.count || 0;
-    let unsavedCount = 0;
+    let acertoCount = 0;   // Geradas com sucesso (inclui refeitas)
+    let unsavedCount = 0;  // Explicitamente descartadas sem salvar
     let errorCount = 0;
 
-    // Leitura direta dos status — sem inferência por subtração
     if (trackingRes.data) {
       trackingRes.data.forEach((item) => {
         if (item.status === "erro") {
           errorCount++;
         } else if (item.status === "nao_salva") {
           unsavedCount++;
+        } else if (item.status === "acerto" || item.status === "refeita") {
+          acertoCount++;
         }
-        // "acerto", "refeita" e "salva" são contados via tabela simulacoes
+        // "salva" já é contada via tabela simulacoes (savedCount)
       });
     }
 
-    const totalSimulations = savedCount + unsavedCount + errorCount;
-    const successTotal = savedCount + unsavedCount;
-    const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;
+    // Total = todas as tentativas de geração (sucesso + descartadas + erros)
+    const totalSimulations = acertoCount + unsavedCount + errorCount;
+    // Taxa de sucesso = (geradas com sucesso) / total
+    const successRate = totalSimulations > 0 ? Math.round((acertoCount / totalSimulations) * 100) : 100;
+
+    // Fallback retroativo: usa nao_salva explícito quando disponível,
+    // senão infere por acertos - salvas (compatibilidade com registros anteriores ao fix)
+    const resolvedUnsaved = unsavedCount > 0
+      ? unsavedCount
+      : Math.max(0, acertoCount - savedCount);
 
     return {
       metrics: {
         total: totalSimulations,
         saved: savedCount,
-        unsaved: unsavedCount,
+        unsaved: resolvedUnsaved,
         error: errorCount,
         successRate,
       },
