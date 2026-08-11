@@ -92,6 +92,7 @@ function extrairImagemDoGemini(obj: unknown): string | undefined {
 export async function gerarSimulacaoNativa(
   formData: FormData
 ): Promise<ResultadoSimulacao> {
+  let userId: string | null = null; // capturado cedo para o catch ter acesso
   try {
     // ── 1. Autenticação via supabaseServer (NUNCA usar o cliente browser aqui) ──
     const supabase = await createClient();
@@ -103,6 +104,7 @@ export async function gerarSimulacaoNativa(
     if (authError || !user) {
       return { success: false, error: "Usuário não autenticado." };
     }
+    userId = user.id;
 
     // ── 2. Extração dos campos do FormData ────────────────────────────────────
     const tipoTratamentoRaw = formData.get("tipoTratamento") as string | null;
@@ -254,7 +256,7 @@ export async function gerarSimulacaoNativa(
   } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Erro desconhecido no servidor.";
-    await incrementSimulacaoStat(user.id, "total_erros");
+    if (userId) await incrementSimulacaoStat(userId, "total_erros");
     return { success: false, error: msg };
   }
 }
