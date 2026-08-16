@@ -169,14 +169,23 @@ export async function gerarSimulacaoNativa(
       .getPublicUrl(fileName).data.publicUrl;
 
     // ── 5. Chamada para a API do Gemini via Interactions API (v1beta/interactions)
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return {
+        success: false,
+        error: "Chave da API Gemini (GEMINI_API_KEY) não configurada nas variáveis de ambiente do servidor/Vercel. Por favor, adicione a chave GEMINI_API_KEY no painel de Environment Variables.",
+      };
+    }
+
     const base64Imagem = fileBuffer.toString("base64");
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${encodeURIComponent(apiKey)}`;
 
     const geminiResponse = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/interactions",
+      geminiUrl,
       {
         method: "POST",
         headers: {
-          "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",
+          "x-goog-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

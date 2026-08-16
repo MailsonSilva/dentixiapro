@@ -352,52 +352,43 @@ export default function PerfilPage() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Validar tamanho (ex: 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      notify("Erro", "A imagem deve ter no máximo 2MB.", "error");
+
+    // Validar tamanho (máx 3MB)
+    if (file.size > 3 * 1024 * 1024) {
+      notify("Erro", "A imagem deve ter no máximo 3MB.", "error");
       return;
     }
 
     setLogoUploading(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = async () => {
-        try {
-          const base64 = (reader.result as string).split(",")[1];
-          const ext = file.name.split(".").pop() || "";
-          
-          const uploadRes = await uploadUserLogoAction(base64, file.type, ext);
-          if (uploadRes.error || !uploadRes.url) {
-            throw new Error(uploadRes.error || "Erro no upload da imagem.");
-          }
+      const formData = new FormData();
+      formData.append("file", file);
 
-          // Adiciona timestamp para forçar o browser/Next.js a buscar a nova imagem
-          // sem servir a versão cacheada da URL anterior
-          const freshUrl = `${uploadRes.url}?t=${Date.now()}`;
-          setLogoUrl(freshUrl);
-          setImageError(false);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setUserData((prev: any) => ({ ...prev, logo_url: freshUrl }));
-          notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Não foi possível processar a imagem.";
-          console.error("Erro no processamento da imagem:", err);
-          notify("Erro", msg, "error");
-        } finally {
-          setLogoUploading(false);
-          if (logoInputRef.current) logoInputRef.current.value = "";
-        }
-      };
-      reader.onerror = () => {
-        throw new Error("Erro ao ler arquivo local.");
-      };
+      const response = await fetch("/api/perfil/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error || !data.url) {
+        throw new Error(data.error || "Erro ao processar upload da imagem.");
+      }
+
+      // Adiciona timestamp para forçar o browser/Next.js a buscar a nova imagem
+      const freshUrl = `${data.url}?t=${Date.now()}`;
+      setLogoUrl(freshUrl);
+      setImageError(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setUserData((prev: any) => ({ ...prev, logo_url: freshUrl }));
+      notify("Foto atualizada!", "Sua foto de perfil/logo foi salva com sucesso.", "success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Não foi possível enviar a imagem.";
-      console.error("Erro ao subir logo:", err);
+      console.error("Erro ao subir imagem de perfil:", err);
       notify("Erro", msg, "error");
+    } finally {
       setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
     }
   };
 

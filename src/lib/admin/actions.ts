@@ -175,31 +175,16 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "trialing"]);
 
-    // 3. Volume de Operações do Dia
-    const [simData, simSavedData] = await Promise.all([
-      supabase.from("simulacao_tracking").select("status").gte("created_at", startOfToday),
-      supabase.from("simulacoes").select("id").gte("created_at", startOfToday),
-    ]);
+    // 3. Volume de Operações do Dia (Simulações salvas hoje)
+    const { data: simSavedData } = await supabase
+      .from("simulacoes")
+      .select("id")
+      .gte("created_at", startOfToday);
 
-    let successCount = 0;
-    let errorCount = 0;
-
-    if (simData.data) {
-      simData.data.forEach((s) => {
-        if (s.status === "acerto" || s.status === "salva" || s.status === "refeita") {
-          successCount++;
-        } else if (s.status === "erro") {
-          errorCount++;
-        }
-      });
-    }
-
-    const savedTodayCount = simSavedData.data ? simSavedData.data.length : 0;
-    if (successCount < savedTodayCount) {
-      successCount = savedTodayCount;
-    }
-
-    const todayTotal = Math.max(simData.data ? simData.data.length : 0, successCount + errorCount);
+    const savedTodayCount = simSavedData ? simSavedData.length : 0;
+    const successCount = savedTodayCount;
+    const errorCount = 0;
+    const todayTotal = savedTodayCount;
     const successRate = todayTotal > 0 ? Math.round((successCount / todayTotal) * 100) : 100;
 
     // 4. Métricas de Crescimento (Referral)
