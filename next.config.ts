@@ -8,12 +8,14 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
+      // Supabase Storage — projeto ativo
       {
         protocol: 'https',
-        hostname: 'setwhujbophxwzighcge.supabase.co',
+        hostname: 'ghcjnpileyqrugskbwqu.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
+      // Google OAuth avatars
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',

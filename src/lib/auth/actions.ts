@@ -63,7 +63,11 @@ export async function signUpAction(payload: {
     return { error: error.message, data: null };
   }
 
-
+  // Supabase retorna data.user = null silenciosamente quando email já está cadastrado
+  // e a confirmação de email está ativa (comportamento anti-enumeração)
+  if (!data.user) {
+    return { error: "Este e-mail já está cadastrado. Faça login ou use a opção 'Esqueci minha senha'.", data: null };
+  }
 
   return { error: null, data };
 }
