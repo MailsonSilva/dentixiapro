@@ -1,6 +1,77 @@
 # 🗺️ Mission Control: Estado do Projeto (Project State)
 
-**Última atualização**: 2026-08-05 — Sprint: Ajustes de UX/UI no Comparador Antes/Depois & Limpeza de Lints
+**Última atualização**: 2026-08-18 — Sprint: Correção de Bugs — Storage RLS, Webhook FK e Status de Assinatura
+
+---
+
+## 1. O Que Mudou (What Changed)
+
+### Sprint Atual (2026-08-18 — Correção de Bugs Críticos de Produção)
+
+- ✅ **Bug: Upload de foto de perfil não salvava no bucket `logoEmpresa`**
+  - **Causa**: A policy RLS de INSERT usava `storage.foldername(name)[1] = auth.uid()`, mas o arquivo é salvo como `{uid}.{ext}` na **raiz** do bucket. `foldername()` retorna `''` para arquivos na raiz → policy bloqueava silenciosamente.
+  - **Fix**: Novas policies usam `split_part(name, '.', 1) = auth.uid()`, suportando o formato `uid.ext`. Aplicado via SQL no Supabase e documentado em `20260707000000_fix_logo_empresa_rls.sql`.
+
+- ✅ **Bug: Webhook Stripe falhando com FK violation (`subscriptions_company_id_fkey`)**
+  - **Causa**: Ao restaurar o banco de produção, novos checkouts usam `company_id = user.id`. Se esse `user.id` não existe na tabela `company` (caso de usuários recém-cadastrados), a inserção em `subscriptions` falha por FK constraint.
+  - **Fix**: A Edge Function `stripe-webhook` (v5) agora verifica se a `company` existe antes do `upsert`. Se não existir, cria automaticamente um registro mínimo, garantindo que a subscription seja gravada.
+
+- ✅ **Bug: Botão "Assinar Agora" aparecia mesmo após assinatura ativa**
+  - **Causa**: Consequência do bug do webhook acima — a subscription nunca era gravada no Supabase, então `temAssinatura = false` e o botão aparecia.
+  - **Fix resolvido pelo mesmo deploy** da Edge Function v5. Após um novo checkout bem-sucedido, o botão some automaticamente.
+
+- ✅ **Webhook `stripe-webhook` atualizado para versão 5** — deploy feito via Supabase MCP.
+
+### Sprint Anterior (2026-08-05 — Ajustes de UX/UI no Comparador Antes/Depois & Limpeza de Lints)
+
+- ✅ **Ajustes no Slider e Comparador Antes e Depois**:
+  - Redução do tamanho do círculo/manípulo divisório (`w-6 h-6 sm:w-7 sm:h-7`) nos componentes `BeforeAfterSlider.tsx` e `SimulationGallery.tsx`.
+  - Otimização das dimensões do contêiner de imagem no mobile (`max-h-[42vh]`, `max-w-xs`).
+- ✅ **Correções de Tipagem e Lints**.
+
+### Sprint Anterior (2026-06-21 — Auditoria de Segurança, Limpeza e Desativação de Módulos Legados)
+
+- ✅ **Auditoria de Segurança (Passo 1)**: Isolamento de todas as chamadas ao Supabase em Server Actions.
+- ✅ **Mapeamento de Código Morto (Passo 2)**: Mapeamento detalhado de rotas e componentes obsoletos.
+- ✅ **Limpeza Estrutural e Remoção Física (Passo 3)**: Exclusão das pastas e rotas legadas.
+
+### Sprint Anterior (2026-06-20 — Liberação de Acesso Admin e Fluxo de Simulações)
+
+- ✅ **Salvamento de Simulações e Galeria** implementado.
+- ✅ **Skill de Git/GitHub (git-expert)** criada.
+
+---
+
+## 2. Escopo Ativo do Sistema (4 Módulos)
+
+O DentixiaPro opera estritamente sob 4 módulos ativos:
+1. **Início (Home)**: Painel inicial e visão geral do sistema.
+2. **Simulações**: Motor de simulações estéticas odontológicas, salvamento de resultados e galeria.
+3. **Aulas**: Área de membros e vídeos educativos.
+4. **Perfil**: Informações cadastrais, upload de logo e gerenciamento de plano de assinatura.
+
+---
+
+## 3. Estado Atual dos Sistemas
+
+| Sistema | Status | Observação |
+|---------|--------|------------|
+| **Storage `logoEmpresa`** | ✅ Funcionando | RLS corrigida em 18/08/2026 |
+| **Storage `simulacoes`** | ✅ Funcionando | — |
+| **Storage `dentixia`** | ✅ Funcionando | — |
+| **Webhook Stripe** | ✅ v5 em produção | Auto-cria company se não existir |
+| **Checkout / Assinatura** | ✅ Funcionando | Requer checkout novo para propagar sub |
+| **Botão "Assinar Agora"** | ✅ Corrigido | Some após subscription gravada |
+| **Upload de foto de perfil** | ✅ Corrigido | RLS fix aplicado |
+| **View `verificar_status_usuario`** | ✅ Funcionando | Inclui status trialing/active |
+
+## 4. O Que Está Quebrado (What's Broken)
+
+- ✅ **Segurança**: RLS habilitado e nenhuma chamada Supabase feita diretamente pelo cliente.
+- ✅ **Storage**: Policies do bucket `logoEmpresa` corrigidas.
+- ✅ **Webhook**: FK violation resolvido com auto-create de company.
+- ⚠️ **Erro `event loop` no `create-checkout`**: Erro transiente de compatibilidade Deno (`runMicrotasks not supported`). Não impede o checkout em si — monitorar se persistir.
+
 
 ---
 

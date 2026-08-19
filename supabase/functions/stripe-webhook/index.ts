@@ -207,6 +207,22 @@ async function manageSubscription(supabase: any, subscription: any) {
 
   const now = new Date().toISOString();
 
+  // Garante que a company existe antes de inserir (evita FK violation ao restaurar banco de produção)
+  const { data: companyExists } = await supabase.from("company").select("id").eq("id", companyIdFinal).maybeSingle();
+  if (!companyExists) {
+      console.log(`⚠️ Company ${companyIdFinal} não existe. Criando automaticamente...`);
+      const { error: companyErr } = await supabase.from("company").insert({
+          id: companyIdFinal,
+          name: `Empresa ${companyIdFinal.substring(0, 8)}`,
+          active: true,
+      });
+      if (companyErr) {
+          console.error(`❌ Falha ao criar company ${companyIdFinal}:`, companyErr.message);
+          return;
+      }
+      console.log(`✅ Company ${companyIdFinal} criada automaticamente.`);
+  }
+
   // Mapeamento correto para evitar erros de tipo
   const { error } = await supabase.from("subscriptions").upsert({
       id: subscription.id,
