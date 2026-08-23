@@ -223,6 +223,16 @@ async function manageSubscription(supabase: any, subscription: any) {
       console.log(`✅ Company ${companyIdFinal} criada automaticamente.`);
   }
 
+  // Garante o vínculo na tabela user_company para queries relacionais e views
+  const { data: ucExists } = await supabase.from("user_company").select("id").eq("company_id", companyIdFinal).maybeSingle();
+  if (!ucExists) {
+      await supabase.from("user_company").upsert({
+          user_id: companyIdFinal,
+          company_id: companyIdFinal,
+          role: 'owner',
+      }, { onConflict: 'user_id,company_id' });
+  }
+
   // Mapeamento correto para evitar erros de tipo
   const { error } = await supabase.from("subscriptions").upsert({
       id: subscription.id,

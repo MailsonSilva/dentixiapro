@@ -65,11 +65,11 @@ function TrialBanner({
 }) {
   const router = useRouter();
 
-  // Assinatura ativa paga → não mostrar banner
-  if (statusCode === 3 && diasRestantes === 999) return null;
+  // Assinatura ativa paga sem período de teste pendente → não mostrar banner
+  if ((statusCode === 3 && diasRestantes === 999) || (temAssinatura && diasRestantes === 999)) return null;
 
-  // Trial ainda ativo
-  if (statusCode === 3 && diasRestantes !== null && diasRestantes > 0) {
+  // Trial ainda ativo (com ou sem assinatura)
+  if (diasRestantes !== null && diasRestantes > 0) {
     const urgent = diasRestantes <= 2;
     return (
       <motion.div
@@ -109,6 +109,9 @@ function TrialBanner({
       </motion.div>
     );
   }
+
+  // Se já tem assinatura ativa, não exibe banner de expirado
+  if (temAssinatura) return null;
 
   // Trial expirado e sem assinatura
   return (
@@ -494,7 +497,7 @@ export default function PerfilPage() {
               onClick={() => setShowEdit(true)}
             />
             {/* Assinatura — se já tem assinatura (ativa, pendente ou trialing), mostra "Ver sua conta" para ir ao portal, senão mostra "Assinar Agora" */}
-            {isComum && temAssinatura ? (
+            {isComum && (temAssinatura || diasRestantes === 999) ? (
               <SettingsRow
                 icon={CreditCard}
                 label="Ver sua conta"

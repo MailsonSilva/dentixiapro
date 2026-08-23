@@ -1,12 +1,28 @@
 # 🗺️ Mission Control: Estado do Projeto (Project State)
 
-**Última atualização**: 2026-08-18 — Sprint: Correção de Bugs — Storage RLS, Webhook FK e Status de Assinatura
+**Última atualização**: 2026-08-23 — Sprint: Auditoria de Segurança, Migrations e Correções (Vídeo Boas-Vindas & Status de Assinatura)
 
 ---
 
 ## 1. O Que Mudou (What Changed)
 
-### Sprint Atual (2026-08-18 — Correção de Bugs Críticos de Produção)
+### Sprint Atual (2026-08-23 — Auditoria e Correções de Vídeo & Assinaturas)
+
+- ✅ **Bug: Vídeo de Boas-Vindas não aparecia após login**
+  - **Causa**: `ClientLayout.tsx` possuía estados mas não renderizava `<WelcomeVideoModal />` no JSX, e a tabela `system_settings` não possuía migration com RLS para consulta da chave `welcome_video_url`.
+  - **Fix**: Renderização de `<WelcomeVideoModal />` integrada globalmente no `ClientLayout.tsx` e criada a migration `20260709000000_fix_system_settings_and_subscriptions.sql` com RLS de leitura pública para configurações.
+- ✅ **Bug: Botão "Assinar Agora" no Perfil após pagamento / Tratamento de Trial**
+  - **Causa**: Descasamento relacional caso `user_company` estivesse ausente para novos usuários, fazendo a view `verificar_status_usuario` e as actions não localizarem a assinatura ativa, além da UI do `TrialBanner` não respeitar o status de assinante ativo.
+  - **Fix**: View `verificar_status_usuario` atualizada com fallback relacional direto `(uc.company_id = s.company_id OR u.id = s.company_id)`, webhook garantindo vínculo em `user_company`, `getUserProfileAction` buscando com fallback duplo e `perfil/page.tsx` exibindo "Ver sua conta" (Portal Stripe) e ocultando o botão "Assinar Agora" para usuários já pagantes/trialing.
+- ✅ **Consolidação e Limpeza de Migrations (Auditoria Concluída)**:
+  - 9 migrations antigas com sobreposições e patches foram consolidadas em **5 migrations essenciais e sem redundâncias**:
+    1. `20260701000000_core_users_auth_and_security.sql`: Base de usuários, RLS, is_admin e triggers de consentimento.
+    2. `20260702000000_storage_buckets_and_rls.sql`: Buckets `dentixia`, `simulacoes`, `logoEmpresa` e RLS.
+    3. `20260703000000_simulacoes_and_tracking.sql`: Simulações (com `cor_utilizada`) e tracking.
+    4. `20260704000000_system_settings_and_notifications.sql`: Configurações de sistema (`welcome_video_url`) e histórico de notificações.
+    5. `20260705000000_subscriptions_and_status_view.sql`: Vínculo `user_company`, RLS Stripe e view `verificar_status_usuario`.
+
+### Sprint Anterior (2026-08-18 — Correção de Bugs Críticos de Produção)
 
 - ✅ **Bug: Upload de foto de perfil não salvava no bucket `logoEmpresa`**
   - **Causa**: A policy RLS de INSERT usava `storage.foldername(name)[1] = auth.uid()`, mas o arquivo é salvo como `{uid}.{ext}` na **raiz** do bucket. `foldername()` retorna `''` para arquivos na raiz → policy bloqueava silenciosamente.

@@ -9,6 +9,8 @@ import { SidebarProvider } from "../lib/SidebarContext";
 import { DrawerProvider, useDrawer } from "../lib/DrawerContext";
 import { NotificationProvider } from "../lib/NotificationContext";
 import { getClientLayoutDataAction, signOutAction, saveUserPhoneAction, setCheckVideoAction } from "@/lib/auth/actions";
+import { getPublicWelcomeVideoUrlAction } from "@/lib/admin/actions";
+import { WelcomeVideoModal } from "@/components/WelcomeVideoModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, ArrowRight, Loader2, X, Home, Sparkles, User, Gift, BookOpen, LogOut, Phone, Play, CheckSquare, Square, ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -152,6 +154,7 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
   const [savingPhone, setSavingPhone] = useState(false);
 
   const [showWelcomeVideo, setShowWelcomeVideo] = useState(false);
+  const [welcomeVideoUrl, setWelcomeVideoUrl] = useState("");
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const path = pathname ?? "";
@@ -195,8 +198,12 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
         } else {
           setShowPhoneModal(false);
           if (!checkVideo) {
-            // 2. Se o fone está ok e checkVideo for false, exibe o pop-up de boas-vindas
-            setShowWelcomeVideo(true);
+            // 2. Se o fone está ok e checkVideo for false, busca a URL do vídeo de boas-vindas e exibe o modal
+            const videoRes = await getPublicWelcomeVideoUrlAction();
+            if (videoRes.url && videoRes.url.trim()) {
+              setWelcomeVideoUrl(videoRes.url.trim());
+              setShowWelcomeVideo(true);
+            }
           }
         }
 
@@ -248,15 +255,16 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
     } else {
       notify("Cadastro concluído!", "Seu número de WhatsApp foi salvo.", "success");
       setShowPhoneModal(false);
-      setShowWelcomeVideo(true);
+      const videoRes = await getPublicWelcomeVideoUrlAction();
+      if (videoRes.url && videoRes.url.trim()) {
+        setWelcomeVideoUrl(videoRes.url.trim());
+        setShowWelcomeVideo(true);
+      }
       router.refresh();
     }
   };
 
   const handleCloseWelcomeVideo = async () => {
-    if (dontShowAgain) {
-      await setCheckVideoAction(true);
-    }
     setShowWelcomeVideo(false);
   };
 
@@ -473,7 +481,12 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      {/* Modal Vídeo de Boas-Vindas Vertical (1080x1920 / ~80% da tela) */}
+      <WelcomeVideoModal
+        isOpen={showWelcomeVideo && !showPhoneModal && !isOffline}
+        videoUrl={welcomeVideoUrl}
+        onClose={handleCloseWelcomeVideo}
+      />
     </div>
   );
 }
