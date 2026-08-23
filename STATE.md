@@ -14,6 +14,10 @@
 - ✅ **Bug: Botão "Assinar Agora" no Perfil após pagamento / Tratamento de Trial**
   - **Causa**: Descasamento relacional caso `user_company` estivesse ausente para novos usuários, fazendo a view `verificar_status_usuario` e as actions não localizarem a assinatura ativa, além da UI do `TrialBanner` não respeitar o status de assinante ativo.
   - **Fix**: View `verificar_status_usuario` atualizada com fallback relacional direto `(uc.company_id = s.company_id OR u.id = s.company_id)`, webhook garantindo vínculo em `user_company`, `getUserProfileAction` buscando com fallback duplo e `perfil/page.tsx` exibindo "Ver sua conta" (Portal Stripe) e ocultando o botão "Assinar Agora" para usuários já pagantes/trialing.
+- ✅ **Fix de Compilação Turbopack / Vercel Build**:
+  - **Causa**: Tag de fechamento `</AnimatePresence>` havia sido omitida na substituição anterior do `ClientLayout.tsx`, gerando erro de parsing JSX no Turbopack (`Unexpected token. Did you mean {'}'}?`).
+  - **Fix**: Tag `</AnimatePresence>` devidamente recolocada fechando o modal do Paywall Blocker antes de renderizar o `WelcomeVideoModal`.
+  - **CSS Warning Fix**: Corrigido seletor `.py-3.5` para `.py-3\.5` no `globals.css` para conformidade estrita com o parser CSS do Turbopack/LightningCSS.
 - ✅ **Consolidação e Limpeza de Migrations (Auditoria Concluída)**:
   - 9 migrations antigas com sobreposições e patches foram consolidadas em **5 migrations essenciais e sem redundâncias**:
     1. `20260701000000_core_users_auth_and_security.sql`: Base de usuários, RLS, is_admin e triggers de consentimento.

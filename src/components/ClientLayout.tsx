@@ -481,6 +481,8 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
       {/* Modal Vídeo de Boas-Vindas Vertical (1080x1920 / ~80% da tela) */}
       <WelcomeVideoModal
         isOpen={showWelcomeVideo && !showPhoneModal && !isOffline}

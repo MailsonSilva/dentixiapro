@@ -152,7 +152,7 @@ button {
   /* Redução de espaçamentos e paddings exagerados de botões e cards no mobile */
   .py-5 { padding-top: 0.875rem !important; padding-bottom: 0.875rem !important; }
   .py-4 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
-  .py-3.5 { padding-top: 0.625rem !important; padding-bottom: 0.625rem !important; }
+  .py-3\.5 { padding-top: 0.625rem !important; padding-bottom: 0.625rem !important; }
   .py-3 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
   .px-10 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
   .px-8 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
