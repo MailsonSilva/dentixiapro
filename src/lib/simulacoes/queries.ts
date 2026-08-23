@@ -24,6 +24,7 @@ export async function getSimulationsAction(): Promise<Simulacao[]> {
   const { data, error } = await supabaseServer
     .from("simulacoes")
     .select("*")
+    .eq("usuario_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
