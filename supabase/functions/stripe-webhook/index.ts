@@ -105,12 +105,19 @@ Deno.serve(async (req) => {
             const customerId = session.customer;
             const companyId = session.metadata?.company_id;
             
-            // 1. Salva o vínculo de Stripe Customer ID com a Empresa no Supabase
             if (customerId && companyId) {
+                // 1. Garante que a company existe antes de salvar o customer (evita FK constraint violation)
+                await supabase.from("company").upsert({
+                    id: companyId,
+                    name: `Empresa ${companyId.substring(0, 8)}`,
+                    active: true,
+                }, { onConflict: 'id' });
+
+                // 2. Salva o vínculo de Stripe Customer ID com a Empresa no Supabase
                 const { error: custError } = await supabase.from("customers").upsert({
                     stripe_customer_id: customerId,
                     company_id: companyId
-                });
+                }, { onConflict: 'company_id' });
                 if (custError) {
                     console.error(`❌ Erro ao associar customer e company no Supabase:`, custError.message);
                 } else {
@@ -122,7 +129,6 @@ Deno.serve(async (req) => {
             if (subId) {
                 const subData = await stripeFetch(`/subscriptions/${subId}`);
                 if (subData) {
-                    // 2. Garante a propagação do company_id da sessão para a assinatura
                     if (!subData.metadata) subData.metadata = {};
                     if (!subData.metadata.company_id && companyId) {
                         subData.metadata.company_id = companyId;
@@ -133,15 +139,8 @@ Deno.serve(async (req) => {
         }
         break;
 
-      // --- COMISSÕES ---
       case "invoice.payment_succeeded":
-        const invoice = event.data.object;
-        // Verifica se é maior que 0 para evitar processar trials gratuitos como venda
-        if (invoice.amount_paid > 0) {
-          await processarComissao(supabase, invoice);
-        } else {
-            console.log("ℹ️ Pagamento R$ 0,00 (Trial ou 100% off). Ignorado para comissão.");
-        }
+        console.log(`✅ Pagamento de fatura processado no Stripe: ${event.data.object?.id}`);
         break;
     }
   } catch (error: any) {
@@ -207,33 +206,36 @@ async function manageSubscription(supabase: any, subscription: any) {
 
   const now = new Date().toISOString();
 
-  // Garante que a company existe antes de inserir (evita FK violation ao restaurar banco de produção)
-  const { data: companyExists } = await supabase.from("company").select("id").eq("id", companyIdFinal).maybeSingle();
-  if (!companyExists) {
-      console.log(`⚠️ Company ${companyIdFinal} não existe. Criando automaticamente...`);
-      const { error: companyErr } = await supabase.from("company").insert({
-          id: companyIdFinal,
-          name: `Empresa ${companyIdFinal.substring(0, 8)}`,
-          active: true,
-      });
-      if (companyErr) {
-          console.error(`❌ Falha ao criar company ${companyIdFinal}:`, companyErr.message);
-          return;
-      }
-      console.log(`✅ Company ${companyIdFinal} criada automaticamente.`);
+  // 1. Garante que a company existe via upsert
+  await supabase.from("company").upsert({
+      id: companyIdFinal,
+      name: `Empresa ${companyIdFinal.substring(0, 8)}`,
+      active: true,
+  }, { onConflict: 'id' });
+
+  // 2. Garante o registro na tabela customers (evita tabela vazia)
+  if (customerId) {
+      await supabase.from("customers").upsert({
+          company_id: companyIdFinal,
+          stripe_customer_id: customerId,
+      }, { onConflict: 'company_id' });
   }
 
-  // Garante o vínculo na tabela user_company para queries relacionais e views
+  // 3. Garante o vínculo na tabela user_company com role padrão 'user' (não-admin)
   const { data: ucExists } = await supabase.from("user_company").select("id").eq("company_id", companyIdFinal).maybeSingle();
   if (!ucExists) {
-      await supabase.from("user_company").upsert({
+      const { error: ucErr } = await supabase.from("user_company").upsert({
           user_id: companyIdFinal,
           company_id: companyIdFinal,
-          role: 'owner',
+          role: 'user',
+          active: true,
       }, { onConflict: 'user_id,company_id' });
+      if (ucErr) {
+          console.warn(`⚠️ Aviso ao vincular user_company:`, ucErr.message);
+      }
   }
 
-  // Mapeamento correto para evitar erros de tipo
+  // 4. Mapeamento correto para persistir a assinatura
   const { error } = await supabase.from("subscriptions").upsert({
       id: subscription.id,
       company_id: companyIdFinal,
@@ -252,119 +254,11 @@ async function manageSubscription(supabase: any, subscription: any) {
       canceled_at: safeDate(subscription.canceled_at),
       trial_start: safeDate(subscription.trial_start),
       trial_end: safeDate(subscription.trial_end),
-  });
+  }, { onConflict: 'id' });
 
   if (error) {
       console.error(`❌ Erro ao salvar subscription no Supabase:`, error.message);
   } else {
-      console.log(`✅ Assinatura salva com sucesso para empresa: ${companyIdFinal}`);
+      console.log(`✅ Assinatura ${subscription.id} salva com sucesso para empresa: ${companyIdFinal}`);
   }
-}
-
-// 4. Comissões
-async function processarComissao(supabase: any, invoice: any) {
-    console.log(`🔍 [COMISSÃO] Analisando Fatura: ${invoice.id}`);
-
-    let referralCode = null;
-    let companyIdDoCliente = null;
-    let subMetadata = null;
-
-    let subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
-
-    if (!subId && invoice.lines?.data) {
-        const lineItem = invoice.lines.data.find((l: any) => l.subscription);
-        if (lineItem) subId = typeof lineItem.subscription === 'string' ? lineItem.subscription : lineItem.subscription.id;
-    }
-
-    if (subId) {
-        const sub = await stripeFetch(`/subscriptions/${subId}`);
-        if (sub) subMetadata = sub.metadata;
-    } 
-    
-    if (!subMetadata) {
-        const custId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-        const subsList = await stripeFetch(`/subscriptions?customer=${custId}&limit=1`);
-        
-        if (subsList && subsList.data && subsList.data.length > 0) {
-            subMetadata = subsList.data[0].metadata;
-        }
-    }
-
-    if (subMetadata) {
-        if (subMetadata.referred_by) referralCode = subMetadata.referred_by;
-        else if (subMetadata.referral_code) referralCode = subMetadata.referral_code;
-        if (subMetadata.company_id) companyIdDoCliente = subMetadata.company_id;
-    }
-
-    if (!referralCode) {
-        const custId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-        const customer = await stripeFetch(`/customers/${custId}`);
-        if (customer && customer.metadata?.referred_by) {
-             referralCode = customer.metadata.referred_by;
-             if (!companyIdDoCliente) companyIdDoCliente = customer.metadata?.company_id;
-        }
-    }
-
-    if (!referralCode) {
-        console.log("🛑 IMPOSSÍVEL PROCESSAR: Código 'referred_by' não encontrado.");
-        return;
-    }
-
-    const { data: parceiro, error } = await supabase
-      .from("user_company")
-      .select("company_id, commission_model, commission_rate")
-      .eq("referral_code", referralCode)
-      .maybeSingle();
-
-    if (error || !parceiro) {
-      console.log(`❌ Parceiro não existe: ${referralCode}`);
-      return;
-    }
-
-    let devePagar = false;
-    let motivo = "";
-
-    if (parceiro.commission_model === 'recurring') {
-      devePagar = true;
-      motivo = "Recorrente";
-    } else {
-      let jaRecebeu = false;
-      if (companyIdDoCliente) {
-         const { count } = await supabase
-            .from("comissoes")
-            .select("*", { count: 'exact', head: true })
-            .eq("indicado_company_id", companyIdDoCliente)
-            .eq("parceiro_id", parceiro.company_id);
-         if (count && count > 0) jaRecebeu = true;
-      }
-
-      if (!jaRecebeu) {
-          devePagar = true;
-          motivo = "One-Time (1º Pagamento)";
-      } else {
-          motivo = "One-Time (Duplicado)";
-      }
-    }
-
-    console.log(`⚖️ Decisão: ${devePagar ? "APROVADO" : "RECUSADO"} | ${motivo}`);
-
-    if (devePagar) {
-      const valorVendaReal = invoice.amount_paid / 100;
-      const taxa = parceiro.commission_rate || 10;
-      const valorComissao = valorVendaReal * (taxa / 100);
-
-      const { error: insertError } = await supabase.from("comissoes").insert({
-        parceiro_id: parceiro.company_id,
-        indicado_company_id: companyIdDoCliente,
-        valor_venda: valorVendaReal,
-        valor_comissao: valorComissao,
-        percentual_aplicado: taxa,
-        tipo_comissao: parceiro.commission_model,
-        status: 'pendente',
-        fatura_stripe_id: invoice.id
-      });
-
-      if (insertError) console.error("🚨 Erro SQL:", insertError.message);
-      else console.log(`🎉 SUCESSO! Comissão R$ ${valorComissao} gravada.`);
-    }
 }

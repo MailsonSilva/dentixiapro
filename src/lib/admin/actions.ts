@@ -121,7 +121,7 @@ export async function checkAdminAccessAction(): Promise<{ isAdmin: boolean; user
       }
     }
 
-    // 2. Verificação fallback em user_company role
+    // 2. Verificação fallback exclusiva para super_admin em user_company
     const { data: ucData } = await supabase
       .from("user_company")
       .select("role")
@@ -129,7 +129,7 @@ export async function checkAdminAccessAction(): Promise<{ isAdmin: boolean; user
       .eq("active", true)
       .maybeSingle();
 
-    if (ucData && (ucData.role === "admin" || ucData.role === "super_admin")) {
+    if (ucData && ucData.role === "super_admin") {
       return { isAdmin: true, userId: user.id, error: null };
     }
 

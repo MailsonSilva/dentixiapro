@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
+import Stripe from "npm:stripe@^14.25.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +39,6 @@ Deno.serve(async (req) => {
       name,
       cpf,
       phone,
-      referral_code,
       address,
     } = payload;
 
@@ -50,7 +49,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Verificar se a empresa já possui um stripe_customer_id salvo
+    // 1. Garante que a company existe no Supabase antes de qualquer operação
+    await supabase.from("company").upsert({
+      id: company_id,
+      name: name || `Empresa ${company_id.substring(0, 8)}`,
+      active: true,
+    }, { onConflict: "id" });
+
+    // 2. Buscar usuário para verificar se ainda está no período de teste (Regra 3)
+    let trialEndTimestamp: number | undefined = undefined;
+    const { data: usuarioRecord } = await supabase
+      .from("usuarios")
+      .select("trial_ends_at")
+      .eq("id", company_id)
+      .maybeSingle();
+
+    if (usuarioRecord?.trial_ends_at) {
+      const trialEndsDate = new Date(usuarioRecord.trial_ends_at);
+      const now = new Date();
+      const diffSeconds = Math.floor((trialEndsDate.getTime() - now.getTime()) / 1000);
+
+      // Stripe exige que trial_end seja no mínimo 48 horas (172800 segundos) à frente no futuro
+      if (diffSeconds >= 172800) {
+        trialEndTimestamp = Math.floor(trialEndsDate.getTime() / 1000);
+        console.log(`⏳ Usuário com teste ativo até ${trialEndsDate.toISOString()} (${Math.ceil(diffSeconds / 86400)} dias restantes). Adicionando trial_end no Stripe.`);
+      }
+    }
+
+    // 3. Verificar se a empresa já possui um stripe_customer_id salvo
     let customerId: string | null = null;
     const { data: customerRecord } = await supabase
       .from("customers")
@@ -61,7 +87,7 @@ Deno.serve(async (req) => {
     if (customerRecord?.stripe_customer_id) {
       customerId = customerRecord.stripe_customer_id;
     } else {
-      // 2. Buscar por email no Stripe antes de criar um novo
+      // 4. Buscar por email no Stripe antes de criar um novo
       if (email) {
         const existingStripeCustomers = await stripe.customers.list({
           email: email,
@@ -73,7 +99,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 3. Se não existir, criar novo Customer no Stripe
+      // 5. Se não existir, criar novo Customer no Stripe
       if (!customerId) {
         const newCustomer = await stripe.customers.create({
           email: email || undefined,
@@ -82,8 +108,6 @@ Deno.serve(async (req) => {
           metadata: {
             company_id,
             cpf: cpf || "",
-            referral_code: referral_code || "",
-            referred_by: referral_code || "",
           },
           address: address
             ? {
@@ -98,23 +122,21 @@ Deno.serve(async (req) => {
         customerId = newCustomer.id;
       }
 
-      // 4. Salvar vínculo da empresa com o Stripe Customer
+      // 6. Salvar vínculo da empresa com o Stripe Customer
       if (customerId) {
         await supabase.from("customers").upsert({
           company_id,
           stripe_customer_id: customerId,
-        });
+        }, { onConflict: "company_id" });
       }
     }
 
     const metadataPayload = {
       company_id,
-      referral_code: referral_code || "",
-      referred_by: referral_code || "",
     };
 
-    // 5. Criar a sessão de Checkout do Stripe
-    const session = await stripe.checkout.sessions.create({
+    // 7. Criar a sessão de Checkout do Stripe
+    const sessionParams: any = {
       customer: customerId || undefined,
       customer_email: customerId ? undefined : email,
       payment_method_types: ["card"],
@@ -130,9 +152,12 @@ Deno.serve(async (req) => {
       cancel_url: `${return_url || "https://app.dentixia.com/planos"}?canceled=true`,
       subscription_data: {
         metadata: metadataPayload,
+        ...(trialEndTimestamp ? { trial_end: trialEndTimestamp } : {}),
       },
       metadata: metadataPayload,
-    });
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(
       JSON.stringify({ url: session.url }),

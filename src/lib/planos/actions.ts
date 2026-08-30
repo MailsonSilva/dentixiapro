@@ -59,7 +59,7 @@ export async function getPlanosUserDataAction() {
   // Busca dados do usuario
   const { data: u, error: uError } = await supabase
     .from("usuarios")
-    .select("nome_completo,email,cpf,telefone,address,city,postal_code,state,id,referral_code")
+    .select("nome_completo,email,cpf,telefone,address,city,postal_code,state,id,referral_code,referred_by_code,trial_ends_at")
     .eq("id", user.id)
     .single();
 

@@ -1,0 +1,60 @@
+# DentixIA Pro
+> Plataforma SaaS de simulações odontológicas com IA — Facetas, Clareamento e Implantes fotorrealistas.
+
+## Core Files
+- [src/app/layout.tsx]: Root layout (metadata, fonts, providers)
+- [src/components/ClientLayout.tsx]: Auth guard, paywall, sidebar, welcome video
+- [src/lib/supabaseServer.ts]: Supabase SSR client (cookies-based)
+- [src/lib/supabase.ts]: Supabase browser client
+
+## Feature Modules
+
+### Simulações (Core Feature)
+- [src/app/simulacoes/page.tsx]: Fluxo de criação (dicas → procedimento → upload → resultado)
+- [src/app/simulacoes/resultados/page.tsx]: Galeria de resultados (Server Component)
+- [src/lib/actions/simulacoes.ts]: Pipeline IA (validação → Gemini → storage → DB)
+- [src/lib/simulacoes/queries.ts]: Query isolada por usuario_id
+- [src/lib/simulacoes/actions.ts]: Save/Delete com verificação de propriedade
+- [src/lib/simulacoes/utils.ts]: Cores dentais (toothColors) e procedimentos
+- [src/components/simulacoes/BeforeAfterSlider.tsx]: Slider comparativo
+- [src/components/simulacoes/SimulationGallery.tsx]: Grid de simulações salvas
+- [src/components/simulacoes/ColorPicker.tsx]: Seletor de cor dental
+
+### Autenticação
+- [src/lib/auth/actions.ts]: Server Actions (login, signup, OAuth, reset)
+- [src/app/login/page.tsx]: Página de login
+- [src/app/register/page.tsx]: Página de cadastro
+- [src/app/api/auth/callback/route.ts]: OAuth callback handler
+
+### Perfil & Assinatura
+- [src/lib/perfil/actions.ts]: Server Actions (perfil, logo, status)
+- [src/lib/planos/actions.ts]: Server Actions (preços, checkout)
+- [src/app/perfil/page.tsx]: Página de perfil
+- [src/app/planos/page.tsx]: Página de planos
+
+### Admin
+- [src/lib/admin/actions.ts]: Server Actions (dashboard, métricas, gestão)
+- [src/app/admin/page.tsx]: Painel administrativo
+
+### Parceiros
+- [src/lib/indique-e-ganhe/actions.ts]: Server Actions (referral, comissão)
+- [src/app/indique-e-ganhe/page.tsx]: Dashboard de parceiros
+
+## Edge Functions (Supabase/Deno)
+- [supabase/functions/create-checkout/index.ts]: Stripe Checkout Session
+- [supabase/functions/create-portal/index.ts]: Stripe Customer Portal
+- [supabase/functions/stripe-webhook/index.ts]: Webhook handler v5
+
+## Database (Migrations)
+- [supabase/migrations/20260701000000_core_users_auth_and_security.sql]: Usuários, RLS, is_admin
+- [supabase/migrations/20260702000000_storage_buckets_and_rls.sql]: Buckets
+- [supabase/migrations/20260703000000_simulacoes_and_tracking.sql]: Simulações
+- [supabase/migrations/20260704000000_system_settings_and_notifications.sql]: Settings
+- [supabase/migrations/20260705000000_subscriptions_and_status_view.sql]: Subscriptions
+
+## Key Concepts
+- **Server Actions**: Toda interação com Supabase é feita via Server Actions (nunca no client)
+- **RLS + Application-level**: Segurança em duas camadas (banco + código)
+- **Pipeline IA**: Upload → Gemini API → Storage → Database (single server action)
+- **Multi-tenant**: Isolamento por `usuario_id` em queries e mutations
+- **RBAC**: Roles via `usuarios.tipo` (comum, parceiro, super_admin) e `user_company.role`
