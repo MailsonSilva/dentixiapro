@@ -23,12 +23,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: "2023-10-16",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado: cabeçalho de autenticação ausente." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
+    const token = authHeader.replace("Bearer ", "").trim();
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // 1. Validar autenticação do usuário chamador via JWT
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado: token de autenticação inválido ou expirado." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { company_id, return_url } = await req.json();
 
@@ -39,7 +52,51 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Buscar o stripe_customer_id da empresa
+    // 2. Prevenção de IDOR: Verificar se o usuário autenticado é proprietário da company ou admin
+    const isDirectOwner = user.id === company_id;
+    let hasCompanyAccess = isDirectOwner;
+
+    if (!hasCompanyAccess) {
+      // Verificar vínculo na tabela user_company
+      const { data: ucData } = await supabase
+        .from("user_company")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .eq("company_id", company_id)
+        .maybeSingle();
+
+      if (ucData) {
+        hasCompanyAccess = true;
+      }
+    }
+
+    if (!hasCompanyAccess) {
+      // Fallback: verificar se é admin do sistema
+      const { data: userData } = await supabase
+        .from("usuarios")
+        .select("tipo")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const userTipo = (userData?.tipo || "").toLowerCase();
+      if (userTipo === "admin" || userTipo === "super_admin") {
+        hasCompanyAccess = true;
+      }
+    }
+
+    if (!hasCompanyAccess) {
+      return new Response(
+        JSON.stringify({ error: "Acesso proibido: você não tem permissão para gerenciar o faturamento desta empresa." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    // 3. Buscar o stripe_customer_id da empresa
     const { data: customerData, error: custError } = await supabase
       .from("customers")
       .select("stripe_customer_id")
@@ -53,7 +110,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Criar a sessão do portal do cliente no Stripe
+    // 4. Criar a sessão do portal do cliente no Stripe
     const session = await stripe.billingPortal.sessions.create({
       customer: customerData.stripe_customer_id,
       return_url: return_url || "https://app.dentixia.com/perfil",

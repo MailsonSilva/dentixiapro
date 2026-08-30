@@ -19,7 +19,6 @@ import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/s
 // UI Components
 import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
 import { ColorPicker } from "@/components/simulacoes/ColorPicker";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -508,53 +507,52 @@ export default function SimulationPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSaveModal(false)}
-              className="absolute inset-0 bg-black/70"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-gray-100"
             >
-              <Card className="shadow-2xl bg-white border border-gray-100 p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-800 text-xs">Salvar Simulação</h3>
-                  <button
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 text-sm">Salvar Simulação</h3>
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <Input
+                  label="Nome do Paciente"
+                  placeholder="Digite o nome..."
+                  value={nomePaciente}
+                  onChange={(e) => setNomePaciente(e.target.value)}
+                  autoFocus
+                />
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
                     onClick={() => setShowSaveModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                    className="flex-1 h-9 text-xs font-semibold rounded-xl"
                   >
-                    <X size={14} />
-                  </button>
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveSimulation}
+                    loading={isSaving}
+                    disabled={!nomePaciente.trim() || isSaving}
+                    className="flex-1 h-9 text-xs font-semibold rounded-xl"
+                  >
+                    Confirmar
+                  </Button>
                 </div>
-
-                <CardContent className="space-y-3 p-0">
-                  <Input
-                    label="Nome do Paciente"
-                    placeholder="Digite o nome..."
-                    value={nomePaciente}
-                    onChange={(e) => setNomePaciente(e.target.value)}
-                  />
-
-                  <div className="flex gap-2 mt-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSaveModal(false)}
-                      className="flex-1 h-9 text-xs"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveSimulation}
-                      loading={isSaving}
-                      disabled={!nomePaciente.trim() || isSaving}
-                      className="flex-1 h-9 text-xs"
-                    >
-                      Confirmar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </motion.div>
           </div>
         )}

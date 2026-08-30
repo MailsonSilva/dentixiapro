@@ -242,14 +242,25 @@ export async function uploadUserLogoAction(base64Data: string, mimeType: string,
     return { error: "Não autenticado", url: null };
   }
 
-  const path = `${user.id}.${fileExt}`;
+  // Validação e sanitização estrita da extensão do arquivo
+  const allowedExtensions = ["png", "jpg", "jpeg", "webp", "gif"];
+  const sanitizedExt = (fileExt || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (!sanitizedExt || !allowedExtensions.includes(sanitizedExt)) {
+    return { error: "Extensão de imagem inválida. Permitidos: PNG, JPG, JPEG, WEBP, GIF.", url: null };
+  }
+
+  const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+  const finalMimeType = allowedMimeTypes.includes(mimeType) ? mimeType : `image/${sanitizedExt === "jpg" ? "jpeg" : sanitizedExt}`;
+
+  const path = `${user.id}.${sanitizedExt}`;
   const buffer = Buffer.from(base64Data, "base64");
 
   const { error: uploadError } = await supabase.storage
     .from("logoEmpresa")
     .upload(path, buffer, {
       upsert: true,
-      contentType: mimeType,
+      contentType: finalMimeType,
       cacheControl: '0'
     });
 

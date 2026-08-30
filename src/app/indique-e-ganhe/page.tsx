@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Users, Copy, Check, Loader2, User, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyBRL } from "@/lib/utils";
 import { getReferralDataAction } from "@/lib/indique-e-ganhe/actions";
 
 interface HeaderData {
@@ -111,8 +111,8 @@ export default function IndiqueEGanhePage() {
   const filteredIndicados = useMemo(() => {
     return indicados.filter(ind => {
       const yearMatch = ind.ano === selectedYear;
-      const monthMatch = filterType === "mensal" && selectedMonth !== "todos" 
-        ? ind.mes === (selectedMonth as number) + 1 
+      const monthMatch = filterType === "mensal" && selectedMonth !== "todos"
+        ? ind.mes === (selectedMonth as number) + 1
         : true;
 
       return yearMatch && monthMatch;
@@ -123,10 +123,10 @@ export default function IndiqueEGanhePage() {
     let t_ativos = 0, t_teste = 0, t_canc = 0, t_comissao = 0;
     resumoCardsRaw.forEach(row => {
       const yearMatch = row.ano === selectedYear;
-      const monthMatch = filterType === "mensal" && selectedMonth !== "todos" 
-        ? row.mes === (selectedMonth as number) + 1 
+      const monthMatch = filterType === "mensal" && selectedMonth !== "todos"
+        ? row.mes === (selectedMonth as number) + 1
         : true;
-      
+
       if (yearMatch && monthMatch) {
         t_ativos += row.total_ativos || 0;
         t_teste += row.total_em_teste || 0;
@@ -168,7 +168,7 @@ export default function IndiqueEGanhePage() {
     <div className="flex min-h-full flex-1 bg-secondary-bg">
       <div className="flex flex-col flex-1 pb-24 md:pb-8 border-none h-full overflow-hidden w-full">
         <main className="max-w-5xl mx-auto w-full px-4 py-8 space-y-6">
-          
+
           {/* Welcome Section */}
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -189,7 +189,7 @@ export default function IndiqueEGanhePage() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={handleCopy}
                 className="bg-white hover:bg-emerald-50/50 text-gray-700 border border-emerald-200/80 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm active:scale-95 transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer"
               >
@@ -250,19 +250,19 @@ export default function IndiqueEGanhePage() {
             {/* Status Cards Dinâmicos */}
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
               <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
-                    <Clock size={16} className="text-orange-500" />
-                 </div>
+                <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
+                  <Clock size={16} className="text-orange-500" />
+                </div>
               </div>
               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Em teste</span>
               <p className="text-2xl sm:text-3xl font-semibold text-[#F19642]">{resumoComputed.total_em_teste}</p>
             </div>
-            
+
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
               <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-                    <Users size={16} className="text-blue-500" />
-                 </div>
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                  <Users size={16} className="text-blue-500" />
+                </div>
               </div>
               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Ativos</span>
               <p className="text-2xl sm:text-3xl font-semibold text-[#11A0D9]">{resumoComputed.total_ativos}</p>
@@ -270,35 +270,35 @@ export default function IndiqueEGanhePage() {
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
               <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
-                    <Users size={16} className="text-red-500" />
-                 </div>
+                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
+                  <Users size={16} className="text-red-500" />
+                </div>
               </div>
               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Inativos</span>
               <p className="text-2xl sm:text-3xl font-semibold text-[#EB5757]">{resumoComputed.total_cancelados}</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-1 border border-gray-50">
-               <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500">
-                    <User size={16} />
-                 </div>
-               </div>
-               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Total (Mês)</span>
-               <p className="text-2xl sm:text-3xl font-semibold text-gray-800">{filteredIndicados.length}</p>
+              <div className="flex justify-between items-center w-full">
+                <div className="w-8 h-8 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500">
+                  <User size={16} />
+                </div>
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block">Total (Mês)</span>
+              <p className="text-2xl sm:text-3xl font-semibold text-gray-800">{filteredIndicados.length}</p>
             </div>
 
             <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2 col-span-2 md:col-span-1 border border-gray-50 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-4 opacity-10">
-                 $
-               </div>
-               <div className="flex justify-between items-center w-full">
-                 <div className="w-8 h-8 rounded-2xl bg-[#E6F9F0] flex items-center justify-center text-emerald-600 font-bold">
-                    $
-                 </div>
-               </div>
-               <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block z-10 relative">Comissão (Global)</span>
-               <p className="text-2xl sm:text-3xl font-semibold text-emerald-600">R$ {(resumoComputed.comissao_total).toFixed(2)}</p>
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                $
+              </div>
+              <div className="flex justify-between items-center w-full">
+                <div className="w-8 h-8 rounded-2xl bg-[#E6F9F0] flex items-center justify-center text-emerald-600 font-bold">
+                  $
+                </div>
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold text-gray-400 capitalize leading-tight block z-10 relative">Comissão (Global)</span>
+              <p className="text-2xl sm:text-3xl font-semibold text-emerald-600">{formatCurrencyBRL(resumoComputed.comissao_total)}</p>
             </div>
           </div>
 
@@ -330,11 +330,11 @@ export default function IndiqueEGanhePage() {
                         <td className="px-4 py-3 text-center whitespace-nowrap">
                           <div className={cn(
                             "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
-                            item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo" 
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                              : item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" 
-                              ? "bg-rose-50 text-rose-700 border-rose-200" 
-                              : "bg-amber-50 text-amber-700 border-amber-200"
+                            item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
                           )}>
                             {(item.status_formatado?.toLowerCase() === "active" || item.status_formatado === "Ativo") && <Check size={12} className="mr-1 text-emerald-600" />}
                             {(item.status_formatado?.toLowerCase() === "canceled" || item.status_formatado === "Inativo" || item.status_formatado?.toLowerCase() === "trialing") && <Clock size={12} className="mr-1 text-amber-600" />}
@@ -348,7 +348,7 @@ export default function IndiqueEGanhePage() {
                           {item.data_cadastro_user ? new Date(item.data_cadastro_user).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                         </td>
                         <td className="px-4 py-3 text-center font-bold text-emerald-700 whitespace-nowrap">
-                          {item.valor_comissao_estimada ? `R$ ${Number(item.valor_comissao_estimada).toFixed(2)}` : "-"}
+                          {formatCurrencyBRL(item.valor_comissao_estimada)}
                         </td>
                       </tr>
                     ))}

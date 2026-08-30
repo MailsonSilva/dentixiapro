@@ -30,6 +30,17 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // Validação opcional de JWT se fornecido no cabeçalho
+    const authHeader = req.headers.get("Authorization");
+    let authenticatedUser: any = null;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      if (token && token !== Deno.env.get("SUPABASE_ANON_KEY")) {
+        const { data: { user } } = await supabase.auth.getUser(token);
+        authenticatedUser = user;
+      }
+    }
+
     const payload = await req.json();
     const {
       price_id,
@@ -47,6 +58,36 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "price_id e company_id são obrigatórios." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Se o usuário estiver autenticado, garante que não está usando company_id de terceiro
+    if (authenticatedUser) {
+      const isDirectOwner = authenticatedUser.id === company_id;
+      if (!isDirectOwner) {
+        const { data: ucLink } = await supabase
+          .from("user_company")
+          .select("id")
+          .eq("user_id", authenticatedUser.id)
+          .eq("company_id", company_id)
+          .maybeSingle();
+
+        if (!ucLink) {
+          // Checar se é admin
+          const { data: uData } = await supabase
+            .from("usuarios")
+            .select("tipo")
+            .eq("id", authenticatedUser.id)
+            .maybeSingle();
+
+          const tipo = (uData?.tipo || "").toLowerCase();
+          if (tipo !== "admin" && tipo !== "super_admin") {
+            return new Response(
+              JSON.stringify({ error: "Acesso proibido: identificador de empresa incompatível com o usuário autenticado." }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
     }
 
     // 1. Garante que a company existe no Supabase antes de qualquer operação
