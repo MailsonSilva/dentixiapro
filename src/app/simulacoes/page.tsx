@@ -395,7 +395,10 @@ export default function SimulationPage() {
                 </div>
 
                 {/* Image Upload / Preview (No Topo) */}
-                <div className="bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 min-h-[240px] flex flex-col items-center justify-center relative overflow-hidden">
+                <div className={cn(
+                  "bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300",
+                  !imageBase64 ? "min-h-[220px]" : "min-h-[380px] sm:min-h-[440px]"
+                )}>
                   {/* Loading overlay while processing */}
                   <AnimatePresence>
                     {isProcessing && (
@@ -428,13 +431,13 @@ export default function SimulationPage() {
                       <input ref={camRef} type="file" hidden accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                     </div>
                   ) : (
-                    <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative w-full h-full min-h-[360px] sm:min-h-[420px] flex items-center justify-center py-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imageBase64}
                         alt="Preview"
                         className={cn(
-                          "max-h-[220px] rounded-lg shadow-md transition-all duration-200",
+                          "max-h-[360px] sm:max-h-[420px] w-auto rounded-xl shadow-md object-contain transition-all duration-200",
                           isFlippingPreview && "opacity-50 scale-95"
                         )}
                       />

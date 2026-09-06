@@ -10,7 +10,8 @@ import {
   RotateCcw,
   FlipHorizontal,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Smile
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { flipImageHorizontal } from "@/lib/simulacoes/utils";
@@ -29,9 +30,10 @@ export function CameraCaptureModal({
   onFallbackFileInput
 }: CameraCaptureModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,26 +120,65 @@ export function CameraCaptureModal({
     setFacingMode(nextMode);
   };
 
-  // Captura o frame atual do vídeo para um Canvas sem inverter os lados reais
+  // Captura o frame do vídeo com enquadramento VERTICAL proporcional ao que o usuário vê na tela
   const handleTakePhoto = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !viewportRef.current) return;
     const video = videoRef.current;
+    const viewport = viewportRef.current;
+
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    const videoAspect = vw / vh;
+
+    // Proporção real do viewport vertical em tela
+    const vpWidth = viewport.clientWidth || 360;
+    const vpHeight = viewport.clientHeight || 540;
+    const viewportAspect = vpWidth / vpHeight;
+
+    // Calcula o recorte central correspondente ao CSS object-cover vertical
+    let cropWidth: number;
+    let cropHeight: number;
+    let cropX: number;
+    let cropY: number;
+
+    if (videoAspect > viewportAspect) {
+      // Vídeo é mais largo que o visor -> cortamos as laterais (crop horizontal)
+      cropHeight = vh;
+      cropWidth = vh * viewportAspect;
+      cropX = (vw - cropWidth) / 2;
+      cropY = 0;
+    } else {
+      // Vídeo é mais alto que o visor -> cortamos topo/base (crop vertical)
+      cropWidth = vw;
+      cropHeight = vw / viewportAspect;
+      cropX = 0;
+      cropY = (vh - cropHeight) / 2;
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    canvas.width = Math.round(cropWidth);
+    canvas.height = Math.round(cropHeight);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // IMPORTANTE ANATÔMICO:
-    // O vídeo direto do sensor captura a cena física real (como um observador externo vê o paciente).
-    // O lado direito do paciente estará estritamente no lado direito correto do arquivo final.
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Desenha exatamente a porção central vertical visível no visor (anatomia real, sem inversão)
+    ctx.drawImage(
+      video,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
     const base64 = canvas.toDataURL("image/jpeg", 0.95);
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          const file = new File([blob], "captura-camera.jpg", { type: "image/jpeg" });
+          const file = new File([blob], "captura-rosto-vertical.jpg", { type: "image/jpeg" });
           setCapturedFile(file);
           setCapturedBase64(base64);
         }
@@ -153,7 +194,7 @@ export function CameraCaptureModal({
     setIsFlipping(true);
     try {
       const source = capturedFile || capturedBase64!;
-      const result = await flipImageHorizontal(source, "captura-camera-espelhada.jpg");
+      const result = await flipImageHorizontal(source, "captura-rosto-espelhada.jpg");
       setCapturedFile(result.file);
       setCapturedBase64(result.base64);
     } catch (e) {
@@ -182,42 +223,45 @@ export function CameraCaptureModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+          className="absolute inset-0 bg-black/85 backdrop-blur-md"
         />
 
-        {/* Modal Container */}
+        {/* Modal Container — Formato VERTICAL de Alta Estatura */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative bg-slate-900 text-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-700 flex flex-col max-h-[95vh]"
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          className="relative bg-slate-950 text-white rounded-2xl sm:rounded-3xl w-full max-w-md h-[88vh] max-h-[760px] overflow-hidden shadow-2xl border border-slate-800 flex flex-col z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/80 z-20">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/80 bg-slate-950/90 z-20">
             <div className="flex items-center gap-2">
               <Camera size={18} className="text-primary-cyan" />
               <h2 className="text-sm font-bold text-white tracking-wide">
-                {capturedBase64 ? "Revisar Foto do Paciente" : "Capturar Foto"}
+                {capturedBase64 ? "Revisar Enquadramento Facial" : "Foto do Paciente (Vertical)"}
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
               title="Fechar"
             >
               <X size={20} />
             </button>
           </div>
 
-          {/* Body / Viewport */}
-          <div className="relative w-full aspect-[4/3] sm:aspect-[4/3] bg-black overflow-hidden flex items-center justify-center">
+          {/* Body / Viewport Vertical Expandido */}
+          <div
+            ref={viewportRef}
+            className="relative flex-1 w-full bg-black overflow-hidden flex items-center justify-center"
+          >
             {cameraError ? (
               <div className="p-6 text-center max-w-xs flex flex-col items-center">
                 <div className="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-3">
@@ -230,7 +274,7 @@ export function CameraCaptureModal({
                 <div className="flex flex-col gap-2 w-full">
                   <button
                     onClick={() => startCamera(facingMode)}
-                    className="w-full py-2 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+                    className="w-full py-2.5 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors"
                   >
                     Tentar Novamente
                   </button>
@@ -240,7 +284,7 @@ export function CameraCaptureModal({
                         onClose();
                         onFallbackFileInput();
                       }}
-                      className="w-full py-2 border border-slate-700 text-slate-300 text-xs font-semibold rounded-xl hover:bg-slate-800 transition-colors"
+                      className="w-full py-2.5 border border-slate-700 text-slate-300 text-xs font-semibold rounded-xl hover:bg-slate-800 transition-colors"
                     >
                       Usar Câmera Nativa do Aparelho
                     </button>
@@ -248,23 +292,23 @@ export function CameraCaptureModal({
                 </div>
               </div>
             ) : capturedBase64 ? (
-              /* Review Captured Image */
+              /* Review Captured Image em Altura Completa */
               <div className="relative w-full h-full flex items-center justify-center bg-black">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={capturedBase64}
-                  alt="Captura"
+                  alt="Captura Vertical"
                   className={cn(
-                    "w-full h-full object-contain transition-all duration-300",
+                    "w-full h-full object-cover transition-all duration-300",
                     isFlipping && "opacity-50 scale-95"
                   )}
                 />
-                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-emerald-400 border border-emerald-500/30 flex items-center gap-1 font-medium">
-                  <Check size={12} /> Orientação Anatômica Real
+                <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 font-medium shadow-md">
+                  <Check size={13} /> Formato Retrato • Orientação Real
                 </div>
               </div>
             ) : (
-              /* Live Video Feed */
+              /* Live Video Feed Vertical */
               <div className="relative w-full h-full flex items-center justify-center bg-black">
                 <video
                   ref={videoRef}
@@ -273,39 +317,42 @@ export function CameraCaptureModal({
                   muted
                   className={cn(
                     "w-full h-full object-cover",
-                    // Espelha no visor apenas quando for frontal para sensação natural de espelho durante o alinhamento
                     facingMode === "user" && "scale-x-[-1]"
                   )}
                 />
 
                 {isLoading && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 gap-2">
-                    <RefreshCw className="animate-spin text-primary-cyan" size={24} />
-                    <span className="text-xs text-slate-300">Iniciando visor...</span>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 gap-2 z-20">
+                    <RefreshCw className="animate-spin text-primary-cyan" size={26} />
+                    <span className="text-xs text-slate-300">Carregando visor vertical...</span>
                   </div>
                 )}
 
-                {/* Guia de Enquadramento Odontológico (Linha Média e Arco de Sorriso) */}
+                {/* Guia Facial Anatômica Vertical para Fotografia Odontológica */}
                 {!isLoading && (
-                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
+                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
                     {/* Linha vertical central (Linha média facial) */}
-                    <div className="w-[1px] h-3/4 border-r border-dashed border-primary-cyan/40" />
+                    <div className="w-[1px] h-[85%] border-r border-dashed border-primary-cyan/40" />
 
-                    {/* Retículo do sorriso */}
-                    <div className="absolute w-44 h-24 sm:w-56 sm:h-32 border-2 border-primary-cyan/60 rounded-[40px] shadow-[0_0_15px_rgba(17,180,217,0.25)] flex items-center justify-center">
-                      <span className="text-[10px] text-white/80 font-medium bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        Alinhe o Sorriso Aqui
-                      </span>
+                    {/* Contorno anatômico do rosto (Oval Facial) */}
+                    <div className="absolute w-[72%] h-[74%] max-w-[280px] max-h-[420px] border-2 border-dashed border-white/30 rounded-[50%/46%] shadow-[0_0_20px_rgba(0,0,0,0.5)] flex flex-col items-center justify-end pb-8">
+                      {/* Retículo do Sorriso / Boca */}
+                      <div className="w-[78%] h-20 sm:h-24 border-2 border-primary-cyan rounded-[32px] bg-primary-cyan/10 backdrop-blur-[1px] shadow-[0_0_20px_rgba(17,180,217,0.3)] flex flex-col items-center justify-center gap-1">
+                        <Smile size={16} className="text-primary-cyan" />
+                        <span className="text-[10px] text-white font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-slate-900/60">
+                          Posicione o Sorriso
+                        </span>
+                      </div>
                     </div>
 
                     {/* Dica de orientação na base do visor */}
-                    <div className="absolute bottom-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-slate-200 border border-white/10 flex items-center gap-1.5 font-medium">
-                      <Sparkles size={11} className="text-amber-300" />
-                      Rosto ereto e perpendicular à câmera
+                    <div className="absolute bottom-4 bg-slate-900/80 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[11px] text-slate-200 border border-white/15 flex items-center gap-1.5 font-medium shadow-lg">
+                      <Sparkles size={12} className="text-amber-300" />
+                      Mantenha o rosto na vertical e encare a câmera
                     </div>
 
                     {/* Badge da câmera atual */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-slate-300 border border-white/10">
+                    <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-slate-300 border border-white/10">
                       {facingMode === "environment" ? "Câmera Traseira" : "Câmera Frontal"}
                     </div>
                   </div>
@@ -315,7 +362,7 @@ export function CameraCaptureModal({
                 {hasMultipleCameras && !isLoading && (
                   <button
                     onClick={handleToggleFacingMode}
-                    className="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer"
+                    className="absolute top-3 right-3 p-2.5 bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer"
                     title="Alternar Câmera"
                   >
                     <RefreshCw size={16} />
@@ -326,7 +373,7 @@ export function CameraCaptureModal({
           </div>
 
           {/* Footer Controls */}
-          <div className="p-4 bg-slate-950 border-t border-slate-800">
+          <div className="p-4 bg-slate-950 border-t border-slate-800/80">
             {capturedBase64 ? (
               /* Review Actions */
               <div className="flex flex-col gap-2.5">
@@ -335,7 +382,7 @@ export function CameraCaptureModal({
                   <button
                     onClick={handleFlipCaptured}
                     disabled={isFlipping}
-                    className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <FlipHorizontal size={15} className="text-primary-cyan" />
                     Inverter Lados
@@ -344,7 +391,7 @@ export function CameraCaptureModal({
                   {/* Botão Tirar Novamente */}
                   <button
                     onClick={handleRetake}
-                    className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <RotateCcw size={15} />
                     Tirar Novamente
@@ -354,10 +401,10 @@ export function CameraCaptureModal({
                 {/* Botão Confirmar Foto */}
                 <button
                   onClick={handleConfirm}
-                  className="w-full py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-lg cursor-pointer"
+                  className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
                 >
-                  <Check size={16} />
-                  Confirmar e Usar Foto
+                  <Check size={17} />
+                  Confirmar e Usar Foto Vertical
                 </button>
               </div>
             ) : (
