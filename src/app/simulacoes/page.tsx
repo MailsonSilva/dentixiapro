@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, Check, Save, FlipHorizontal
+  Upload, ImageIcon, Camera, Check, Save
 } from "lucide-react";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useNotification } from "@/lib/NotificationContext";
 
 // SSD Layers
-import { procedures, flipImageHorizontal } from "@/lib/simulacoes/utils";
+import { procedures } from "@/lib/simulacoes/utils";
 import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
 
 // UI Components
@@ -143,7 +143,6 @@ export default function SimulationPage() {
   const [permissionErrorModal, setPermissionErrorModal] = useState(false);
   const [permissionErrorMessage, setPermissionErrorMessage] = useState("");
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
-  const [isFlippingPreview, setIsFlippingPreview] = useState(false);
 
   // Abertura do modal com visor WebRTC real e enquadramento odontológico
   const handleCameraCapture = () => {
@@ -154,24 +153,6 @@ export default function SimulationPage() {
   const handleCapturedPhoto = (file: File, base64: string) => {
     setImageFile(file);
     setImageBase64(base64);
-  };
-
-  // Permite inverter os lados (espelhar horizontalmente) qualquer foto selecionada
-  const handleFlipPreview = async () => {
-    if (!imageBase64 && !imageFile) return;
-    setIsFlippingPreview(true);
-    try {
-      const source = imageFile || imageBase64!;
-      const res = await flipImageHorizontal(source, "paciente-invertido.jpg");
-      setImageFile(res.file);
-      setImageBase64(res.base64);
-      notify("Foto invertida", "Os lados da foto foram invertidos com sucesso.", "success");
-    } catch (err: unknown) {
-      console.error("Erro ao inverter imagem:", err);
-      notify("Erro", "Não foi possível inverter a imagem.", "error");
-    } finally {
-      setIsFlippingPreview(false);
-    }
   };
 
   const handleGallerySelect = () => {
@@ -436,39 +417,21 @@ export default function SimulationPage() {
                       <img
                         src={imageBase64}
                         alt="Preview"
-                        className={cn(
-                          "max-h-[360px] sm:max-h-[420px] w-auto rounded-xl shadow-md object-contain transition-all duration-200",
-                          isFlippingPreview && "opacity-50 scale-95"
-                        )}
+                        className="max-h-[360px] sm:max-h-[420px] w-auto rounded-xl shadow-md object-contain"
                       />
                       
-                      {/* Ações da foto carregada */}
-                      <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                        {/* Botão de Inverter Lados (Espelhar) */}
-                        <button
-                          type="button"
-                          onClick={handleFlipPreview}
-                          disabled={isFlippingPreview}
-                          className="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold shadow-lg backdrop-blur-md cursor-pointer transition-all border border-white/20 disabled:opacity-50"
-                          title="Inverter Lados da Foto (Espelhar Horizontalmente)"
-                        >
-                          <FlipHorizontal size={13} className="text-primary-cyan" />
-                          <span>Inverter Lados</span>
-                        </button>
-
-                        {/* Botão de Remover */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImageBase64(null);
-                            setImageFile(null);
-                          }}
-                          className="bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center w-7 h-7 p-0 shadow-lg cursor-pointer transition-all"
-                          title="Remover Foto"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
+                      {/* Botão de Remover Foto */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageBase64(null);
+                          setImageFile(null);
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center w-7 h-7 p-0 shadow-lg cursor-pointer transition-all z-10"
+                        title="Remover Foto"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                   )}
                 </div>

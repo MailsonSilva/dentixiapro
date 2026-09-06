@@ -1,26 +1,25 @@
-# Plano de Orquestração: Simplificação Total da Câmera (Sem Máscara/Poluição Visual) e Não-Inversão
+# Plano de Orquestração: Remoção de Botões de Inverter Foto e Redução Mínima aos Botões Essenciais
 
 ## Objetivo
-Remover completamente as máscaras, retículos, linhas guia, badges e opções poluídas do visor da câmera, deixando a tela 100% limpa, objetiva e focada apenas no que importa: **abrir a câmera em tela cheia/vertical e tirar a foto sem inverter os lados**.
+Remover todos os botões de inverter/espelhar a foto (tanto no modal de captura quanto no preview da página de simulações), mantendo estritamente apenas os botões essenciais:
+1. **Captura:** Disparo de foto (Shutter).
+2. **Troca de Câmera:** Alternar entre câmera dianteira e traseira.
+3. **Controle básico:** Fechar (X) e botões de confirmação pós-disparo ("Tirar Outra" / "Usar Foto").
 
 ## Agentes Envolvidos (Mínimo 3)
-1. **`project-planner`**: Redesenho do fluxo para remoção de ruído visual e garantia de não-inversão no disparo.
-2. **`frontend-specialist`**: Limpeza completa do `CameraCaptureModal.tsx` (remoção da máscara oval, retículo de sorriso, badges e textos decorativos) mantendo apenas o visor limpo, botão de disparo, botão de alternar câmera e revisão simples.
-3. **`test-engineer`**: Validação de fidelidade da imagem capturada sem inversão e verificação de integridade de código.
+1. **`project-planner`**: Mapeamento e limpeza dos botões não necessários.
+2. **`frontend-specialist`**: Remoção do botão de inverter em `CameraCaptureModal.tsx` e em `app/src/app/simulacoes/page.tsx`.
+3. **`test-engineer`**: Validação de integridade do fluxo de captura direta sem opções extras.
 
 ---
 
-## O que será feito:
-1. **Remover Máscara e Poluição Visual (`CameraCaptureModal.tsx`):**
-   - Eliminar a guia oval de rosto, retículo de sorriso, linha vertical central e badges/textos informativos.
-   - O visor exibirá apenas a imagem límpida da câmera em tempo real.
-   - Controles mínimos:
-     - Fechar (X).
-     - Alternar câmera frontal/traseira (apenas se houver mais de uma).
-     - Botão circular de disparo no rodapé.
-   - Pós-captura (Revisão): Apenas foto, botão de confirmar e botão de tirar novamente (mais botão simples caso queira inverter).
-2. **Garantir Não-Inversão da Foto:**
-   - Garantir que a foto capturada preserve a orientação física real exata (lado direito permanece no lado direito).
+## Detalhamento das Alterações:
+1. **`CameraCaptureModal.tsx`:**
+   - Remover botão "Inverter" e a função `handleFlipCaptured`.
+   - Manter apenas: Troca de câmera (dianteira/traseira), Disparo, Fechar (X), "Tirar Outra" e "Usar Foto".
+2. **`simulacoes/page.tsx`:**
+   - Remover botão "Inverter Lados" do card de preview.
+   - Manter apenas a foto e o botão de remover/fechar.
 
 ---
 **Status**: Aguardando aprovação do usuário para executar.

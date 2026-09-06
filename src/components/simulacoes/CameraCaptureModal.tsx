@@ -6,11 +6,9 @@ import {
   X,
   RefreshCw,
   Check,
-  RotateCcw,
-  FlipHorizontal
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { flipImageHorizontal } from "@/lib/simulacoes/utils";
 
 interface CameraCaptureModalProps {
   isOpen: boolean;
@@ -108,7 +106,7 @@ export function CameraCaptureModal({
     };
   }, [isOpen, facingMode, startCamera, stopStream]);
 
-  // Alterna entre câmera frontal e traseira
+  // Alterna entre câmera dianteira e traseira
   const handleToggleFacingMode = () => {
     const nextMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(nextMode);
@@ -151,9 +149,8 @@ export function CameraCaptureModal({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Se a câmera frontal estiver ativa e espelhada no visor (modo selfie),
-    // a captura no canvas aplica a mesma orientação para que a foto NÃO inverta
-    // em relação ao que o usuário vê ao tirar a foto!
+    // Se câmera frontal estiver espelhada no visor (modo selfie),
+    // a captura no canvas aplica a mesma orientação para que a foto NÃO inverta!
     if (facingMode === "user") {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
@@ -183,19 +180,6 @@ export function CameraCaptureModal({
       "image/jpeg",
       0.95
     );
-  };
-
-  // Inverter lados manualmente se desejado
-  const handleFlipCaptured = async () => {
-    if (!capturedFile && !capturedBase64) return;
-    try {
-      const source = capturedFile || capturedBase64!;
-      const result = await flipImageHorizontal(source, "foto-paciente.jpg");
-      setCapturedFile(result.file);
-      setCapturedBase64(result.base64);
-    } catch (e) {
-      console.error("Erro ao inverter foto:", e);
-    }
   };
 
   // Descarta foto e volta para a câmera
@@ -234,18 +218,19 @@ export function CameraCaptureModal({
           exit={{ opacity: 0, scale: 0.97 }}
           className="relative bg-black rounded-2xl w-full max-w-md h-[88vh] max-h-[740px] overflow-hidden shadow-2xl flex flex-col z-10"
         >
-          {/* Barra Superior Minimalista */}
+          {/* Barra Superior Minimalista: Trocar Câmera (se houver) e Fechar */}
           <div className="absolute top-0 inset-x-0 p-3 flex items-center justify-between z-30 bg-gradient-to-b from-black/70 to-transparent">
-            {hasMultipleCameras && !capturedBase64 && (
+            {hasMultipleCameras && !capturedBase64 ? (
               <button
                 onClick={handleToggleFacingMode}
                 className="p-2 text-white bg-black/40 hover:bg-black/70 rounded-full backdrop-blur-sm cursor-pointer transition-colors"
-                title="Trocar câmera"
+                title="Alternar entre câmera dianteira e traseira"
               >
                 <RefreshCw size={18} />
               </button>
+            ) : (
+              <div />
             )}
-            <div className="flex-1" />
             <button
               onClick={onClose}
               className="p-2 text-white bg-black/40 hover:bg-black/70 rounded-full backdrop-blur-sm cursor-pointer transition-colors"
@@ -255,7 +240,7 @@ export function CameraCaptureModal({
             </button>
           </div>
 
-          {/* Visor 100% Limpo — SEM MÁSCARA NEM TEXTOS */}
+          {/* Visor 100% Limpo */}
           <div
             ref={viewportRef}
             className="relative flex-1 w-full bg-black overflow-hidden flex items-center justify-center"
@@ -320,28 +305,19 @@ export function CameraCaptureModal({
           {/* Barra Inferior */}
           <div className="p-4 bg-black/90 flex items-center justify-center z-20">
             {capturedBase64 ? (
-              /* Ações da Foto Capturada */
-              <div className="flex items-center justify-between w-full gap-2">
+              /* Ações Pós-Captura: Apenas Tirar Outra ou Usar Foto */
+              <div className="flex items-center justify-between w-full gap-3">
                 <button
                   onClick={handleRetake}
-                  className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <RotateCcw size={15} />
                   Tirar Outra
                 </button>
 
                 <button
-                  onClick={handleFlipCaptured}
-                  className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                  title="Inverter lados"
-                >
-                  <FlipHorizontal size={15} />
-                  Inverter
-                </button>
-
-                <button
                   onClick={handleConfirm}
-                  className="flex-1 py-2.5 px-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 py-3 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-lg"
                 >
                   <Check size={16} />
                   Usar Foto
