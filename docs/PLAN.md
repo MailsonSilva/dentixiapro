@@ -1,39 +1,34 @@
-# Plano de Implementação: Configuração do Evolution API e Fluxo n8n DentixiaProCRM
+# Plano de Orquestração: Correção da Câmera e Inversão de Foto (DentixIA Pro)
 
 ## Objetivo
-Configurar a criação de instâncias do Evolution para enviar mensagens diretamente ao webhook do n8n, criar uma tabela no Supabase para gerenciar clientes, e otimizar o fluxo de conversa no n8n para verificar se o contato é um cliente existente antes de processar a memória do chat, garantindo maior fluidez nas respostas.
+Corrigir a abertura da câmera e o espelhamento/inversão de lados da foto durante o processo de simulação de tratamento dental, garantindo a fidelidade anatômica (lado direito e esquerdo corretos).
 
-## Arquitetura e Agentes Envolvidos
-Esta orquestração necessita de no mínimo 3 agentes especializados:
-
-1. **`backend-specialist`**: Responsável por alterar a rota de criação de instância da Evolution API e editar o fluxo no n8n.
-2. **`database-architect`**: Responsável por modelar e criar a tabela de clientes no Supabase para a verificação rápida.
-3. **`test-engineer` / `security-auditor`**: Responsável por validar a integração e verificar os scripts de segurança após a implementação.
-
-## Tarefas (Phase 2 - Pós Aprovação)
-
-### 1. Banco de Dados (Supabase) - `database-architect`
-- Criar tabela `clientes` (ou equivalente) no Supabase (projeto atual).
-- Colunas sugeridas: `id`, `company_id`, `telefone` (identificador do whatsapp), `nome`, `created_at`.
-- Configurar políticas RLS para garantir que a consulta seja segura e indexar o campo de `telefone` para buscas rápidas.
-
-### 2. Backend (Evolution API) - `backend-specialist`
-- Arquivo alvo: `app/src/app/api/evolution/create-instance/route.ts`
-- Alteração: Adicionar/Substituir o webhook padrão para o webhook do n8n: `https://webhook.vps.webartemodelos.com/webhook/dentixiaprocrm`
-- Garantir que a configuração do payload envie os eventos corretamente (`MESSAGES_UPSERT`).
-
-### 3. Automação (n8n) - `backend-specialist`
-- Fluxo alvo: `CRM Dentixia Pro` (ID: T6IKNnjijsYA7u77)
-- Alteração: Interceptar o gatilho inicial (Webhook). Adicionar um nó do Supabase para verificar pelo número do WhatsApp se o contato já existe na tabela de clientes.
-- Lógica de Roteamento (Switch/If): 
-  - Se for cliente existente: Segue fluxo normal otimizado.
-  - Se for novo cliente: Pode ser cadastrado antes de seguir.
-- A verificação deve ocorrer **antes** do nó do Chat Memory / Agent, melhorando a fluidez visual da conversa e o contexto da IA.
-
-### 4. Verificação - `test-engineer`
-- Executar linting e checagem de tipos na alteração do backend.
-- Testar a criação de instância e validar se o webhook do n8n foi devidamente associado.
-- (Opcional) Executar o `security_scan.py` para garantir que nenhuma chave tenha sido exposta.
+## Agentes Envolvidos (Mínimo 3)
+1. **`project-planner`**: Mapeamento do fluxo de captura, requisitos clínicos de orientação dental e plano de execução.
+2. **`frontend-specialist`**: Implementação do componente `CameraCaptureModal.tsx` com WebRTC, alternância de câmera e botão de inverter/espelhar imagem.
+3. **`test-engineer`**: Validação de regressão, linting e testes de manipulação de imagem via canvas.
 
 ---
-**Status**: Aguardando aprovação do usuário para iniciar a Phase 2 (Implementação Paralela).
+
+## Fases da Execução
+
+### Fase 1: Planejamento (Concluída)
+- Diagnóstico da abertura de câmera (Desktop vs Mobile).
+- Identificação da inversão por espelhamento em câmeras frontais.
+- Criação da especificação do modal de câmera e ferramenta de rotação/flip horizontal.
+
+### Fase 2: Implementação (Pós-Aprovação)
+1. Criar `CameraCaptureModal.tsx`:
+   - Stream WebRTC direto (`video` + `canvas`).
+   - Guia visual de sorriso para fotos odontológicas.
+   - Opção de troca de câmera (frontal/traseira).
+   - Tela de confirmação com botão de "Inverter Lados (Espelhar)" e "Tirar Novamente".
+2. Atualizar `app/src/app/simulacoes/page.tsx`:
+   - Integrar o `CameraCaptureModal`.
+   - Adicionar botão de "Inverter Lados" diretamente no card de preview de imagem selecionada (útil para fotos da galeria ou nativas).
+   - Manipulação de imagem via Canvas para atualizar tanto a pré-visualização quanto o `File` enviado para a IA.
+3. Validação:
+   - Executar testes de linting e validação de código.
+
+---
+**Status**: Aguardando aprovação do usuário para iniciar a implementação.

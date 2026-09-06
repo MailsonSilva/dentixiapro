@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, Check, Save
+  Upload, ImageIcon, Camera, Check, Save, FlipHorizontal
 } from "lucide-react";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useNotification } from "@/lib/NotificationContext";
 
 // SSD Layers
-import { procedures } from "@/lib/simulacoes/utils";
+import { procedures, flipImageHorizontal } from "@/lib/simulacoes/utils";
 import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
 
 // UI Components
@@ -21,6 +21,7 @@ import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
 import { ColorPicker } from "@/components/simulacoes/ColorPicker";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { CameraCaptureModal } from "@/components/simulacoes/CameraCaptureModal";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOADING_MESSAGES = [
@@ -141,21 +142,35 @@ export default function SimulationPage() {
 
   const [permissionErrorModal, setPermissionErrorModal] = useState(false);
   const [permissionErrorMessage, setPermissionErrorMessage] = useState("");
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isFlippingPreview, setIsFlippingPreview] = useState(false);
 
-  const handleCameraCapture = async () => {
+  // Abertura do modal com visor WebRTC real e enquadramento odontológico
+  const handleCameraCapture = () => {
+    setIsCameraModalOpen(true);
+  };
+
+  // Recebe a foto capturada pelo CameraCaptureModal
+  const handleCapturedPhoto = (file: File, base64: string) => {
+    setImageFile(file);
+    setImageBase64(base64);
+  };
+
+  // Permite inverter os lados (espelhar horizontalmente) qualquer foto selecionada
+  const handleFlipPreview = async () => {
+    if (!imageBase64 && !imageFile) return;
+    setIsFlippingPreview(true);
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        // Tenta solicitar a permissão de câmera explicitamente para validar permissões do navegador
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      camRef.current?.click();
+      const source = imageFile || imageBase64!;
+      const res = await flipImageHorizontal(source, "paciente-invertido.jpg");
+      setImageFile(res.file);
+      setImageBase64(res.base64);
+      notify("Foto invertida", "Os lados da foto foram invertidos com sucesso.", "success");
     } catch (err: unknown) {
-      console.error("Erro de permissão de câmera:", err);
-      setPermissionErrorMessage(
-        "A permissão de acesso à câmera foi negada. O DentixIA Pro necessita da câmera para capturar a foto do paciente para a simulação."
-      );
-      setPermissionErrorModal(true);
+      console.error("Erro ao inverter imagem:", err);
+      notify("Erro", "Não foi possível inverter a imagem.", "error");
+    } finally {
+      setIsFlippingPreview(false);
     }
   };
 
@@ -415,10 +430,42 @@ export default function SimulationPage() {
                   ) : (
                     <div className="relative w-full h-full flex items-center justify-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageBase64} alt="Preview" className="max-h-[220px] rounded-lg shadow-md" />
-                      <button onClick={() => { setImageBase64(null); setImageFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full flex items-center justify-center w-8 h-8 p-0 shadow-lg cursor-pointer">
-                        <X size={14} />
-                      </button>
+                      <img
+                        src={imageBase64}
+                        alt="Preview"
+                        className={cn(
+                          "max-h-[220px] rounded-lg shadow-md transition-all duration-200",
+                          isFlippingPreview && "opacity-50 scale-95"
+                        )}
+                      />
+                      
+                      {/* Ações da foto carregada */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                        {/* Botão de Inverter Lados (Espelhar) */}
+                        <button
+                          type="button"
+                          onClick={handleFlipPreview}
+                          disabled={isFlippingPreview}
+                          className="bg-slate-900/80 hover:bg-slate-900 text-white rounded-lg flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold shadow-lg backdrop-blur-md cursor-pointer transition-all border border-white/20 disabled:opacity-50"
+                          title="Inverter Lados da Foto (Espelhar Horizontalmente)"
+                        >
+                          <FlipHorizontal size={13} className="text-primary-cyan" />
+                          <span>Inverter Lados</span>
+                        </button>
+
+                        {/* Botão de Remover */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageBase64(null);
+                            setImageFile(null);
+                          }}
+                          className="bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center w-7 h-7 p-0 shadow-lg cursor-pointer transition-all"
+                          title="Remover Foto"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -603,6 +650,14 @@ export default function SimulationPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal de Captura Profissional com Câmera WebRTC e Alinhamento Odontológico */}
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={handleCapturedPhoto}
+        onFallbackFileInput={() => camRef.current?.click()}
+      />
     </div>
   );
 }
