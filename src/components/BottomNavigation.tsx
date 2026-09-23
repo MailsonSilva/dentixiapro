@@ -16,10 +16,10 @@ export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
   const path = pathname ?? "";
 
   const navItems = [
-    { name: "Início",     href: "/",           icon: Home,     isActive: path === "/",                      locked: false },
-    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: path.startsWith("/simulacoes"), locked: false },
-    { name: "Aulas",      href: "/aulas",      icon: BookOpen, isActive: path.startsWith("/aulas"),          locked: true },
-    { name: "Perfil",     href: "/perfil",     icon: User,     isActive: path.startsWith("/perfil"),         locked: false },
+    { name: "Início",     href: "/",                      icon: Home,     isActive: path === "/",                      locked: false },
+    { name: "Simulações", href: "/simulacoes/resultados", icon: Sparkles, isActive: path.startsWith("/simulacoes"),    locked: false },
+    { name: "Aulas",      href: "/aulas",                 icon: BookOpen, isActive: path.startsWith("/aulas"),         locked: true  },
+    { name: "Perfil",     href: "/perfil",                icon: User,     isActive: path.startsWith("/perfil"),        locked: false },
   ];
 
   return (
@@ -36,24 +36,24 @@ export function BottomNavigation({ type = "comum" }: BottomNavigationProps) {
                   ? "text-slate-300"
                   : item.isActive
                     ? "text-primary scale-105"
-                    : "text-slate-400 hover:text-slate-600"
+                    : "text-primary/60 hover:text-primary"
               )}
             >
               <div className="relative">
                 <Icon
                   size={18}
-                  strokeWidth={item.isActive ? 2.5 : 2}
+                  strokeWidth={item.isActive ? 2 : 1.75}
                   className="transition-transform duration-200"
                 />
                 {item.locked && (
                   <Lock
                     size={10}
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     className="absolute -top-1 -right-1.5 text-red-500"
                   />
                 )}
               </div>
-              <span className="text-xs font-semibold tracking-tight leading-none">
+              <span className="text-xs font-medium tracking-tight leading-none">
                 {item.name}
               </span>
             </div>

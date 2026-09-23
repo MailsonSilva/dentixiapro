@@ -25,6 +25,14 @@ export async function getProfileCompanyAction(userId: string) {
   if (!admin) return userId;
 
   try {
+    const { data: ucData } = await admin
+      .from("user_company")
+      .select("company_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (ucData?.company_id) return ucData.company_id;
+
     const { data: companyData } = await admin
       .from("company")
       .select("id")
@@ -94,15 +102,28 @@ export async function getUserProfileAction() {
     ? uTipo 
     : (ucRole === 'admin' || ucRole === 'super_admin' ? ucRole : (ucRole || uTipo || null));
 
-  // Busca assinatura em paralelo
-  const { data: subData } = await supabase
+  // Busca assinatura em paralelo com fallback duplo (por company_id e por user.id)
+  let subData: any = null;
+  const { data: subByCompany } = await supabase
     .from("subscriptions")
     .select("status")
     .eq("company_id", userCompanyId)
     .neq("status", "canceled")
     .maybeSingle();
 
-  const temAssinatura = !!subData;
+  if (subByCompany) {
+    subData = subByCompany;
+  } else if (userCompanyId !== user.id) {
+    const { data: subByUser } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("company_id", user.id)
+      .neq("status", "canceled")
+      .maybeSingle();
+    subData = subByUser;
+  }
+
+  const temAssinatura = !!subData && (subData.status === "active" || subData.status === "trialing");
 
   // Resolver foto de perfil / logo
   let finalLogoUrl = profile?.logo_url && profile.logo_url.trim() !== "" ? profile.logo_url : null;
@@ -221,14 +242,25 @@ export async function uploadUserLogoAction(base64Data: string, mimeType: string,
     return { error: "Não autenticado", url: null };
   }
 
-  const path = `${user.id}.${fileExt}`;
+  // Validação e sanitização estrita da extensão do arquivo
+  const allowedExtensions = ["png", "jpg", "jpeg", "webp", "gif"];
+  const sanitizedExt = (fileExt || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (!sanitizedExt || !allowedExtensions.includes(sanitizedExt)) {
+    return { error: "Extensão de imagem inválida. Permitidos: PNG, JPG, JPEG, WEBP, GIF.", url: null };
+  }
+
+  const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+  const finalMimeType = allowedMimeTypes.includes(mimeType) ? mimeType : `image/${sanitizedExt === "jpg" ? "jpeg" : sanitizedExt}`;
+
+  const path = `${user.id}.${sanitizedExt}`;
   const buffer = Buffer.from(base64Data, "base64");
 
   const { error: uploadError } = await supabase.storage
     .from("logoEmpresa")
     .upload(path, buffer, {
       upsert: true,
-      contentType: mimeType,
+      contentType: finalMimeType,
       cacheControl: '0'
     });
 

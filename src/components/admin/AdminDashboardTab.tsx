@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AdminMetrics, getPublicWelcomeVideoUrlAction, updateWelcomeVideoUrlAction } from "@/lib/admin/actions";
-import { UserPlus, ShieldCheck, Activity, Share2, CheckCircle2, AlertTriangle, TrendingUp, Users, Video, Save, Loader2, ExternalLink } from "lucide-react";
+import { UserPlus, ShieldCheck, Activity, Share2, CheckCircle2, AlertTriangle, TrendingUp, Users, Video, Save, Loader2, ExternalLink, ImageIcon, XCircle, BookImage } from "lucide-react";
 import { toast } from "sonner";
 
 interface AdminDashboardTabProps {
@@ -174,7 +174,63 @@ export function AdminDashboardTab({ metrics, loading }: AdminDashboardTabProps) 
 
       </div>
 
-      {/* Seção de Configuração do Vídeo de Boas-Vindas da Página Inicial */}
+      {/* === Métricas Globais de Simulações === */}
+      <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+          <div className="p-2.5 bg-teal-100 text-teal-600 rounded-xl">
+            <BookImage className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Simulações na Plataforma</h3>
+            <p className="text-xs text-slate-500">Volume total histórico gerado por todos os clientes</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Total Geradas */}
+          <div className="flex items-center gap-4 bg-teal-50 border border-teal-100 rounded-xl p-4">
+            <div className="p-3 bg-teal-100 text-teal-600 rounded-xl flex-shrink-0">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-800">
+                {metrics.simulations.totalGenerated.toLocaleString("pt-BR")}
+              </p>
+              <p className="text-xs text-teal-700 font-semibold">Geradas (com sucesso)</p>
+              <p className="text-[10px] text-slate-400">acertos + refeitas</p>
+            </div>
+          </div>
+
+          {/* Total Salvas */}
+          <div className="flex items-center gap-4 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl flex-shrink-0">
+              <ImageIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-800">
+                {metrics.simulations.totalSaved.toLocaleString("pt-BR")}
+              </p>
+              <p className="text-xs text-emerald-700 font-semibold">Salvas pelos clientes</p>
+              <p className="text-[10px] text-slate-400">galeria do usuário</p>
+            </div>
+          </div>
+
+          {/* Total Erros */}
+          <div className="flex items-center gap-4 bg-rose-50 border border-rose-100 rounded-xl p-4">
+            <div className="p-3 bg-rose-100 text-rose-600 rounded-xl flex-shrink-0">
+              <XCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-slate-800">
+                {metrics.simulations.totalErrors.toLocaleString("pt-BR")}
+              </p>
+              <p className="text-xs text-rose-700 font-semibold">Erros de API</p>
+              <p className="text-[10px] text-slate-400">falhas na geração</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">

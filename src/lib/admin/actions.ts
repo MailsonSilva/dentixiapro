@@ -21,6 +21,11 @@ export interface AdminMetrics {
   referral: {
     totalReferredSignups: number;
   };
+  simulations: {
+    totalSaved: number;
+    totalGenerated: number;
+    totalErrors: number;
+  };
 }
 
 export interface ClientRow {
@@ -116,7 +121,7 @@ export async function checkAdminAccessAction(): Promise<{ isAdmin: boolean; user
       }
     }
 
-    // 2. Verificação fallback em user_company role
+    // 2. Verificação fallback exclusiva para super_admin em user_company
     const { data: ucData } = await supabase
       .from("user_company")
       .select("role")
@@ -124,7 +129,7 @@ export async function checkAdminAccessAction(): Promise<{ isAdmin: boolean; user
       .eq("active", true)
       .maybeSingle();
 
-    if (ucData && (ucData.role === "admin" || ucData.role === "super_admin")) {
+    if (ucData && ucData.role === "super_admin") {
       return { isAdmin: true, userId: user.id, error: null };
     }
 
@@ -170,31 +175,16 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .select("id", { count: "exact", head: true })
       .in("status", ["active", "trialing"]);
 
-    // 3. Volume de Operações do Dia
-    const [simData, simSavedData] = await Promise.all([
-      supabase.from("simulacao_tracking").select("status").gte("created_at", startOfToday),
-      supabase.from("simulacoes").select("id").gte("created_at", startOfToday),
-    ]);
+    // 3. Volume de Operações do Dia (Simulações salvas hoje)
+    const { data: simSavedData } = await supabase
+      .from("simulacoes")
+      .select("id")
+      .gte("created_at", startOfToday);
 
-    let successCount = 0;
-    let errorCount = 0;
-
-    if (simData.data) {
-      simData.data.forEach((s) => {
-        if (s.status === "acerto" || s.status === "salva" || s.status === "refeita") {
-          successCount++;
-        } else if (s.status === "erro") {
-          errorCount++;
-        }
-      });
-    }
-
-    const savedTodayCount = simSavedData.data ? simSavedData.data.length : 0;
-    if (successCount < savedTodayCount) {
-      successCount = savedTodayCount;
-    }
-
-    const todayTotal = Math.max(simData.data ? simData.data.length : 0, successCount + errorCount);
+    const savedTodayCount = simSavedData ? simSavedData.length : 0;
+    const successCount = savedTodayCount;
+    const errorCount = 0;
+    const todayTotal = savedTodayCount;
     const successRate = todayTotal > 0 ? Math.round((successCount / todayTotal) * 100) : 100;
 
     // 4. Métricas de Crescimento (Referral)
@@ -202,6 +192,27 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
       .from("usuarios")
       .select("id", { count: "exact", head: true })
       .not("user_referredbycode", "is", null);
+
+    // 5. Métricas globais (all-time) de simulações na plataforma
+    const [globalStatsRes, simTotalSavedRes] = await Promise.all([
+      supabase
+        .from("user_simulation_stats")
+        .select("total_geradas, total_salvas, total_erros"),
+      supabase.from("simulacoes").select("id", { count: "exact", head: true }),
+    ]);
+
+    let totalGeradas = 0, totalSalvas = 0, totalErros = 0;
+    if (globalStatsRes.data) {
+      globalStatsRes.data.forEach((s) => {
+        totalGeradas += s.total_geradas;
+        totalSalvas  += s.total_salvas;
+        totalErros   += s.total_erros;
+      });
+    }
+
+    const dbSavedTotal = simTotalSavedRes.count || 0;
+    totalSalvas = Math.max(totalSalvas, dbSavedTotal);
+    totalGeradas = Math.max(totalGeradas, totalSalvas);
 
     return {
       error: null,
@@ -223,6 +234,11 @@ export async function getAdminDashboardMetricsAction(): Promise<{ data: AdminMet
         },
         referral: {
           totalReferredSignups: referralCount || 0,
+        },
+        simulations: {
+          totalSaved: totalSalvas,
+          totalGenerated: totalGeradas,
+          totalErrors: totalErros,
         },
       },
     };
@@ -300,11 +316,11 @@ export async function getAdminClientsAction(
 
     const userIds = users.map((u) => u.id);
 
-    // Buscar contagem de simulações em paralelo: 1. simulacao_tracking, 2. simulacoes
-    const [simRes, simSavedRes] = await Promise.all([
+    // Buscar estatísticas de simulações em paralelo da tabela de contadores e da tabela simulacoes (salvas)
+    const [simStatsRes, simSavedRes] = await Promise.all([
       supabase
-        .from("simulacao_tracking")
-        .select("user_id, status")
+        .from("user_simulation_stats")
+        .select("user_id, total_geradas, total_salvas, total_erros")
         .in("user_id", userIds),
       supabase
         .from("simulacoes")
@@ -312,32 +328,27 @@ export async function getAdminClientsAction(
         .in("usuario_id", userIds),
     ]);
 
-    const simMap: Record<string, { saved: number; unsaved: number; error: number }> = {};
-
-    // 1. Processar simulacoes salvas
-    if (simSavedRes.data) {
-      simSavedRes.data.forEach((s) => {
-        if (!simMap[s.usuario_id]) simMap[s.usuario_id] = { saved: 0, unsaved: 0, error: 0 };
-        simMap[s.usuario_id].saved++;
+    const simMap: Record<string, { geradas: number; salvas: number; erros: number }> = {};
+    if (simStatsRes.data) {
+      simStatsRes.data.forEach((s) => {
+        simMap[s.user_id] = {
+          geradas: s.total_geradas,
+          salvas:  s.total_salvas,
+          erros:   s.total_erros,
+        };
       });
     }
 
-    // 2. Processar tracking
-    if (simRes.data) {
-      simRes.data.forEach((s) => {
-        if (!simMap[s.user_id]) simMap[s.user_id] = { saved: 0, unsaved: 0, error: 0 };
-        if (s.status === "erro") {
-          simMap[s.user_id].error++;
-        } else if (s.status === "acerto" || s.status === "refeita") {
-          simMap[s.user_id].unsaved++;
-        } else if (s.status === "salva" && simMap[s.user_id].saved === 0) {
-          simMap[s.user_id].saved++;
-        }
+    const dbSavedMap: Record<string, number> = {};
+    if (simSavedRes.data) {
+      simSavedRes.data.forEach((s) => {
+        dbSavedMap[s.usuario_id] = (dbSavedMap[s.usuario_id] || 0) + 1;
       });
     }
 
     let formattedClients: ClientRow[] = users.map((u) => {
-      const sim = simMap[u.id] || { saved: 0, unsaved: 0, error: 0 };
+      const stats = simMap[u.id] || { geradas: 0, salvas: 0, erros: 0 };
+      const realSavedDb = dbSavedMap[u.id] || 0;
       const isBlocked = u.is_blocked === true;
       const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
       const isTrial = trialEndsAt && trialEndsAt > now && !isBlocked;
@@ -362,7 +373,11 @@ export async function getAdminClientsAction(
         planName = "Plano Trial (7 Dias)";
       }
 
-      const totalSims = sim.saved + sim.unsaved + sim.error;
+      const saved   = Math.max(realSavedDb, stats.salvas);
+      const geradas = Math.max(stats.geradas, saved);
+      const unsaved = Math.max(0, geradas - saved);
+      const error   = stats.erros;
+      const totalSims = geradas + error;
 
       return {
         id: u.id,
@@ -378,9 +393,9 @@ export async function getAdminClientsAction(
         plan_name: planName,
         trial_days_remaining: trialDaysRemaining,
         simulations_total: totalSims,
-        simulations_saved: sim.saved,
-        simulations_unsaved: sim.unsaved,
-        simulations_error: sim.error,
+        simulations_saved: saved,
+        simulations_unsaved: unsaved,
+        simulations_error: error,
         created_at: u.created_at || new Date().toISOString(),
         last_login: u.last_login || u.created_at || null,
       };
@@ -421,7 +436,7 @@ export async function toggleBlockClientAction(userId: string, isBlocked: boolean
 }
 
 /**
- * Obter Estatísticas Métricas das Simulações de um Cliente (Salvas, Geradas Não Salvas e Erros)
+ * Obter Estatísticas Métricas de Simulações de um Cliente (Salvas, Geradas Não Salvas e Erros de API)
  */
 export async function getClientUsageHistoryAction(userId: string): Promise<{
   metrics: {
@@ -434,56 +449,55 @@ export async function getClientUsageHistoryAction(userId: string): Promise<{
   error: string | null;
 }> {
   const access = await checkAdminAccessAction();
-  if (!access.isAdmin) return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: access.error || "Acesso negado" };
+  if (!access.isAdmin) {
+    return {
+      metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 },
+      error: access.error || "Acesso negado",
+    };
+  }
 
   try {
     const supabase = await createClient();
 
-    const [savedRes, trackingRes] = await Promise.all([
+    const [statsRes, savedRes] = await Promise.all([
+      supabase
+        .from("user_simulation_stats")
+        .select("total_geradas, total_salvas, total_erros")
+        .eq("user_id", userId)
+        .maybeSingle(),
       supabase
         .from("simulacoes")
-        .select("id")
+        .select("id", { count: "exact", head: true })
         .eq("usuario_id", userId),
-      supabase
-        .from("simulacao_tracking")
-        .select("status")
-        .eq("user_id", userId),
     ]);
 
-    const savedCount = savedRes.data ? savedRes.data.length : 0;
-    let unsavedCount = 0;
-    let errorCount = 0;
-    let trackingSavedCount = 0;
+    const realSavedCount = savedRes.count || 0;
+    const statsSalvas    = statsRes.data?.total_salvas  || 0;
+    const salvas         = Math.max(realSavedCount, statsSalvas);
 
-    if (trackingRes.data) {
-      trackingRes.data.forEach((item) => {
-        if (item.status === "erro") {
-          errorCount++;
-        } else if (item.status === "acerto" || item.status === "refeita") {
-          unsavedCount++;
-        } else if (item.status === "salva") {
-          trackingSavedCount++;
-        }
-      });
-    }
+    const statsGeradas   = statsRes.data?.total_geradas || 0;
+    const geradas        = Math.max(statsGeradas, salvas);
 
-    const totalSaved = Math.max(savedCount, trackingSavedCount);
-    const totalSimulations = totalSaved + unsavedCount + errorCount;
-    const successTotal = totalSaved + unsavedCount;
-    const successRate = totalSimulations > 0 ? Math.round((successTotal / totalSimulations) * 100) : 100;
+    const erros   = statsRes.data?.total_erros   || 0;
+    const unsaved = Math.max(0, geradas - salvas);
+    const total   = geradas + erros;
+    const successRate = total > 0 ? Math.round((geradas / total) * 100) : 100;
 
     return {
       metrics: {
-        total: totalSimulations,
-        saved: totalSaved,
-        unsaved: unsavedCount,
-        error: errorCount,
+        total,
+        saved: salvas,
+        unsaved,
+        error: erros,
         successRate,
       },
       error: null,
     };
   } catch (err: any) {
-    return { metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 }, error: err.message || "Erro ao obter métricas" };
+    return {
+      metrics: { total: 0, saved: 0, unsaved: 0, error: 0, successRate: 0 },
+      error: err.message || "Erro ao obter métricas",
+    };
   }
 }
 
@@ -530,13 +544,13 @@ export async function getSaaSFinancialAndCostMetricsAction(): Promise<{ data: Sa
 
     // 5. Usuários Trial com alto uso
     const { data: highSimUsers } = await supabase
-      .from("simulacao_tracking")
-      .select("user_id");
+      .from("user_simulation_stats")
+      .select("user_id, total_geradas");
 
     const simCounts: Record<string, number> = {};
     if (highSimUsers) {
       highSimUsers.forEach((s) => {
-        simCounts[s.user_id] = (simCounts[s.user_id] || 0) + 1;
+        simCounts[s.user_id] = s.total_geradas || 0;
       });
     }
 
@@ -544,12 +558,19 @@ export async function getSaaSFinancialAndCostMetricsAction(): Promise<{ data: Sa
     const heavyTrialNonConvertedCount = heavyUsers.length;
 
     // 6. Monitoramento de Custos de API
-    const [simTrackingCountRes, simulacoesCountRes] = await Promise.all([
-      supabase.from("simulacao_tracking").select("id", { count: "exact", head: true }),
+    const [simStatsCountRes, simulacoesCountRes] = await Promise.all([
+      supabase.from("user_simulation_stats").select("total_geradas"),
       supabase.from("simulacoes").select("id", { count: "exact", head: true }),
     ]);
 
-    const simTotal = Math.max(simTrackingCountRes.count || 0, simulacoesCountRes.count || 0);
+    let sumGeradas = 0;
+    if (simStatsCountRes.data) {
+      simStatsCountRes.data.forEach((s) => {
+        sumGeradas += s.total_geradas || 0;
+      });
+    }
+
+    const simTotal = Math.max(sumGeradas, simulacoesCountRes.count || 0);
     const estimatedCostPerSimulationUSD = 0.015;
     const totalCostUSD = parseFloat((simTotal * estimatedCostPerSimulationUSD).toFixed(2));
     const estimatedRevenueBRL = mrr;

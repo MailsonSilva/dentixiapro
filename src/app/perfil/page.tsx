@@ -26,7 +26,6 @@ import {
   Camera,
   QrCode,
   ArrowRight,
-  Receipt,
   Gift
 } from "lucide-react";
 import Image from "next/image";
@@ -41,9 +40,10 @@ import { useRouter } from "next/navigation";
 import { useNotification } from "@/lib/NotificationContext";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import packageJson from "../../../package.json";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const APP_VERSION = "4.0.0";
+const APP_VERSION = packageJson.version;
 const SUPPORT_URL =
   "https://api.whatsapp.com/send/?phone=5598933005102&text&type=phone_number&app_absent=0";
 const PROSPECTA_URL =
@@ -65,11 +65,11 @@ function TrialBanner({
 }) {
   const router = useRouter();
 
-  // Assinatura ativa paga → não mostrar banner
-  if (statusCode === 3 && diasRestantes === 999) return null;
+  // Assinatura ativa paga sem período de teste pendente → não mostrar banner
+  if ((statusCode === 3 && diasRestantes === 999) || (temAssinatura && diasRestantes === 999)) return null;
 
-  // Trial ainda ativo
-  if (statusCode === 3 && diasRestantes !== null && diasRestantes > 0) {
+  // Trial ainda ativo (com ou sem assinatura)
+  if (diasRestantes !== null && diasRestantes > 0) {
     const urgent = diasRestantes <= 2;
     return (
       <motion.div
@@ -110,6 +110,9 @@ function TrialBanner({
     );
   }
 
+  // Se já tem assinatura ativa, não exibe banner de expirado
+  if (temAssinatura) return null;
+
   // Trial expirado e sem assinatura
   return (
     <motion.div
@@ -140,19 +143,23 @@ function SettingsRow({
   label,
   onClick,
   danger,
+  highlightGreen,
 }: {
   icon: React.ElementType;
   label: string;
   onClick: () => void;
   danger?: boolean;
+  highlightGreen?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center justify-between px-4 py-3.5 transition-colors group",
+        "w-full flex items-center justify-between px-4 py-3.5 transition-colors group cursor-pointer",
         danger
           ? "text-red-500 hover:bg-red-50"
+          : highlightGreen
+          ? "bg-[#F0FDF4] hover:bg-emerald-100/60 text-emerald-900"
           : "text-gray-700 hover:bg-primary/5"
       )}
     >
@@ -160,7 +167,11 @@ function SettingsRow({
         <div
           className={cn(
             "w-9 h-9 rounded-xl flex items-center justify-center",
-            danger ? "bg-red-100 text-red-500" : "bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary"
+            danger
+              ? "bg-red-100 text-red-500"
+              : highlightGreen
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary"
           )}
         >
           <Icon size={18} />
@@ -171,7 +182,7 @@ function SettingsRow({
         size={18}
         className={cn(
           "transition-transform group-hover:translate-x-0.5",
-          danger ? "text-red-300" : "text-gray-300 group-hover:text-primary"
+          danger ? "text-red-300" : highlightGreen ? "text-emerald-500" : "text-gray-300 group-hover:text-primary"
         )}
       />
     </button>
@@ -253,7 +264,6 @@ export default function PerfilPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -320,7 +330,6 @@ export default function PerfilPage() {
       notify("Sem assinatura", "Você ainda não possui uma assinatura ativa.", "info");
       return;
     }
-    setPortalLoading(true);
     try {
       const return_url = `${window.location.origin}/perfil`;
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-portal`, {
@@ -340,57 +349,49 @@ export default function PerfilPage() {
       }
     } catch (err: unknown) {
       notify("Erro", err instanceof Error ? err.message : "Tente novamente.", "error");
-    } finally {
-      setPortalLoading(false);
     }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Validar tamanho (ex: 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      notify("Erro", "A imagem deve ter no máximo 2MB.", "error");
+
+    // Validar tamanho (máx 3MB)
+    if (file.size > 3 * 1024 * 1024) {
+      notify("Erro", "A imagem deve ter no máximo 3MB.", "error");
       return;
     }
 
     setLogoUploading(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = async () => {
-        try {
-          const base64 = (reader.result as string).split(",")[1];
-          const ext = file.name.split(".").pop() || "";
-          
-          const uploadRes = await uploadUserLogoAction(base64, file.type, ext);
-          if (uploadRes.error || !uploadRes.url) {
-            throw new Error(uploadRes.error || "Erro no upload da imagem.");
-          }
+      const formData = new FormData();
+      formData.append("file", file);
 
-          setLogoUrl(uploadRes.url);
-          setImageError(false);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setUserData((prev: any) => ({ ...prev, logo_url: uploadRes.url }));
-          notify("Foto atualizada!", "Sua logo foi salva com sucesso.", "success");
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Não foi possível processar a imagem.";
-          console.error("Erro no processamento da imagem:", err);
-          notify("Erro", msg, "error");
-        } finally {
-          setLogoUploading(false);
-          if (logoInputRef.current) logoInputRef.current.value = "";
-        }
-      };
-      reader.onerror = () => {
-        throw new Error("Erro ao ler arquivo local.");
-      };
+      const response = await fetch("/api/perfil/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error || !data.url) {
+        throw new Error(data.error || "Erro ao processar upload da imagem.");
+      }
+
+      // Adiciona timestamp para forçar o browser/Next.js a buscar a nova imagem
+      const freshUrl = `${data.url}?t=${Date.now()}`;
+      setLogoUrl(freshUrl);
+      setImageError(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setUserData((prev: any) => ({ ...prev, logo_url: freshUrl }));
+      notify("Foto atualizada!", "Sua foto de perfil/logo foi salva com sucesso.", "success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Não foi possível enviar a imagem.";
-      console.error("Erro ao subir logo:", err);
+      console.error("Erro ao subir imagem de perfil:", err);
       notify("Erro", msg, "error");
+    } finally {
       setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
     }
   };
 
@@ -496,7 +497,7 @@ export default function PerfilPage() {
               onClick={() => setShowEdit(true)}
             />
             {/* Assinatura — se já tem assinatura (ativa, pendente ou trialing), mostra "Ver sua conta" para ir ao portal, senão mostra "Assinar Agora" */}
-            {isComum && temAssinatura ? (
+            {isComum && (temAssinatura || diasRestantes === 999) ? (
               <SettingsRow
                 icon={CreditCard}
                 label="Ver sua conta"
@@ -528,6 +529,7 @@ export default function PerfilPage() {
               <SettingsRow
                 icon={Gift}
                 label="Indique e Ganhe"
+                highlightGreen
                 onClick={() => router.push("/indique-e-ganhe")}
               />
             )}

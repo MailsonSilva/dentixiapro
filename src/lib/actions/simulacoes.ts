@@ -2,9 +2,14 @@
 
 import { createClient } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
+import { toothColors } from "@/lib/simulacoes/utils";
 
 // ─── Types (TypeScript puro, sem Zod) ────────────────────────────────────────
-type TipoTratamento = "clareamento" | "faceta" | "implante";
+type TipoTratamento =
+  | "clareamento"
+  | "faceta"
+  | "implante_total"
+  | "implante_parcial";
 
 export interface ResultadoSimulacao {
   success: boolean;
@@ -23,10 +28,9 @@ const STORAGE_BUCKET = "simulacoes";
 const PROMPTS_CLINICOS: Record<TipoTratamento, string> = {
   clareamento:
     "APLIQUE CLAREAMENTO DENTAL FOTORREALISTA - PRIORIZAR ASPECTO NATURAL E BRILHO EQUILIBRADO",
-  faceta:
-    "APLIQUE LENTES DE PORCELANA NOS DENTES ANTERIORES - DESIGN DE SORRISO SIMÉTRICO E NATURAL",
-  implante:
-    "RECONSTRUÇÃO DENTAL COMPLETA FOTORREALISTA PARA ELEMENTO AUSENTE",
+  faceta: `Edit this dental photograph with a conservative, highly realistic veneer treatment. STRICT SCALE LOCK: preserve the exact original crown height, mesiodistal width, and facial volume of each tooth. Apply ultra-thin dental veneers to all visible natural teeth using shade {{ COR_HEX }}. Neutralize discoloration while preserving natural enamel depth, realistic translucency, soft surface gloss, and fine microtexture. Do not elongate, thicken, widen, or project teeth forward. Keep the veneers thin, compact, and visually integrated within the patient's existing dental arch, gingival contours, and natural lip framing. Central incisors must remain strictly proportional, lateral incisors narrower and slightly shorter, and canines naturally contoured. Correct minor rotations, wear, and shape defects conservatively without enlarging tooth size or filling the mouth space. Maintain individual tooth anatomy, realistic embrasures, and interdental separation. Avoid oversized, overly long, wide, bulky, square, or protruding teeth. Prioritize compact natural anatomy over aesthetic expansion.`,
+  implante_total: `Edit this dental photo conservatively with a natural full-dentition refinement. STRICT PROPORTION LOCK: strictly constrain tooth height, crown length, and arch width to compact, anatomically natural proportions. Apply shade {{ COR_HEX }} across visible teeth with soft natural shine, realistic microtexture, and subtle translucency. Do not enlarge, lengthen, widen, or push the dentition forward. Ensure teeth fit comfortably inside the natural lip framing and mouth opening without dominating the face. Correct alignment, wear, and surface flaws while preserving individual tooth morphology (distinct central incisors, narrower lateral incisors, and contoured canines). Maintain natural interdental separation, visible embrasures, and realistic gingival integration. Avoid oversized, bulky, flat, square, protruding, or block-like continuous teeth. If uncertain, render slightly smaller, compact, and conservatively sized teeth.`,
+  implante_parcial: `Edit this dental photograph conservatively for a partial aesthetic restoration. STRICT LOCALIZED SCALE LOCK: match the exact height, width, and volume of adjacent natural teeth without increasing crown size. Apply conservative restorations to the target visible teeth using shade {{ COR_HEX }}, blending seamlessly with the natural dentition in depth, gloss, and translucency. Preserve original dental arch width, gingival margins, and occlusal plane. Do not make restored teeth longer, wider, thicker, or more prominent than the patient's original teeth. Correct minor rotations, wear, and shape inconsistencies conservatively. Maintain individual tooth boundaries, natural embrasures, and distinct interdental separation. Avoid bulky, oversized, protruding, or artificially wide teeth. Keep restored teeth compact, subtle, and strictly within normal anatomical proportions relative to the lips and mouth.`,
 };
 
 // ─── Validação nativa (TypeScript puro — sem biblioteca Zod) ──────────────────
@@ -88,6 +92,7 @@ function extrairImagemDoGemini(obj: unknown): string | undefined {
 export async function gerarSimulacaoNativa(
   formData: FormData
 ): Promise<ResultadoSimulacao> {
+  let userId: string | null = null; // capturado cedo para o catch ter acesso
   try {
     // ── 1. Autenticação via supabaseServer (NUNCA usar o cliente browser aqui) ──
     const supabase = await createClient();
@@ -99,13 +104,20 @@ export async function gerarSimulacaoNativa(
     if (authError || !user) {
       return { success: false, error: "Usuário não autenticado." };
     }
+    userId = user.id;
 
     // ── 2. Extração dos campos do FormData ────────────────────────────────────
     const tipoTratamentoRaw = formData.get("tipoTratamento") as string | null;
     const file = formData.get("imagem");
+    const corSelecionada = formData.get("corSelecionada") as string | null;
 
     // ── 3. Validação de negócio com condicionais TypeScript (sem Zod) ─────────
-    const tiposValidos: TipoTratamento[] = ["clareamento", "faceta", "implante"];
+    const tiposValidos: TipoTratamento[] = [
+      "clareamento",
+      "faceta",
+      "implante_total",
+      "implante_parcial",
+    ];
 
     if (
       !tipoTratamentoRaw ||
@@ -125,7 +137,16 @@ export async function gerarSimulacaoNativa(
     if (erroArquivo) return { success: false, error: erroArquivo };
 
     const tipoTratamento = tipoTratamentoRaw as TipoTratamento;
-    const promptClinico = PROMPTS_CLINICOS[tipoTratamento];
+    let promptClinico = PROMPTS_CLINICOS[tipoTratamento];
+
+    const colorItem = toothColors.find((c) => c.id === corSelecionada);
+    const hex = colorItem ? colorItem.hex : "#F7F5EC"; // Fallback para BL1
+    promptClinico = promptClinico.replace(/\{\{\s*COR_HEX\s*\}\}/g, hex);
+
+    // ── DEBUG: confirma prompt e cor enviados à API ───────────────────────────
+    console.log("[Simulação] Tipo:", tipoTratamento);
+    console.log("[Simulação] Cor selecionada:", corSelecionada, "→ HEX:", hex);
+    console.log("[Simulação] Prompt final (primeiros 300 chars):", promptClinico.slice(0, 300));
 
     // ── 4. Upload da foto original para o Supabase Storage ────────────────────
     const fileBuffer = Buffer.from(await file.arrayBuffer());
@@ -148,18 +169,27 @@ export async function gerarSimulacaoNativa(
       .getPublicUrl(fileName).data.publicUrl;
 
     // ── 5. Chamada para a API do Gemini via Interactions API (v1beta/interactions)
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return {
+        success: false,
+        error: "Chave da API Gemini (GEMINI_API_KEY) não configurada nas variáveis de ambiente do servidor/Vercel. Por favor, adicione a chave GEMINI_API_KEY no painel de Environment Variables.",
+      };
+    }
+
     const base64Imagem = fileBuffer.toString("base64");
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${encodeURIComponent(apiKey)}`;
 
     const geminiResponse = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/interactions",
+      geminiUrl,
       {
         method: "POST",
         headers: {
-          "x-goog-api-key": process.env.GEMINI_API_KEY ?? "",
+          "x-goog-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-3.1-flash-lite-image",
+          model: "gemini-3.1-flash-image",
           input: [
             {
               type: "text",
@@ -171,13 +201,19 @@ export async function gerarSimulacaoNativa(
               data: base64Imagem,
             },
           ],
+          // response_format sem aspect_ratio: o modelo preserva as dimensões
+          // da imagem de entrada (edição conserva as proporções originais)
+          response_format: {
+            type: "image",
+            mime_type: "image/jpeg",
+          },
         }),
       }
     );
 
     if (!geminiResponse.ok) {
       const errBody = await geminiResponse.text();
-      await trackSimulacaoAction("erro", { tipoTratamento, error: errBody });
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: `Falha na API Gemini Interactions (${geminiResponse.status}): ${errBody}`,
@@ -195,8 +231,9 @@ export async function gerarSimulacaoNativa(
       geminiData.candidates?.[0]?.content?.parts?.[0]?.inline_data?.data;  // Fallback: Variação snake_case
 
     if (!imagemSimuladaBase64) {
-      console.log("JSON COMPLETO (sem cortes):", JSON.stringify(geminiData));
-      await trackSimulacaoAction("erro", { tipoTratamento, error: "Formato de retorno da API não reconhecido" });
+      console.error("[Simulação] FALHA — imagem não encontrada no retorno da API.");
+      console.error("[Simulação] JSON COMPLETO:", JSON.stringify(geminiData, null, 2));
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: "A imagem foi gerada, mas o formato de retorno da API não foi reconhecido. Verifique os logs do servidor.",
@@ -204,15 +241,15 @@ export async function gerarSimulacaoNativa(
     }
 
     // ── 6. Upload da imagem simulada gerada pela IA ───────────────────────────
-    const simFileName = `${user.id}/${Date.now()}-simulada.png`;
+    const simFileName = `${user.id}/${Date.now()}-simulada.jpg`;
     const simBuffer = Buffer.from(imagemSimuladaBase64, "base64");
 
     const { error: simUploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(simFileName, simBuffer, { contentType: "image/png", upsert: false });
+      .upload(simFileName, simBuffer, { contentType: "image/jpeg", upsert: false });
 
     if (simUploadError) {
-      await trackSimulacaoAction("erro", { tipoTratamento, error: simUploadError.message });
+      await incrementSimulacaoStat(user.id, "total_erros");
       return {
         success: false,
         error: `Erro no upload da simulação: ${simUploadError.message}`,
@@ -223,41 +260,30 @@ export async function gerarSimulacaoNativa(
       .from(STORAGE_BUCKET)
       .getPublicUrl(simFileName).data.publicUrl;
 
-    await trackSimulacaoAction("acerto", { tipoTratamento, urlOriginal, urlSimulada });
+    await incrementSimulacaoStat(user.id, "total_geradas");
     return { success: true, urlSimulada, urlOriginal };
   } catch (error: unknown) {
     const msg =
       error instanceof Error ? error.message : "Erro desconhecido no servidor.";
-    await trackSimulacaoAction("erro", { error: msg });
+    if (userId) await incrementSimulacaoStat(userId, "total_erros");
     return { success: false, error: msg };
   }
 }
 
-// ─── Tracking de Simulações ──────────────────────────────────────────────────
-export async function trackSimulacaoAction(
-  status: "acerto" | "erro" | "refeita" | "salva",
-  metadata: Record<string, unknown> = {}
-): Promise<{ success: boolean; error?: string }> {
+// ─── Incremento Atômico de Estatísticas via RPC ──────────────────────────────
+async function incrementSimulacaoStat(
+  userId: string,
+  campo: "total_geradas" | "total_salvas" | "total_erros"
+): Promise<void> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Não autenticado" };
-
-    const { error } = await supabase.from("simulacao_tracking").insert({
-      user_id: user.id,
-      status,
-      metadata,
+    const { error } = await supabase.rpc("increment_simulation_stat", {
+      p_user_id: userId,
+      p_campo: campo,
     });
-
-    if (error) {
-      console.error("Erro ao registrar tracking de simulação:", error.message);
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Erro no tracking";
-    console.error("Exceção no tracking de simulação:", msg);
-    return { success: false, error: msg };
+    if (error) console.error(`[Stats] Erro ao incrementar ${campo}:`, error.message);
+  } catch (err) {
+    console.error(`[Stats] Exceção ao incrementar ${campo}:`, err);
   }
 }
 
@@ -293,8 +319,7 @@ export async function salvarSimulacaoConfirmada(
       return { success: false, error: `Erro ao salvar simulação no banco: ${dbError.message}` };
     }
 
-    // Registrar tracking de 'salva'
-    await trackSimulacaoAction("salva", { procedimento, nomePaciente: nomePaciente.trim(), corUtilizada });
+    await incrementSimulacaoStat(user.id, "total_salvas");
 
     revalidatePath("/simulacoes/resultados");
     return { success: true };

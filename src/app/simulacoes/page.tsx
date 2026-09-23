@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Sparkles, Loader2, RotateCcw, Plus, X,
-  Upload, ImageIcon, Camera, History, Check, Save
+  Upload, ImageIcon, Camera, Check, Save
 } from "lucide-react";
 import Image from "next/image";
 import { IMAGES } from "@/lib/images";
@@ -14,14 +14,14 @@ import { useNotification } from "@/lib/NotificationContext";
 
 // SSD Layers
 import { procedures } from "@/lib/simulacoes/utils";
-import { gerarSimulacaoNativa, salvarSimulacaoConfirmada, trackSimulacaoAction } from "@/lib/actions/simulacoes";
+import { gerarSimulacaoNativa, salvarSimulacaoConfirmada } from "@/lib/actions/simulacoes";
 
 // UI Components
 import { BeforeAfterSlider } from "@/components/simulacoes/BeforeAfterSlider";
 import { ColorPicker } from "@/components/simulacoes/ColorPicker";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { CameraCaptureModal } from "@/components/simulacoes/CameraCaptureModal";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const LOADING_MESSAGES = [
@@ -142,22 +142,17 @@ export default function SimulationPage() {
 
   const [permissionErrorModal, setPermissionErrorModal] = useState(false);
   const [permissionErrorMessage, setPermissionErrorMessage] = useState("");
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
-  const handleCameraCapture = async () => {
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        // Tenta solicitar a permissão de câmera explicitamente para validar permissões do navegador
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      camRef.current?.click();
-    } catch (err: unknown) {
-      console.error("Erro de permissão de câmera:", err);
-      setPermissionErrorMessage(
-        "A permissão de acesso à câmera foi negada. O DentixIA Pro necessita da câmera para capturar a foto do paciente para a simulação."
-      );
-      setPermissionErrorModal(true);
-    }
+  // Abertura do modal com visor WebRTC real e enquadramento odontológico
+  const handleCameraCapture = () => {
+    setIsCameraModalOpen(true);
+  };
+
+  // Recebe a foto capturada pelo CameraCaptureModal
+  const handleCapturedPhoto = (file: File, base64: string) => {
+    setImageFile(file);
+    setImageBase64(base64);
   };
 
   const handleGallerySelect = () => {
@@ -184,21 +179,35 @@ export default function SimulationPage() {
     setIsProcessing(true);
     try {
       // Mapeia os valores da UI para os aceitos pela Server Action (type TipoTratamento)
-      const procedureMap: Record<string, "clareamento" | "faceta" | "implante"> = {
+      const procedureMap: Record<string, "clareamento" | "faceta" | "implante_total" | "implante_parcial"> = {
         Clareamento: "clareamento",
         Facetas: "faceta",
-        Implante: "implante",
+        "Implante total": "implante_total",
+        "Implante parcial": "implante_parcial",
       };
       const tipoTratamento = procedureMap[procedure] ?? "faceta";
 
       const fd = new FormData();
       fd.append("imagem", imageFile);
       fd.append("tipoTratamento", tipoTratamento);
+      fd.append("corSelecionada", selectedColor);
 
       const resultado = await gerarSimulacaoNativa(fd);
 
       if (!resultado.success) {
         throw new Error(resultado.error ?? "Falha na simulação.");
+      }
+
+      // Pré-carrega a imagem simulada no browser antes de trocar o step.
+      // Isso garante que quando o BeforeAfterSlider montar, a imagem já
+      // está no cache do browser — zero delay visual na tela de resultado.
+      if (resultado.urlSimulada) {
+        await new Promise<void>((resolve) => {
+          const img = new window.Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve(); // resolve mesmo em erro — não bloqueia UX
+          img.src = resultado.urlSimulada!;
+        });
       }
 
       setUrlOriginal(resultado.urlOriginal ?? null);
@@ -212,16 +221,15 @@ export default function SimulationPage() {
     }
   };
 
-  // ── Refazer: reutiliza o File em memória, re-chama a Server Action ────────
+  // ── Refazer: reutiliza o File em memória, re-chama a Server Action ────────────
   const handleRetry = async () => {
     setUrlSimulada(null);
     setUrlOriginal(null);
     setStep("upload");
-    trackSimulacaoAction("refeita", { procedimento: procedure });
     await handleGenerate();
   };
 
-  // ── Nova Simulação: reset total ───────────────────────────────────────────
+  // ── Nova Simulação: reset total ────────────────────────────────────
   const handleNewSimulation = () => {
     setImageFile(null);
     setImageBase64(null);
@@ -315,19 +323,19 @@ export default function SimulationPage() {
                 Escolha um dos procedimentos abaixo para iniciar a simulação.
               </p>
 
-              <div className="flex gap-4 justify-center w-full mb-6">
-                {[...procedures].reverse().map((p) => (
+              <div className="flex flex-wrap sm:flex-nowrap gap-3 justify-center w-full mb-6">
+                {procedures.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setProcedure(p.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center w-28 h-28 rounded-xl border transition-all duration-200 cursor-pointer shadow-sm",
+                      "flex flex-col items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-xl border transition-all duration-200 cursor-pointer shadow-sm p-2",
                       procedure === p.id
                         ? "bg-blue-50 border-blue-500 text-blue-700 shadow-md scale-105"
                         : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                     )}
                   >
-                    <div className="w-10 h-10 relative mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 relative mb-1.5">
                       <Image
                         src={p.id === "Facetas" ? "/facetas.svg" : "/implante.svg"}
                         alt={p.label}
@@ -340,7 +348,7 @@ export default function SimulationPage() {
                         }}
                       />
                     </div>
-                    <span className="font-semibold text-xs capitalize">{p.label}</span>
+                    <span className="font-semibold text-[11px] sm:text-xs text-center leading-tight capitalize">{p.label}</span>
                   </button>
                 ))}
               </div>
@@ -368,7 +376,10 @@ export default function SimulationPage() {
                 </div>
 
                 {/* Image Upload / Preview (No Topo) */}
-                <div className="bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 min-h-[240px] flex flex-col items-center justify-center relative overflow-hidden">
+                <div className={cn(
+                  "bg-white p-3 rounded-xl border-2 border-dashed border-primary/20 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300",
+                  !imageBase64 ? "min-h-[220px]" : "min-h-[380px] sm:min-h-[440px]"
+                )}>
                   {/* Loading overlay while processing */}
                   <AnimatePresence>
                     {isProcessing && (
@@ -401,10 +412,24 @@ export default function SimulationPage() {
                       <input ref={camRef} type="file" hidden accept="image/*" capture="environment" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                     </div>
                   ) : (
-                    <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative w-full h-full min-h-[360px] sm:min-h-[420px] flex items-center justify-center py-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageBase64} alt="Preview" className="max-h-[220px] rounded-lg shadow-md" />
-                      <button onClick={() => { setImageBase64(null); setImageFile(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full flex items-center justify-center w-8 h-8 p-0 shadow-lg cursor-pointer">
+                      <img
+                        src={imageBase64}
+                        alt="Preview"
+                        className="max-h-[360px] sm:max-h-[420px] w-auto rounded-xl shadow-md object-contain"
+                      />
+                      
+                      {/* Botão de Remover Foto */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageBase64(null);
+                          setImageFile(null);
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center w-7 h-7 p-0 shadow-lg cursor-pointer transition-all z-10"
+                        title="Remover Foto"
+                      >
                         <X size={14} />
                       </button>
                     </div>
@@ -435,21 +460,41 @@ export default function SimulationPage() {
           {step === "result" && (urlSimulada || urlOriginal) && (
             <motion.div 
               key="res" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              className="flex-1 flex flex-col items-center justify-center w-full gap-6 py-4"
+              initial={{ opacity: 0, scale: 0.98 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              transition={{ duration: 0.3 }}
+              className="flex-1 flex flex-col items-center w-full gap-4 py-2"
             >
-              {/* Slider de Comparação Centralizado com tamanho máximo */}
-              <div className="w-full max-w-2xl bg-white p-0 rounded-2xl shadow-md overflow-hidden [&_img]:object-contain border border-slate-100">
+              {/* Slider: w-full sem max-width restritiva — ocupa toda a tela disponível */}
+              <div className="w-full max-w-3xl bg-white p-0 rounded-2xl shadow-lg overflow-hidden border border-slate-100">
                 <BeforeAfterSlider
                   before={urlOriginal ?? imageBase64!}
                   after={urlSimulada ?? ""}
                 />
               </div>
 
-              {/* Container de Botões posicionado abaixo com espaçamento consistente */}
+              {/* Container de Botões */}
               <div className="w-full max-w-md space-y-3 mt-2">
-                {/* Botão de Salvar Simulação */}
+                {/* Linha 1: + Nova | Refazer */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleNewSimulation}
+                    className="h-10 rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: "#3C83F6" }}
+                  >
+                    <Plus size={14} /> Nova
+                  </button>
+                  <button
+                    onClick={handleRetry}
+                    disabled={isProcessing}
+                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                    {isProcessing ? "Gerando..." : "Refazer"}
+                  </button>
+                </div>
+
+                {/* Linha 2: Salvar Simulação */}
                 <button
                   onClick={() => setShowSaveModal(true)}
                   disabled={isSaved}
@@ -460,24 +505,6 @@ export default function SimulationPage() {
                 >
                   {isSaved ? <><Check size={14} /> Salva com Sucesso</> : <><Save size={14} /> Salvar Simulação</>}
                 </button>
-
-                {/* Ações rápidas */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={handleRetry}
-                    disabled={isProcessing}
-                    className="h-10 border-2 border-primary/20 rounded-xl font-semibold text-primary capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                    {isProcessing ? "Gerando..." : "Refazer"}
-                  </button>
-                  <button
-                    onClick={handleNewSimulation}
-                    className="h-10 border-2 border-[#FB923C] bg-[#FB923C] rounded-xl font-semibold text-white capitalize text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FB923C]/90 shadow-sm transition-all"
-                  >
-                    <Plus size={14} /> Nova
-                  </button>
-                </div>
               </div>
             </motion.div>
           )}
@@ -496,50 +523,49 @@ export default function SimulationPage() {
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-gray-100"
             >
-              <Card className="shadow-2xl bg-white border border-gray-100 p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-800 text-xs">Salvar Simulação</h3>
-                  <button
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 text-sm">Salvar Simulação</h3>
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <Input
+                  label="Nome do Paciente"
+                  placeholder="Digite o nome..."
+                  value={nomePaciente}
+                  onChange={(e) => setNomePaciente(e.target.value)}
+                  autoFocus
+                />
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
                     onClick={() => setShowSaveModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                    className="flex-1 h-9 text-xs font-semibold rounded-xl"
                   >
-                    <X size={14} />
-                  </button>
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveSimulation}
+                    loading={isSaving}
+                    disabled={!nomePaciente.trim() || isSaving}
+                    className="flex-1 h-9 text-xs font-semibold rounded-xl"
+                  >
+                    Confirmar
+                  </Button>
                 </div>
-
-                <CardContent className="space-y-3 p-0">
-                  <Input
-                    label="Nome do Paciente"
-                    placeholder="Digite o nome..."
-                    value={nomePaciente}
-                    onChange={(e) => setNomePaciente(e.target.value)}
-                  />
-
-                  <div className="flex gap-2 mt-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowSaveModal(false)}
-                      className="flex-1 h-9 text-xs"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveSimulation}
-                      loading={isSaving}
-                      disabled={!nomePaciente.trim() || isSaving}
-                      className="flex-1 h-9 text-xs"
-                    >
-                      Confirmar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </motion.div>
           </div>
         )}
@@ -590,6 +616,14 @@ export default function SimulationPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal de Captura Profissional com Câmera WebRTC e Alinhamento Odontológico */}
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={handleCapturedPhoto}
+        onFallbackFileInput={() => camRef.current?.click()}
+      />
     </div>
   );
 }

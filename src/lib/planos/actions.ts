@@ -6,7 +6,7 @@ export async function getPlansAction() {
   const supabase = await createClient();
   const { data: priceRows, error } = await supabase
     .from("prices")
-    .select("id, unit_amount, interval, currency, active, product_id, products(name, description)")
+    .select("id, unit_amount, interval, currency, active, product_id, metadata, products(name, description, metadata)")
     .eq("active", true)
     .order("unit_amount", { ascending: true });
 
@@ -15,7 +15,28 @@ export async function getPlansAction() {
     return { error: error.message, plans: [] };
   }
 
-  const mapped = (priceRows as any[] || []).map((p) => ({
+  const isStatusAtivo = (meta: any) => {
+    if (!meta) return false;
+    let obj = meta;
+    if (typeof obj === "string") {
+      try {
+        obj = JSON.parse(obj);
+      } catch {
+        return false;
+      }
+    }
+    const s = String(obj?.status || "").toLowerCase().trim();
+    return s === "ativo" || s === "active";
+  };
+
+  // Filtra estritamente apenas produtos e preços com metadata.status = 'ativo'
+  const activePrices = (priceRows as any[] || []).filter((p) => {
+    const priceActive = isStatusAtivo(p.metadata);
+    const productActive = isStatusAtivo(p.products?.metadata);
+    return priceActive && productActive;
+  });
+
+  const mapped = activePrices.map((p) => ({
     id: p.id,
     unit_amount: p.unit_amount,
     interval: p.interval,
@@ -38,7 +59,7 @@ export async function getPlanosUserDataAction() {
   // Busca dados do usuario
   const { data: u, error: uError } = await supabase
     .from("usuarios")
-    .select("nome_completo,email,cpf,telefone,address,city,postal_code,state,id,referral_code")
+    .select("nome_completo,email,cpf,telefone,address,city,postal_code,state,id,referral_code,referred_by_code,trial_ends_at")
     .eq("id", user.id)
     .single();
 

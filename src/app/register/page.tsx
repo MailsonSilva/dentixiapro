@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { signUpAction } from "@/lib/auth/actions";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +25,28 @@ function RegisterContent() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   
   const searchParams = useSearchParams();
-  const [refCode, setRefCode] = useState(searchParams?.get("ref") || "");
+  const [refCode, setRefCode] = useState("");
+
+  // Regra 6: Auto-preenche código de indicação caso tenha sido copiado/aberto por link
+  useEffect(() => {
+    const queryRef =
+      searchParams?.get("ref") ||
+      searchParams?.get("code") ||
+      searchParams?.get("codigo") ||
+      searchParams?.get("referral") ||
+      "";
+    if (queryRef) {
+      setRefCode(queryRef);
+      try {
+        localStorage.setItem("dentix_ref_code", queryRef);
+      } catch {}
+    } else {
+      try {
+        const savedRef = localStorage.getItem("dentix_ref_code");
+        if (savedRef) setRefCode(savedRef);
+      } catch {}
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -183,24 +204,24 @@ function RegisterContent() {
                   label="Código de Indicação (Opcional)"
                   value={refCode}
                   onChange={(e) => setRefCode(e.target.value)}
-                  placeholder="DENTIX-XXXX"
+                  placeholder="DT123456"
                   icon={<Tag size={20} />}
                 />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex items-start gap-3 p-4 bg-gray-50/80 rounded-2xl border border-gray-200 mt-2">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex items-start gap-2.5 p-3 bg-gray-50/80 rounded-2xl border border-gray-200 mt-2">
                 <input 
                   type="checkbox" 
                   id="terms"
                   checked={acceptedTerms}
                   onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-1 w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-all"
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-all flex-shrink-0"
                 />
-                <label htmlFor="terms" className="text-sm text-gray-500 leading-relaxed cursor-pointer select-none">
+                <label htmlFor="terms" className="text-xs text-gray-500 leading-tight cursor-pointer select-none">
                   Eu li e aceito a{" "}
-                  <button type="button" onClick={() => setShowPrivacy(true)} className="font-bold text-gray-700 hover:text-primary underline">Política de Privacidade</button> 
+                  <button type="button" onClick={() => setShowPrivacy(true)} className="font-semibold text-gray-700 hover:text-primary underline">Política de Privacidade</button> 
                   {" "}e os{" "}
-                  <button type="button" onClick={() => setShowTerms(true)} className="font-bold text-gray-700 hover:text-primary underline">Termos de Uso</button> 
+                  <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-gray-700 hover:text-primary underline">Termos de Uso</button> 
                   {" "}da DentixIA.
                 </label>
               </motion.div>

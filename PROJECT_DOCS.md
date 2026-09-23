@@ -4,10 +4,10 @@ This document outlines the current state and architecture of the DentixiaPro app
 
 ## Overview
 
-DentixiaPro is a multi-tenant web application built to manage dental clinics ("company" or "tenant"). It serves as a CRM, scheduling system, and settings manager. The system heavily leverages AI automation for chatbots and appointments, alongside standard SaaS capabilities.
+DentixiaPro is a SaaS platform for dental simulations powered by AI. It provides authentication, billing via Stripe, dental image simulations via Google Gemini, and partner referral management.
 
-**Location:** `d:\m_fer\Documents\DaLua Apps\Projetos\DentixiaPro\app`
-**Tech Stack:** Next.js (App Directory), TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, RLS).
+**Location:** `d:\m_fer\Documents\DaLua Apps\SISTEMAS\PRODUCAO\DentixiaPro\app`  
+**Tech Stack:** Next.js 15 (App Router), TypeScript, Tailwind CSS, Supabase (PostgreSQL + Auth + Storage + Edge Functions), Stripe.
 
 ## Architecture
 
@@ -22,19 +22,50 @@ The system uses a robust **RBAC (Role-Based Access Control) Multi-Tenant Archite
 
 ## Directory Structure
 
-*   **/api**: Next.js API routes (e.g., evolution webhook endpoints).
-*   **/components**: Reusable React components (UI elements, layout wrappers).
-*   **/lib**: Utility functions, React contexts (e.g., `DrawerContext.tsx`), and configuration files.
-*   **/supabase**: Contains database migrations and setup scripts (`/migrations`).
-*   *Application Routes:*
-    *   **/agenda**: Calendar and appointment management.
-    *   **/clientes**: Patient and contact management CRM.
-    *   **/configuracoes**: System and business hours settings.
-    *   **/crm**: Kanban boards and sales pipelines.
-    *   **/mensagens**: Hybrid AI/Human chat interface.
-    *   **/simulacoes**: Treatment simulation features and results.
-    *   **/perfil**, **/planos**, **/indique-e-ganhe**: Account and billing management.
-    *   **/login**, **/register**, **/forgot**: Authentication flows.
+```
+DentixiaPro/                          ← raiz do projeto
+  app/                                ← aplicação Next.js (trabalhar aqui)
+    .env.local                        ← variáveis de ambiente locais
+    next.config.ts                    ← config Next.js (remotePatterns Supabase aqui!)
+    src/
+      app/                            ← rotas Next.js (App Router)
+      components/                     ← componentes React reutilizáveis
+      lib/
+        auth/actions.ts               ← Server Actions de autenticação
+        images.ts                     ← registry central de imagens (public/)
+    supabase/                         ← CLI Supabase (executar de app/)
+      functions/                      ← Edge Functions (stripe-webhook, create-portal, create-checkout)
+      migrations/                     ← Migrations SQL
+    public/                           ← assets estáticos (logo.png, logo-icon.png, etc)
+  GUIA_IMPLANTACAO_TESTE_SUPABASE_STRIPE.md  ← guia completo de deploy
+```
+
+> [!IMPORTANT]
+> **NÃO há pasta `supabase/` na raiz** — a pasta ativa é `app/supabase/`. Sempre execute `supabase` CLI de dentro de `app/`.
+
+## Post-Deploy Configuration (CRÍTICO)
+
+> Após qualquer troca de projeto Supabase, é **obrigatório** configurar:
+
+1. **Site URL** → `Authentication > URL Configuration` no painel Supabase  
+   ⚠️ Se ficar como `http://localhost:3000`, emails de confirmação e recuperação de senha redirecionam para localhost!
+
+2. **Redirect URLs** → Adicionar:
+   - `https://dentixiapro.vercel.app/**`
+   - `http://localhost:3000/**`
+
+3. **Google OAuth Provider** → `Authentication > Providers > Google`  
+   Requer Client ID + Client Secret do Google Cloud Console  
+   Callback URI: `https://<PROJECT_REF>.supabase.co/auth/v1/callback`
+
+4. **`next.config.ts` → `remotePatterns`** → Atualizar hostname do Supabase  
+   (causa falha silenciosa de imagens na Vercel se apontar para projeto antigo)
+
+5. **Variáveis Vercel** → `Settings > Environment Variables` → Atualizar todas as chaves
+
+6. **Chaves Stripe** → `STRIPE_SECRET_KEY` = `sk_test_...` | `STRIPE_WEBHOOK_SECRET` = `whsec_...`
+
+---
 
 ## Recent Features & Core Workflows
 

@@ -137,7 +137,7 @@ export function AdminClientsTab({
         loading: false,
       });
     } else {
-      setSelectedClientMetrics((prev) => prev ? { ...prev, loading: false } : null);
+      setSelectedClientMetrics((prev) => (prev ? { ...prev, loading: false } : null));
     }
   };
 
@@ -509,7 +509,7 @@ export function AdminClientsTab({
         </div>
       </div>
 
-      {/* Modal de Quantidades e Estatísticas Numéricas (Sem exibição de imagens) */}
+      {/* Modal de Quantidades e Estatísticas Numéricas */}
       {selectedClientMetrics && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white border border-slate-200 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
@@ -556,7 +556,7 @@ export function AdminClientsTab({
               {/* Grid das 3 Quantidades Específicas */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 
-                {/* 1. Salvas */}
+                {/* 1. Salvas pelo Cliente */}
                 <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-xl space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
                     <Sparkles className="w-4 h-4 text-emerald-600" /> Salvas pelo Cliente
@@ -567,7 +567,7 @@ export function AdminClientsTab({
                   <p className="text-[10px] text-emerald-700">Guardadas no histórico</p>
                 </div>
 
-                {/* 2. Geradas Não Salvas */}
+                {/* 2. Geradas (Não Salvas) */}
                 <div className="bg-blue-50/80 border border-blue-200/80 p-4 rounded-xl space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
                     <Layers className="w-4 h-4 text-blue-600" /> Geradas (Não Salvas)
@@ -578,7 +578,7 @@ export function AdminClientsTab({
                   <p className="text-[10px] text-blue-700">Simulações de teste</p>
                 </div>
 
-                {/* 3. Com Falha / Erro */}
+                {/* 3. Com Falha / Erro de API */}
                 <div className="bg-rose-50/80 border border-rose-200/80 p-4 rounded-xl space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
                     <AlertTriangle className="w-4 h-4 text-rose-600" /> Com Falha / Erro

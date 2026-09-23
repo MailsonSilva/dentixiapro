@@ -114,7 +114,13 @@ export async function proxy(request: NextRequest) {
 
   // 4. Redirecionamento baseado no perfil (Role-based Routing)
   if (user) {
-    const tipoUsuario = user.user_metadata?.tipo || user.user_metadata?.tipo_usuario;
+    const tipoUsuario = (user.user_metadata?.tipo || user.user_metadata?.tipo_usuario || '').toLowerCase();
+    const isAdmin = tipoUsuario === 'admin' || tipoUsuario === 'super_admin';
+
+    // Se um usuário não-admin tentar acessar a área /admin, redireciona para a home
+    if (pathname.startsWith('/admin') && !isAdmin) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
 
     // Se estiver em uma página de auth (login/register), redireciona para a home correta
     if (isAuthPage) {

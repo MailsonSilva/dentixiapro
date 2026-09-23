@@ -1,5 +1,5 @@
--- Migration: 20260704000000_simulacoes_and_tracking_rls.sql
--- Descrição: Tabelas de simulações e tracking com RLS completa (SELECT, INSERT, DELETE) e isolamento por usuário
+-- Migration: 20260703000000_simulacoes_and_tracking.sql
+-- Descrição: Tabelas de simulações odontológicas e métricas de tracking com RLS completa e isolamento por usuário
 
 -- 1. Tabela public.simulacoes
 CREATE TABLE IF NOT EXISTS public.simulacoes (
@@ -17,11 +17,11 @@ ALTER TABLE public.simulacoes ENABLE ROW LEVEL SECURITY;
 
 -- 2. Tabela public.simulacao_tracking
 CREATE TABLE IF NOT EXISTS public.simulacao_tracking (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES public.usuarios(id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK (status IN ('acerto', 'erro', 'refeita', 'salva')),
-    metadata JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.usuarios(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN ('acerto', 'erro', 'refeita', 'salva')),
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 ALTER TABLE public.simulacao_tracking ENABLE ROW LEVEL SECURITY;

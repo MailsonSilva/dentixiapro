@@ -148,11 +148,12 @@ export async function deleteSimulationAction(id: number): Promise<void> {
     throw new Error("Não autorizado.");
   }
 
-  // Deletar do banco de dados
+  // Deletar do banco de dados com filtro estrito de usuário
   const { error: deleteDbError } = await supabaseServer
     .from("simulacoes")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("usuario_id", user.id);
 
   if (deleteDbError) {
     throw new Error(`Erro ao deletar do banco: ${deleteDbError.message}`);

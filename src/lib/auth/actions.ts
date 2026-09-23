@@ -63,7 +63,11 @@ export async function signUpAction(payload: {
     return { error: error.message, data: null };
   }
 
-
+  // Supabase retorna data.user = null silenciosamente quando email já está cadastrado
+  // e a confirmação de email está ativa (comportamento anti-enumeração)
+  if (!data.user) {
+    return { error: "Este e-mail já está cadastrado. Faça login ou use a opção 'Esqueci minha senha'.", data: null };
+  }
 
   return { error: null, data };
 }
@@ -167,12 +171,12 @@ export async function getClientLayoutDataAction() {
     const uTipo = (usuarioData?.tipo || "").toLowerCase();
     const ucRole = (ucData?.role || "").toLowerCase();
     
-    // Define se o usuário é admin/super_admin por qualquer uma das duas fontes
+    // Define se o usuário é admin/super_admin do sistema (apenas via tipo de usuário em usuarios)
     const isSuperAdmin = uTipo === 'super_admin' || ucRole === 'super_admin';
-    const isAdmin = isSuperAdmin || uTipo === 'admin' || ucRole === 'admin';
+    const isAdmin = isSuperAdmin || uTipo === 'admin';
     
     const role: 'admin' | 'manager' | 'user' | 'super_admin' | null = 
-      isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : (ucData?.role as any || null));
+      isSuperAdmin ? 'super_admin' : (isAdmin ? 'admin' : (ucData?.role === 'user' ? 'user' : (ucData?.role as any || 'user')));
 
     // Admin e super_admin NUNCA são bloqueados pelo trial
     if (isAdmin) {

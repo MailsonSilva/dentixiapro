@@ -1,7 +1,51 @@
--- Migration: 20260702000000_auth_trigger_and_consent.sql
--- Descrição: Trigger handle_new_user unificado e tabela de consentimentos
+-- Migration: 20260701000000_core_users_auth_and_security.sql
+-- Descrição: Estrutura base de usuários, função is_admin, trigger de novo usuário e consentimentos
 
--- 1. Garantir existência da tabela public.consentimentos
+-- 1. Colunas de controle na tabela public.usuarios (se não existirem)
+ALTER TABLE public.usuarios 
+ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+ADD COLUMN IF NOT EXISTS check_video BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '7 days'),
+ADD COLUMN IF NOT EXISTS referral_code TEXT;
+
+-- 2. Índices de alta performance para busca e filtros de usuários
+CREATE INDEX IF NOT EXISTS idx_usuarios_search ON public.usuarios (email, nome_completo, telefone, referral_code);
+CREATE INDEX IF NOT EXISTS idx_usuarios_created_at ON public.usuarios (created_at);
+
+-- 3. Função SECURITY DEFINER para verificar se o usuário é Admin sem causar recursão RLS
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.usuarios 
+    WHERE id = user_id AND tipo::text IN ('admin', 'super_admin', 'parceiro')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- 4. RLS na tabela usuarios
+ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can read all users" ON public.usuarios;
+DROP POLICY IF EXISTS "Admins can update all users" ON public.usuarios;
+
+CREATE POLICY "Admins can read all users" 
+ON public.usuarios FOR SELECT 
+TO authenticated 
+USING (
+  auth.uid() = id OR public.is_admin(auth.uid())
+);
+
+CREATE POLICY "Admins can update all users" 
+ON public.usuarios FOR UPDATE 
+TO authenticated 
+USING (
+  auth.uid() = id OR public.is_admin(auth.uid())
+);
+
+-- 5. Tabela de Consentimentos
 CREATE TABLE IF NOT EXISTS public.consentimentos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.usuarios(id) ON DELETE CASCADE,
@@ -24,14 +68,13 @@ ON public.consentimentos FOR INSERT
 TO authenticated
 WITH CHECK (user_id = auth.uid());
 
--- 2. Trigger handle_new_user consolidado e robusto (suporta cadastro por email e OAuth Google)
+-- 6. Trigger handle_new_user consolidado e robusto (suporta cadastro por email e OAuth Google)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
   existing_user_id UUID;
   has_consent BOOLEAN;
 BEGIN
-  -- Verificar se já existe registro em public.usuarios
   SELECT id INTO existing_user_id 
   FROM public.usuarios 
   WHERE email = new.email 
@@ -73,7 +116,6 @@ BEGIN
     existing_user_id := new.id;
   END IF;
 
-  -- Checar consentimento registrado
   SELECT EXISTS(
     SELECT 1 
     FROM public.consentimentos 
@@ -90,7 +132,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Vincular trigger na tabela auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
