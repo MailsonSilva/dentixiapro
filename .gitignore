@@ -23,6 +23,8 @@ dist/
 .agent
 .gemini/
 .gemini
+.lionclaw/
+.lionclaw
 *.log
 
 # debug
