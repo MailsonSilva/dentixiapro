@@ -55,3 +55,10 @@ __pycache__/
 stripe-webhook-fixed.ts
 /stripe-webhook-fixed.ts
 
+# artefatos de analise do agente (discovery/security)
+docs/Docs20260922_235835/
+
+# codegraph
+.codegraph/
+.codegraph
+
