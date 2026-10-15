@@ -8,10 +8,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      // Supabase Storage — projeto ativo
+      // Supabase Storage — aceita qualquer projeto/subdomínio do Supabase
       {
         protocol: 'https',
-        hostname: 'ghcjnpileyqrugskbwqu.supabase.co',
+        hostname: '**.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
       },

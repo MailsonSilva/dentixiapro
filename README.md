@@ -101,7 +101,9 @@ supabase/
 | Variável | Descrição | Obrigatória |
 |----------|-----------|:-----------:|
 | `NEXT_PUBLIC_SUPABASE_URL` | URL do projeto Supabase | ✅ |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública Supabase | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública anônima Supabase | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave de serviço administrativo Supabase | ✅ |
+| `NEXT_PUBLIC_APP_URL` | URL canônica do app (ex: `https://app.dentixia.com.br`) | ✅ |
 | `GEMINI_API_KEY` | Chave da API Google Gemini | ✅ |
 | `STRIPE_SECRET_KEY` | Chave secreta Stripe (`sk_test_...` ou `sk_live_...`) | ✅ |
 | `STRIPE_WEBHOOK_SECRET` | Secret do webhook Stripe (`whsec_...`) | ✅ |
@@ -109,11 +111,12 @@ supabase/
 ### Post-Deploy Checklist
 
 1. **Supabase → Authentication → URL Configuration** — Atualizar Site URL (produção)
-2. **Supabase → Redirect URLs** — Adicionar domínio de produção (`https://app.dentixia.com/**`)
+2. **Supabase → Redirect URLs** — Adicionar domínio de produção (`https://app.dentixia.com.br/**`)
 3. **Google OAuth** — Configurar Client ID/Secret no provider Google do Supabase
-4. **`next.config.ts`** — Atualizar `remotePatterns` com hostname do Supabase
-5. **Vercel → Environment Variables** — Todas as chaves acima
+4. **`next.config.ts`** — Wildcard `**.supabase.co` já habilitado para qualquer instância Supabase
+5. **Vercel → Environment Variables** — Todas as chaves da tabela acima
 6. **Supabase → Edge Functions → Secrets** — `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+7. **Guia Completo** — Consulte [docs/DEPLOY_GUIDE.md](./docs/DEPLOY_GUIDE.md)
 
 ## API Reference
 
@@ -132,7 +135,7 @@ supabase/
 |----------|--------|-----------|
 | `/functions/v1/create-checkout` | POST | Cria sessão de Checkout Stripe |
 | `/functions/v1/create-portal` | POST | Cria sessão do Customer Portal |
-| `/functions/v1/stripe-webhook` | POST | Recebe eventos do Stripe (v5) |
+| `/functions/v1/stripe-webhook` | POST | Recebe eventos do Stripe (v5/v8) |
 
 ### Autenticação
 
@@ -151,14 +154,16 @@ npm run dev      # Servidor de desenvolvimento (webpack)
 npm run build    # Build de produção
 npm run start    # Servidor de produção
 npm run lint     # ESLint
+npm test         # Execução da suíte de testes (Vitest)
+npm run test:watch # Modo contínuo dos testes
 ```
 
 ## Documentation
 
+- [DEPLOY_GUIDE.md](./docs/DEPLOY_GUIDE.md) — 🚀 Guia completo e definitivo de deploy
 - [PROJECT_DOCS.md](./PROJECT_DOCS.md) — Documentação técnica detalhada
 - [STATE.md](./STATE.md) — Estado atual do projeto e histórico de sprints
 - [SPEC.md](./SPEC.md) — Especificação de procedimentos e calendário
-- [GUIA_IMPLANTACAO.md](../GUIA_IMPLANTACAO_TESTE_SUPABASE_STRIPE.md) — Guia completo de deploy
 
 ## License
 

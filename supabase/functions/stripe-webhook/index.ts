@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   );
 
   const signature = req.headers.get("Stripe-Signature");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET");
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET") || Deno.env.get("STRIPE_WEBHOOK_SECRET");
   const body = await req.text();
 
   if (!signature || !webhookSecret) return new Response("Erro assinatura", { status: 400 });

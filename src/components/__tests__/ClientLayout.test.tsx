@@ -1,105 +1,116 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClientLayout } from '../ClientLayout';
-import { supabase } from '@/lib/supabase';
+import * as authActions from '@/lib/auth/actions';
 
 // Mock dependências do Next.js
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 let mockPathname = '/';
-let mockSearchParams = new URLSearchParams();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => mockPathname,
-  useSearchParams: () => mockSearchParams,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
-// Mock do Supabase
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    auth: {
-      getUser: vi.fn(),
-      signOut: vi.fn(),
-    },
-    from: vi.fn(),
-  },
+// Mock das Server Actions de autenticação
+vi.mock('@/lib/auth/actions', () => ({
+  getClientLayoutDataAction: vi.fn(),
+  signOutAction: vi.fn().mockResolvedValue({ error: null }),
+  saveUserPhoneAction: vi.fn().mockResolvedValue({ error: null }),
+  setCheckVideoAction: vi.fn().mockResolvedValue({ error: null }),
 }));
 
-// Mock Sidebar e Navbar pra não renderizar a árvore toda nos testes do layout
+// Mock da action do vídeo de boas-vindas
+vi.mock('@/lib/admin/actions', () => ({
+  getPublicWelcomeVideoUrlAction: vi.fn().mockResolvedValue({ url: null }),
+}));
+
+// Mock Sidebar e Navbar para isolar o teste do layout
 vi.mock('@/components/Sidebar', () => ({ Sidebar: () => <div data-testid="sidebar" /> }));
 vi.mock('@/components/Navbar', () => ({ Navbar: () => <div data-testid="navbar" /> }));
 
-describe('ClientLayout Authentication TDD', () => {
+describe('ClientLayout Authentication & Access Control', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname = '/';
-    mockSearchParams = new URLSearchParams();
   });
 
-  it('TESTE 1: Deve redirecionar usuário DESLOGADO para /login (Substituindo o histórico)', async () => {
-    // Preparando o cenário nulo (unauthenticated)
-    mockPathname = '/simulacoes'; // Simulando uma rota privada
-    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: null } });
+  it('TESTE 1: Deve renderizar o layout para usuário comum com trial ativo sem redirecionar', async () => {
+    vi.mocked(authActions.getClientLayoutDataAction).mockResolvedValue({
+      error: null,
+      data: {
+        user: { id: 'user-123', email: 'dentista@teste.com' } as any,
+        userType: 'comum',
+        userRole: 'user',
+        trialExpired: false,
+        telefone: '11999999999',
+        checkVideo: true,
+      },
+    });
 
-    render(<ClientLayout><div>Página Privada</div></ClientLayout>);
+    render(
+      <ClientLayout>
+        <div data-testid="app-content">Conteúdo da Home</div>
+      </ClientLayout>
+    );
 
-    // De acordo com os requisitos:
-    // 1) Tem que carregar ao abrir
-    // 2) Como não está na rota /login nem public, deve chamar router.replace('/login')
-    
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/login');
+      expect(screen.getByTestId('app-content')).toBeInTheDocument();
+      expect(mockPush).not.toHaveBeenCalled();
     });
   });
 
-  it('TESTE 2: Deve redirecionar PARCEIRO logado na home para o seu respectivo dashboard', async () => {
-    // Preparando cenário: Usuário Parceiro navegando na Home "/"
-    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: { id: '123' } } });
-    
-    // Mockar tabela usuarios para retornar "parceiro"
-    (supabase.from as any).mockImplementation((table: string) => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: { tipo_usuario: 'parceiro' } }),
-    }));
+  it('TESTE 2: Deve redirecionar PARCEIRO para /parceiros ao acessar rota comum fora do escopo', async () => {
+    mockPathname = '/simulacoes';
 
-    render(<ClientLayout><div>Conteúdo da Home</div></ClientLayout>);
+    vi.mocked(authActions.getClientLayoutDataAction).mockResolvedValue({
+      error: null,
+      data: {
+        user: { id: 'partner-123', email: 'parceiro@teste.com' } as any,
+        userType: 'parceiro',
+        userRole: null,
+        trialExpired: false,
+        telefone: '11999999999',
+        checkVideo: true,
+      },
+    });
+
+    render(
+      <ClientLayout>
+        <div data-testid="app-content">Área de Simulações</div>
+      </ClientLayout>
+    );
 
     await waitFor(() => {
-      // Como a pathname simulada é "/" e o tipo é "parceiro", deve sofrer o push/replace
       expect(mockPush).toHaveBeenCalledWith('/parceiros');
     });
   });
 
-  it('TESTE 3: Usuário Comum acessando a aplicação normalmente não sofre redirect e renderiza o conteúdo', async () => {
+  it('TESTE 3: Exibe o banner de paywall quando o trial estiver expirado para usuário comum', async () => {
     mockPathname = '/';
-    (supabase.auth.getUser as any).mockResolvedValue({ data: { user: { id: '123' } } });
-    
-    (supabase.from as any).mockImplementation((table: string) => {
-      if (table === 'usuarios') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: { tipo_usuario: 'comum' } }),
-        };
-      }
-      if (table === 'verificar_status_usuario') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: { status_code: 3 } }),
-        };
-      }
-      return {};
+
+    vi.mocked(authActions.getClientLayoutDataAction).mockResolvedValue({
+      error: null,
+      data: {
+        user: { id: 'expired-123', email: 'expirado@teste.com' } as any,
+        userType: 'comum',
+        userRole: 'user',
+        trialExpired: true,
+        telefone: '11999999999',
+        checkVideo: true,
+      },
     });
 
-    render(<ClientLayout><div data-testid="app-content">Conteúdo da Home</div></ClientLayout>);
+    render(
+      <ClientLayout>
+        <div data-testid="app-content">Página Principal</div>
+      </ClientLayout>
+    );
 
     await waitFor(() => {
-      expect(screen.getByTestId('app-content')).toBeInTheDocument();
-      // Não pode haver redirect para este caso de sucesso
-      expect(mockPush).not.toHaveBeenCalled();
-      expect(mockReplace).not.toHaveBeenCalled();
+      expect(screen.getByText(/período de teste expirou/i)).toBeInTheDocument();
     });
   });
 });

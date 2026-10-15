@@ -1,0 +1,122 @@
+﻿version: "1.0"
+name: "unified-developer-harness"
+description: "Harness unificado multi-alvo com alocação dinâmica de modelos de IA, TDD, Stitch MCP, Graft e ai-memory."
+
+models:
+  reasoning: "${MODEL_REASONING:-gemini-3.8-pro}"
+  coding: "${MODEL_CODING:-gemini-3.8-flash}"
+  multimodal_design: "${MODEL_DESIGN:-gemini-3.8-flash}"
+  fast_ops: "${MODEL_OPS:-gemini-3.8-flash}"
+
+settings:
+  prd_path: "_specs/prd.md"
+  language: "pt-BR"
+  enforce_tdd: true
+  max_repair_cycles: 3
+  active_profile: "dynamic"
+
+workspaces:
+  shared:
+    paths:
+      - "_specs/"
+      - "_references/"
+      - ".agents/"
+  mobile:
+    path: "apps/mobile/"
+    active_when: "targets.mobile == true"
+    test_command: "cd apps/mobile && flutter test"
+    lint_command: "cd apps/mobile && dart analyze"
+  web:
+    path: "apps/web/"
+    active_when: "targets.web == true"
+    test_command: "cd apps/web && npm test"
+    lint_command: "cd apps/web && npm run lint"
+  landing:
+    path: "apps/landing/"
+    active_when: "targets.landing_page == true"
+    test_command: "cd apps/landing && npm test"
+    lint_command: "cd apps/landing && npm run lint"
+
+tools:
+  ai_memory:
+    cli: "ai-memory"
+    description: "Handoffs atômicos entre agentes e histórico de aprendizado do ciclo TDD."
+  graft:
+    cli: "graft"
+    description: "Grafo de símbolos e chamadas via AST Tree-sitter para navegação precisa no código."
+  google_stitch_mcp:
+    server_id: "google-stitch"
+    description: "Leitor de referências visuais de telas e prototipagem de UI."
+  git:
+    cli: "git"
+    description: "Controle de versão e commits semânticos atômicos."
+
+subagents:
+  product_architect:
+    model: "${models.reasoning}"
+    role: "Entrevista o desenvolvedor, define requisitos de negócio e gera o PRD agnóstico em _specs/ com diagramas Archify."
+    rules:
+      - ".agents/rules/global.md"
+    skills:
+      - ".agents/skills/spec-discovery/SKILL.md"
+    tools: ["file_read", "file_write", "ai_memory"]
+
+  ui_ux_designer:
+    model: "${models.multimodal_design}"
+    role: "Inspeciona capturas em _references/screens/ usando Google Stitch MCP e gera os tokens de design em _specs/design-tokens.json."
+    rules:
+      - ".agents/rules/global.md"
+    skills:
+      - ".agents/skills/mobile-ux-stitch/SKILL.md"
+    tools: ["google_stitch_mcp", "file_read", "file_write", "ai_memory"]
+
+  tdd_tester:
+    model: "${models.coding}"
+    role: "Lê a spec da feature e cria testes unitários/widgets/componentes que obrigatoriamente falham antes do código."
+    rules:
+      - ".agents/rules/global.md"
+    skills:
+      - ".agents/skills/clean-architecture-tdd/SKILL.md"
+    tools: ["file_read", "file_write", "bash", "graft", "ai_memory"]
+
+  mobile_builder:
+    model: "${models.coding}"
+    role: "Escreve código Flutter estritamente tipado, modular e aderente à Clean Architecture para passar nos testes."
+    active_when: "targets.mobile == true"
+    rules:
+      - ".agents/rules/global.md"
+      - ".agents/rules/mobile.md"
+    skills:
+      - ".agents/skills/mobile-ux-stitch/SKILL.md"
+      - ".agents/skills/clean-architecture-tdd/SKILL.md"
+    tools: ["file_read", "file_write", "graft", "ai_memory"]
+
+  web_builder:
+    model: "${models.coding}"
+    role: "Escreve componentes Next.js/React com Server Components e boas práticas de Core Web Vitals (Addy Osmani)."
+    active_when: "targets.web == true || targets.landing_page == true"
+    rules:
+      - ".agents/rules/global.md"
+      - ".agents/rules/web.md"
+    skills:
+      - ".agents/skills/web-performance-seo/SKILL.md"
+    tools: ["file_read", "file_write", "graft", "ai_memory"]
+
+  qa_validator:
+    model: "${models.coding}"
+    role: "Executa testes e linters do target ativo, orquestrando até 3 ciclos de autorreparo automático caso algo quebre."
+    rules:
+      - ".agents/rules/global.md"
+    tools: ["bash", "file_read", "file_write", "ai_memory"]
+
+  git_committer:
+    model: "${models.fast_ops}"
+    role: "Inspeciona o diff staged, extrai o contexto do ticket no ai-memory e cria o commit semântico atômico."
+    rules:
+      - ".agents/rules/global.md"
+    tools: ["git", "ai_memory", "bash"]
+
+workflows:
+  dev_cycle:
+    file: ".agents/workflows/dev-cycle.yaml"
+    description: "Ciclo ponta a ponta: Ingestão -> Design -> TDD Red -> Green -> Refactor -> Commit."

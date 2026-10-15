@@ -1,0 +1,124 @@
+﻿version: "1.0"
+name: "dev-cycle"
+description: "Pipeline completo orientado a Spec com TDD (Red-Green-Refactor), loop autônomo de autorreparo e Git committer semântico."
+
+inputs:
+  feature_spec:
+    type: string
+    description: "Caminho relativo da especificação da funcionalidade (ex: _specs/features/auth-login.md)"
+    required: true
+  target:
+    type: string
+    description: "Alvo da execução: mobile | web | landing (se omitido, lê targets de _specs/prd.md)"
+    required: false
+  skip_design:
+    type: boolean
+    description: "Pular inspeção visual caso a tarefa seja puramente backend/lógica de negócio"
+    default: false
+
+steps:
+  - id: step_ingest_context
+    name: "1. Ingestão de Contexto e Análise de Símbolos"
+    agent: "product_architect"
+    actions:
+      - description: "Validar se a spec existe e possui critérios de aceitação objetivos"
+        command: "test -f ${inputs.feature_spec}"
+      - description: "Consultar grafo estático via Graft para mapear arquivos impactados"
+        command: "graft scan --path apps/${inputs.target || 'mobile'}"
+      - description: "Inicializar ticket de execução no ai-memory"
+        command: >
+          ai-memory ticket create
+          --title "Dev Cycle: ${inputs.feature_spec}"
+          --tags "target:${inputs.target},tdd,in_progress"
+
+  - id: step_design_tokens
+    name: "2. Verificação de Tokens e Referências Visuais"
+    agent: "ui_ux_designer"
+    condition: "${inputs.skip_design == false}"
+    actions:
+      - description: "Verificar referências em _references/screens/ via Google Stitch MCP"
+        tool: "google_stitch_mcp"
+        parameters:
+          action: "extract_design_context"
+          source_dir: "_references/screens/"
+      - description: "Garantir consistência das cores e tipografia em _specs/design-tokens.json"
+        tool: "file_read"
+        path: "_specs/design-tokens.json"
+
+  - id: step_tdd_red
+    name: "3. TDD Fase Vermelha (RED) - Escrita de Testes Que Devem Falhar"
+    agent: "tdd_tester"
+    actions:
+      - description: "Ler contratos e critérios de aceitação na spec"
+        tool: "file_read"
+        path: "${inputs.feature_spec}"
+      - description: "Escrever testes unitários e de interface cobrindo os cenários"
+        tool: "file_write"
+      - description: "Executar testes e certificar que falham (Red)"
+        command: >
+          if [ "${inputs.target}" = "web" ] || [ "${inputs.target}" = "landing" ]; then
+            cd apps/${inputs.target} && npm test || true
+          else
+            cd apps/mobile && flutter test || true
+          fi
+
+  - id: step_tdd_green
+    name: "4. TDD Fase Verde (GREEN) - Implementação de Código de Produção"
+    agent_selector:
+      when:
+        - condition: "${inputs.target == 'mobile'}"
+          agent: "mobile_builder"
+        - condition: "${inputs.target == 'web' || inputs.target == 'landing'}"
+          agent: "web_builder"
+        - default: "mobile_builder"
+    actions:
+      - description: "Escrever código de produção estritamente necessário para satisfazer os testes"
+        tool: "file_write"
+
+  - id: step_repair_loop
+    name: "5. Validação de Testes e Loop Fechado de Autorreparo"
+    agent: "qa_validator"
+    loop:
+      max_iterations: 3
+      until: "test_result.exit_code == 0 && lint_result.exit_code == 0"
+      on_iteration:
+        - name: "Executar Linter e Checagem de Tipos"
+          command: >
+            if [ "${inputs.target}" = "web" ] || [ "${inputs.target}" = "landing" ]; then
+              cd apps/${inputs.target} && npm run lint
+            else
+              cd apps/mobile && dart analyze
+            fi
+          catch_output: "lint_result"
+        - name: "Executar Suíte de Testes"
+          command: >
+            if [ "${inputs.target}" = "web" ] || [ "${inputs.target}" = "landing" ]; then
+              cd apps/${inputs.target} && npm test
+            else
+              cd apps/mobile && flutter test
+            fi
+          catch_output: "test_result"
+
+  - id: step_refactor
+    name: "6. Refatoração de Código, Limpeza e Formatação"
+    agent: "qa_validator"
+    actions:
+      - description: "Aplicar formatador de código oficial"
+        command: >
+          if [ "${inputs.target}" = "web" ] || [ "${inputs.target}" = "landing" ]; then
+            cd apps/${inputs.target} && npm run format || true
+          else
+            cd apps/mobile && dart format .
+          fi
+
+  - id: step_git_commit
+    name: "7. Versionamento Atômico e Fechamento no Git"
+    agent: "git_committer"
+    actions:
+      - description: "Adicionar arquivos alterados à staging area"
+        command: "git add apps/${inputs.target} _specs/"
+      - description: "Executar commit semântico atômico"
+        command: >
+          git commit -m "feat(${inputs.target}): implement ${inputs.feature_spec} with TDD coverage"
+          -m "- Verified against criteria in ${inputs.feature_spec}"
+          -m "- Clean Architecture and full test suite passed"
